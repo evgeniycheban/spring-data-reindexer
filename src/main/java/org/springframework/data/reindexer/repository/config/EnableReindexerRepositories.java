@@ -31,8 +31,8 @@ public @interface EnableReindexerRepositories {
 
 	/**
 	 * Alias for the {@link #basePackages()} attribute. Allows for more concise annotation declarations e.g.:
-	 * {@code @EnableMongoRepositories("org.my.pkg")} instead of
-	 * {@code @EnableMongoRepositories(basePackages="org.my.pkg")}.
+	 * {@code @EnableReindexerRepositories("org.my.pkg")} instead of
+	 * {@code @EnableReindexerRepositories(basePackages="org.my.pkg")}.
 	 */
 	String[] value() default {};
 

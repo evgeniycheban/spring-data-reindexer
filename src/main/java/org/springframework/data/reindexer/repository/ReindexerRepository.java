@@ -8,6 +8,7 @@ import org.springframework.data.repository.Repository;
 
 /**
  * Reindexer-specific {@link Repository} interface.
+ *
  * @author Evgeniy Cheban
  */
 @NoRepositoryBean
