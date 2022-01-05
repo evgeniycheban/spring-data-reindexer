@@ -47,14 +47,14 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 				return reindexAnnotation != null && reindexAnnotation.isPrimaryKey();
 			}
 		}, true);
-		Assert.notNull(idField, () -> "ID is not found consider add @Reindex(isPrimaryKey = true) field to " + domainClass);
+		Assert.state(idField != null, () -> "ID is not found consider add @Reindex(isPrimaryKey = true) field to " + domainClass);
 		org.springframework.util.ReflectionUtils.makeAccessible(idField);
 		return idField;
 	}
 
 	private String getNamespaceName(Class<T> domainClass) {
 		Namespace namespaceAnnotation = domainClass.getAnnotation(Namespace.class);
-		Assert.notNull(namespaceAnnotation, () -> "@Namespace annotation is not found on " + domainClass);
+		Assert.state(namespaceAnnotation != null, () -> "@Namespace annotation is not found on " + domainClass);
 		return namespaceAnnotation.name();
 	}
 
