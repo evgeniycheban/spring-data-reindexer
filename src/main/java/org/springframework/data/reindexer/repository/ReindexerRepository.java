@@ -20,4 +20,7 @@ public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID> {
 	@Override
 	List<T> findAll();
 
+	@Override
+	List<T> findAllById(Iterable<ID> ids);
+
 }

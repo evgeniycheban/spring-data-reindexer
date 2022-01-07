@@ -1,8 +1,10 @@
 package org.springframework.data.reindexer.repository.support;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.NamespaceOptions;
@@ -76,9 +78,15 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	}
 
 	@Override
-	public Iterable<T> findAllById(Iterable<ID> ids) {
+	public List<T> findAllById(Iterable<ID> ids) {
 		Assert.notNull(ids, "The given Ids of entities not be null!");
-		return this.namespace.query().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, ids).toList();
+		return this.namespace.query().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, toSet(ids)).toList();
+	}
+
+	private Set<ID> toSet(Iterable<ID> ids) {
+		Set<ID> result = new HashSet<>();
+		ids.forEach(result::add);
+		return result;
 	}
 
 	@Override
