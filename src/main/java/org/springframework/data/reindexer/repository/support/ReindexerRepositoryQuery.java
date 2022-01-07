@@ -3,7 +3,6 @@ package org.springframework.data.reindexer.repository.support;
 import java.util.Iterator;
 
 import ru.rt.restream.reindexer.Namespace;
-import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
 
@@ -38,7 +37,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	 */
 	public ReindexerRepositoryQuery(QueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
 		this.queryMethod = queryMethod;
-		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), NamespaceOptions.defaultOptions(),
+		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.tree = new PartTree(queryMethod.getName(), entityInformation.getJavaType());
 	}

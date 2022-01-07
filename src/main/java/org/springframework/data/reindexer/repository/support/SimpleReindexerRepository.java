@@ -7,7 +7,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import ru.rt.restream.reindexer.Namespace;
-import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
 
@@ -34,7 +33,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	 */
 	public SimpleReindexerRepository(ReindexerEntityInformation<T, ID> entityInformation, Reindexer reindexer) {
 		this.entityInformation = entityInformation;
-		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), NamespaceOptions.defaultOptions(),
+		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 	}
 

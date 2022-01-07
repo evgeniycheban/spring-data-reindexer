@@ -1,5 +1,7 @@
 package org.springframework.data.reindexer.repository.query;
 
+import ru.rt.restream.reindexer.NamespaceOptions;
+
 import org.springframework.data.repository.core.EntityInformation;
 
 /**
@@ -15,6 +17,13 @@ public interface ReindexerEntityInformation<T, ID> extends EntityInformation<T, 
 	 * @return the name of the namespace the entity shall be persisted to
 	 */
 	String getNamespaceName();
+
+	/**
+	 * Returns a {@link NamespaceOptions}.
+	 *
+	 * @return the {@link NamespaceOptions} to use
+	 */
+	NamespaceOptions getNamespaceOptions();
 
 	/**
 	 * Returns the field that the id will be persisted to.

@@ -2,6 +2,7 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.lang.reflect.Field;
 
+import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.data.reindexer.core.mapping.Namespace;
@@ -23,6 +24,8 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 
 	private final String namespaceName;
 
+	private final NamespaceOptions namespaceOptions;
+
 	/**
 	 * Creates an instance.
 	 *
@@ -31,7 +34,13 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 	public MappingReindexerEntityInformation(Class<T> domainClass) {
 		this.domainClass = domainClass;
 		this.idField = getIdField(domainClass);
-		this.namespaceName = getNamespaceName(domainClass);
+		Namespace namespaceAnnotation = domainClass.getAnnotation(Namespace.class);
+		Assert.state(namespaceAnnotation != null, () -> "@Namespace annotation is not found on " + domainClass);
+		this.namespaceName = namespaceAnnotation.name();
+		this.namespaceOptions = new NamespaceOptions(namespaceAnnotation.enableStorage(),
+				namespaceAnnotation.createStorageIfMissing(), namespaceAnnotation.dropOnIndexesConflict(),
+				namespaceAnnotation.dropOnFileFormatError(), namespaceAnnotation.disableObjCache(),
+				namespaceAnnotation.objCacheItemsCount());
 	}
 
 	private Field getIdField(Class<T> domainClass) {
@@ -52,15 +61,14 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 		return idField;
 	}
 
-	private String getNamespaceName(Class<T> domainClass) {
-		Namespace namespaceAnnotation = domainClass.getAnnotation(Namespace.class);
-		Assert.state(namespaceAnnotation != null, () -> "@Namespace annotation is not found on " + domainClass);
-		return namespaceAnnotation.name();
-	}
-
 	@Override
 	public String getNamespaceName() {
 		return this.namespaceName;
+	}
+
+	@Override
+	public NamespaceOptions getNamespaceOptions() {
+		return this.namespaceOptions;
 	}
 
 	@Override
