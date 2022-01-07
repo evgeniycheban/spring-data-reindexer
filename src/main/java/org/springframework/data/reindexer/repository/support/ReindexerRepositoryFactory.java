@@ -2,7 +2,9 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import ru.rt.restream.reindexer.Reindexer;
 
@@ -28,6 +30,8 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final Reindexer reindexer;
 
+	private final Map<Class<?>, ReindexerEntityInformation<?, ?>> entityInformationCache;
+
 	/**
 	 * Creates an instance.
 	 *
@@ -35,11 +39,13 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	 */
 	public ReindexerRepositoryFactory(Reindexer reindexer) {
 		this.reindexer = reindexer;
+		this.entityInformationCache = new ConcurrentHashMap<>();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T, ID> ReindexerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
-		return ReindexerEntityInformationFactory.getReindexerEntityInformation(domainClass);
+		return (ReindexerEntityInformation<T, ID>) entityInformationCache.computeIfAbsent(domainClass, MappingReindexerEntityInformation::new);
 	}
 
 	@Override
@@ -62,7 +68,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 		@Override
 		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory, NamedQueries namedQueries) {
-			return new ReindexerQuery(new QueryMethod(method, metadata, factory), getEntityInformation(metadata.getDomainType()),
+			return new ReindexerRepositoryQuery(new QueryMethod(method, metadata, factory), getEntityInformation(metadata.getDomainType()),
 					ReindexerRepositoryFactory.this.reindexer);
 		}
 

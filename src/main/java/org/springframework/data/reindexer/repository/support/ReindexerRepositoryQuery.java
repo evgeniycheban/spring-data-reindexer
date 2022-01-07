@@ -21,7 +21,7 @@ import org.springframework.util.Assert;
  *
  * @author Evgeniy Cheban
  */
-public class ReindexerQuery implements RepositoryQuery {
+public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final QueryMethod queryMethod;
 
@@ -36,7 +36,7 @@ public class ReindexerQuery implements RepositoryQuery {
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param reindexer the {@link Reindexer} to use                         
 	 */
-	public ReindexerQuery(QueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
+	public ReindexerRepositoryQuery(QueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
 		this.queryMethod = queryMethod;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), NamespaceOptions.defaultOptions(),
 				entityInformation.getJavaType());
