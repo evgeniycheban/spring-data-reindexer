@@ -1,6 +1,12 @@
 package org.springframework.data.reindexer.repository;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +25,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link ReindexerRepository}.
@@ -66,6 +74,144 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void save() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertNotNull(testItem);
+		TestItem item = this.repository.findById(1L).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void saveAll() {
+		List<TestItem> items = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			items.add(new TestItem(i, "TestName" + i, "TestValue" + i));
+		}
+		Map<Long, TestItem> expectedItems = this.repository.saveAll(items).stream()
+				.collect(Collectors.toMap(TestItem::getId, Function.identity()));
+		assertEquals(items.size(), expectedItems.size());
+		for (TestItem actual : this.repository.findAll()) {
+			TestItem expected = expectedItems.remove(actual.getId());
+			assertNotNull(expected);
+			assertEquals(expected.getId(), actual.getId());
+			assertEquals(expected.getName(), actual.getName());
+			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findById() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findById(1L).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void existsById() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertTrue(this.repository.existsById(testItem.getId()));
+	}
+
+	@Test
+	public void findAll() {
+		Map<Long, TestItem> expectedItems = new HashMap<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		for (TestItem actual : this.repository.findAll()) {
+			TestItem expected = expectedItems.remove(actual.getId());
+			assertNotNull(expected);
+			assertEquals(expected.getId(), actual.getId());
+			assertEquals(expected.getName(), actual.getName());
+			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllById() {
+		Map<Long, TestItem> expectedItems = new HashMap<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<Long> ids = expectedItems.values().stream().map(TestItem::getId).collect(Collectors.toList());
+		for (TestItem actual : this.repository.findAllById(ids)) {
+			TestItem expected = expectedItems.remove(actual.getId());
+			assertNotNull(expected);
+			assertEquals(expected.getId(), actual.getId());
+			assertEquals(expected.getName(), actual.getName());
+			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void count() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		assertEquals(expectedItems.size(), this.repository.count());
+	}
+
+	@Test
+	public void deleteById() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertTrue(this.repository.existsById(testItem.getId()));
+		this.repository.deleteById(testItem.getId());
+		assertFalse(this.repository.existsById(testItem.getId()));
+	}
+
+	@Test
+	public void delete() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertTrue(this.repository.existsById(testItem.getId()));
+		this.repository.delete(testItem);
+		assertFalse(this.repository.existsById(testItem.getId()));
+	}
+
+	@Test
+	public void deleteAllById() {
+		List<Long> ids = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			TestItem testItem = this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i));
+			ids.add(testItem.getId());
+		}
+		assertEquals(ids.size(), this.repository.count());
+		this.repository.deleteAllById(ids);
+		assertEquals(0, this.repository.count());
+	}
+
+	@Test
+	public void deleteAllEntities() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		assertEquals(expectedItems.size(), this.repository.count());
+		this.repository.deleteAll(expectedItems);
+		assertEquals(0, this.repository.count());
+	}
+
+	@Test
+	public void deleteAll() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		assertEquals(expectedItems.size(), this.repository.count());
+		this.repository.deleteAll();
+		assertEquals(0, this.repository.count());
 	}
 
 	@Configuration
