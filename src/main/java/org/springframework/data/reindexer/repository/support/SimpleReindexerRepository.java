@@ -83,7 +83,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		return this.namespace.query().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, toSet(ids)).toList();
 	}
 
-	private Set<ID> toSet(Iterable<ID> ids) {
+	private Set<ID> toSet(Iterable<? extends ID> ids) {
 		Set<ID> result = new HashSet<>();
 		ids.forEach(result::add);
 		return result;
@@ -109,7 +109,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public void deleteAllById(Iterable<? extends ID> ids) {
 		Assert.notNull(ids, "The given Iterable of ids must not be null!");
-		this.namespace.query().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, ids).delete();
+		this.namespace.query().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, toSet(ids)).delete();
 	}
 
 	@Override
