@@ -17,7 +17,6 @@ import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
 import org.springframework.data.repository.query.QueryLookupStrategy;
-import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.QueryMethodEvaluationContextProvider;
 import org.springframework.data.repository.query.RepositoryQuery;
 
@@ -68,7 +67,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 		@Override
 		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory, NamedQueries namedQueries) {
-			return new ReindexerRepositoryQuery(new QueryMethod(method, metadata, factory), getEntityInformation(metadata.getDomainType()),
+			return new ReindexerRepositoryQuery(new ReindexerQueryMethod(method, metadata, factory), getEntityInformation(metadata.getDomainType()),
 					ReindexerRepositoryFactory.this.reindexer);
 		}
 

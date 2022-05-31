@@ -8,7 +8,6 @@ import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 import org.springframework.data.repository.query.ParametersParameterAccessor;
-import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.parser.Part;
 import org.springframework.data.repository.query.parser.PartTree;
@@ -22,7 +21,7 @@ import org.springframework.util.Assert;
  */
 public class ReindexerRepositoryQuery implements RepositoryQuery {
 
-	private final QueryMethod queryMethod;
+	private final ReindexerQueryMethod queryMethod;
 
 	private final Namespace<?> namespace;
 
@@ -31,11 +30,11 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	/**
 	 * Creates an instance.
 	 *
-	 * @param queryMethod the {@link QueryMethod} to use
+	 * @param queryMethod the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param reindexer the {@link Reindexer} to use                         
 	 */
-	public ReindexerRepositoryQuery(QueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
+	public ReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
 		this.queryMethod = queryMethod;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
@@ -50,6 +49,9 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 		if (this.queryMethod.isStreamQuery()) {
 			return query.stream();
+		}
+		if (this.queryMethod.isIteratorQuery()) {
+			return query.execute();
 		}
 		return query.findOne();
 	}
@@ -96,7 +98,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	@Override
-	public QueryMethod getQueryMethod() {
+	public ReindexerQueryMethod getQueryMethod() {
 		return this.queryMethod;
 	}
 

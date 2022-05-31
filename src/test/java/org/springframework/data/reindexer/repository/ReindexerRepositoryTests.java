@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -77,6 +78,19 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findIteratorByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestValue", null));
+		try (CloseableIterator<TestItem> it = this.repository.findIteratorByName("TestValue")) {
+			assertTrue(it.hasNext());
+			TestItem item = it.next();
+			assertEquals(testItem.getId(), item.getId());
+			assertEquals(testItem.getName(), item.getName());
+			assertEquals(testItem.getValue(), item.getValue());
+			assertFalse(it.hasNext());
+		}
+	}
+
+	@Test
 	public void save() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		assertNotNull(testItem);
@@ -134,6 +148,25 @@ class ReindexerRepositoryTests {
 			assertEquals(expected.getId(), actual.getId());
 			assertEquals(expected.getName(), actual.getName());
 			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void iterator() {
+		Map<Long, TestItem> expectedItems = new HashMap<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		try (CloseableIterator<TestItem> it = this.repository.iterator()) {
+			while (it.hasNext()) {
+				TestItem actual = it.next();
+				TestItem expected = expectedItems.remove(actual.getId());
+				assertNotNull(expected);
+				assertEquals(expected.getId(), actual.getId());
+				assertEquals(expected.getName(), actual.getName());
+				assertEquals(expected.getValue(), actual.getValue());
+			}
 		}
 		assertEquals(0, expectedItems.size());
 	}
@@ -242,6 +275,8 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByNameAndValue(String name, String value);
 
 		Optional<TestItem> findByNameOrValue(String name, String value);
+
+		CloseableIterator<TestItem> findIteratorByName(String name);
 
 	}
 
