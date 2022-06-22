@@ -67,7 +67,12 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 		@Override
 		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory, NamedQueries namedQueries) {
-			return new ReindexerRepositoryQuery(new ReindexerQueryMethod(method, metadata, factory), getEntityInformation(metadata.getDomainType()),
+			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
+			if (queryMethod.hasQueryAnnotation()) {
+				return new StringBasedReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
+						ReindexerRepositoryFactory.this.reindexer);
+			}
+			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
 					ReindexerRepositoryFactory.this.reindexer);
 		}
 

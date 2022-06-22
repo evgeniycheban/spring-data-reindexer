@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.reindexer.core.mapping.Namespace;
+import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.stereotype.Repository;
 import org.springframework.test.context.ContextConfiguration;
@@ -81,6 +82,19 @@ class ReindexerRepositoryTests {
 	public void findIteratorByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestValue", null));
 		try (CloseableIterator<TestItem> it = this.repository.findIteratorByName("TestValue")) {
+			assertTrue(it.hasNext());
+			TestItem item = it.next();
+			assertEquals(testItem.getId(), item.getId());
+			assertEquals(testItem.getName(), item.getName());
+			assertEquals(testItem.getValue(), item.getValue());
+			assertFalse(it.hasNext());
+		}
+	}
+
+	@Test
+	public void findIteratorSqlByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestValue", null));
+		try (CloseableIterator<TestItem> it = this.repository.findIteratorSqlByName("TestValue")) {
 			assertTrue(it.hasNext());
 			TestItem item = it.next();
 			assertEquals(testItem.getId(), item.getId());
@@ -277,6 +291,9 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByNameOrValue(String name, String value);
 
 		CloseableIterator<TestItem> findIteratorByName(String name);
+
+		@Query("SELECT * FROM items WHERE name = '%s'")
+		CloseableIterator<TestItem> findIteratorSqlByName(String name);
 
 	}
 
