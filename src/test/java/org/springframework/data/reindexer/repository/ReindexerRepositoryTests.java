@@ -179,25 +179,6 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
-	public void iterator() {
-		Map<Long, TestItem> expectedItems = new HashMap<>();
-		for (long i = 0; i < 100; i++) {
-			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
-		}
-		try (CloseableIterator<TestItem> it = this.repository.iterator()) {
-			while (it.hasNext()) {
-				TestItem actual = it.next();
-				TestItem expected = expectedItems.remove(actual.getId());
-				assertNotNull(expected);
-				assertEquals(expected.getId(), actual.getId());
-				assertEquals(expected.getName(), actual.getName());
-				assertEquals(expected.getValue(), actual.getValue());
-			}
-		}
-		assertEquals(0, expectedItems.size());
-	}
-
-	@Test
 	public void findAllById() {
 		Map<Long, TestItem> expectedItems = new HashMap<>();
 		for (long i = 0; i < 100; i++) {

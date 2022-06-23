@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
@@ -58,11 +57,6 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 			result.add(save(entity));
 		}
 		return result;
-	}
-
-	@Override
-	public CloseableIterator<T> iterator() {
-		return this.namespace.query().execute();
 	}
 
 	@Override
