@@ -62,4 +62,14 @@ public final class ReindexerQueryMethod extends QueryMethod {
 		return query.value();
 	}
 
+	/**
+	 * Returns true, if the query is for UPDATE.
+	 *
+	 * @return true, if the query is for UPDATE
+	 */
+	public boolean isUpdateQuery() {
+		Query query = this.queryAnnotationExtractor.get();
+		return query.update();
+	}
+
 }

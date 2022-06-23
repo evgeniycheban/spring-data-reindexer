@@ -34,7 +34,14 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	@Override
 	public Object execute(Object[] parameters) {
 		String query = String.format(this.queryMethod.getQuery(), parameters);
-		return this.namespace.execSql(query);
+		if (this.queryMethod.isUpdateQuery()) {
+			this.namespace.updateSql(query);
+			return null;
+		}
+		if (this.queryMethod.isIteratorQuery()) {
+			return this.namespace.execSql(query);
+		}
+		throw new IllegalStateException("Unsupported method return type " + this.queryMethod.getReturnedObjectType());
 	}
 
 	@Override

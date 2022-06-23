@@ -26,4 +26,11 @@ public @interface Query {
 	 */
 	String value();
 
+	/**
+	 * Indicates whether query is for UPDATE or not.
+	 *
+	 * @return true, if query is for UPDATE. Default is false
+	 */
+	boolean update() default false;
+
 }

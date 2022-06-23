@@ -105,6 +105,18 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void updateNameSql() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertNotNull(testItem);
+		this.repository.updateNameSql("TestNameUpdated", 1L);
+		TestItem item = this.repository.findById(1L).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals("TestNameUpdated", item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
 	public void save() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		assertNotNull(testItem);
@@ -294,6 +306,9 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT * FROM items WHERE name = '%s'")
 		CloseableIterator<TestItem> findIteratorSqlByName(String name);
+
+		@Query(value = "UPDATE items SET name = '%s' WHERE id = %d", update = true)
+		void updateNameSql(String name, Long id);
 
 	}
 
