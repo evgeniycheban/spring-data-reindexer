@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.rt.restream.reindexer.CloseableIterator;
+import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -193,6 +194,15 @@ class ReindexerRepositoryTests {
 			assertEquals(expected.getValue(), actual.getValue());
 		}
 		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void queryGetOneById() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.query().where("id", Condition.EQ, 1L).getOne();
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
 	}
 
 	@Test

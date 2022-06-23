@@ -89,6 +89,11 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	}
 
 	@Override
+	public Query<T> query() {
+		return this.namespace.query();
+	}
+
+	@Override
 	public long count() {
 		return this.namespace.query().count();
 	}
