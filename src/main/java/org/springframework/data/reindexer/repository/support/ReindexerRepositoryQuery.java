@@ -53,6 +53,9 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		if (this.queryMethod.isIteratorQuery()) {
 			return query.execute();
 		}
+		if (this.queryMethod.isQueryForEntity()) {
+			return query.getOne();
+		}
 		return query.findOne();
 	}
 

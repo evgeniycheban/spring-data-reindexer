@@ -30,6 +30,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -103,6 +104,21 @@ class ReindexerRepositoryTests {
 			assertEquals(testItem.getValue(), item.getValue());
 			assertFalse(it.hasNext());
 		}
+	}
+
+	@Test
+	public void getByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.getByName("TestName");
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void getByNameWhenNotExistsThenException() {
+		assertThrows(IllegalStateException.class, () -> this.repository.getByName("notExists"),
+				"Exactly one item expected, but there is zero");
 	}
 
 	@Test
@@ -300,6 +316,8 @@ class ReindexerRepositoryTests {
 
 		@Query(value = "UPDATE items SET name = '%s' WHERE id = %d", update = true)
 		void updateNameSql(String name, Long id);
+
+		TestItem getByName(String name);
 
 	}
 
