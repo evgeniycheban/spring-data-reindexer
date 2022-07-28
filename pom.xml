@@ -56,6 +56,8 @@
 		<spring-test.version>5.3.14</spring-test.version>
 		<junit.version>5.8.2</junit.version>
 		<logback.version>1.2.11</logback.version>
+		<testcontainers.version>1.17.3</testcontainers.version>
+		<httpclient.version>4.5.13</httpclient.version>
 	</properties>
 
 	<profiles>
@@ -200,6 +202,24 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers</artifactId>
+			<version>${testcontainers.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${testcontainers.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>${httpclient.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

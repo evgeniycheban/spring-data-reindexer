@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,9 +24,24 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import org.apache.http.client.methods.HttpDelete;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.RequestBuilder;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
@@ -55,14 +71,49 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration
+@Testcontainers
 class ReindexerRepositoryTests {
+
+	private static final int REST_API_PORT = 9088;
+
+	private static final int RPC_PORT = 6534;
+
+	private static final String DATABASE_NAME = "test_items";
+
+	private static final String NAMESPACE_NAME = "items";
+
+	@Container
+	static GenericContainer<?> reindexer = new GenericContainer<>(DockerImageName.parse("reindexer/reindexer"))
+			.withExposedPorts(REST_API_PORT, RPC_PORT);
 
 	@Autowired
 	TestItemReindexerRepository repository;
 
+	@BeforeAll
+	static void beforeAll() throws Exception {
+		CreateDatabase createDatabase = new CreateDatabase();
+		createDatabase.setName(DATABASE_NAME);
+		request(HttpPost.METHOD_NAME, "/db", createDatabase);
+	}
+
 	@AfterEach
-	void tearDown() {
-		this.repository.deleteAll();
+	void tearDown() throws Exception {
+		request(HttpDelete.METHOD_NAME, "/db/" + DATABASE_NAME + "/namespaces/" + NAMESPACE_NAME + "/truncate", null);
+	}
+
+	private static void request(String method, String path, Object body) throws IOException {
+		String url = "http://localhost:" + reindexer.getMappedPort(REST_API_PORT) + "/api/v1" + path;
+		Gson gson = new GsonBuilder()
+				.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+				.create();
+		String json = gson.toJson(body);
+		HttpUriRequest request = RequestBuilder.create(method)
+				.setUri(url)
+				.setEntity(new StringEntity(json))
+				.build();
+		try (CloseableHttpClient client = HttpClients.createDefault()) {
+			client.execute(request);
+		}
 	}
 
 	@Test
@@ -300,16 +351,9 @@ class ReindexerRepositoryTests {
 	static class TestConfig {
 
 		@Bean
-		Reindexer server() {
-			return ReindexerConfiguration.builder()
-					.url("builtinserver://items")
-					.getReindexer();
-		}
-
-		@Bean
 		Reindexer reindexer() {
 			return ReindexerConfiguration.builder()
-					.url("cproto://localhost:6534/items")
+					.url("cproto://localhost:" + reindexer.getMappedPort(RPC_PORT) + "/" + DATABASE_NAME)
 					.getReindexer();
 		}
 
@@ -336,7 +380,7 @@ class ReindexerRepositoryTests {
 
 	}
 
-	@Namespace(name = "items")
+	@Namespace(name = NAMESPACE_NAME)
 	public static class TestItem {
 
 		@Reindex(name = "id", isPrimaryKey = true)
@@ -388,6 +432,20 @@ class ReindexerRepositoryTests {
 					", name='" + this.name + '\'' +
 					", value='" + this.value + '\'' +
 					'}';
+		}
+
+	}
+
+	public static class CreateDatabase {
+
+		private String name;
+
+		public String getName() {
+			return this.name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
 		}
 
 	}

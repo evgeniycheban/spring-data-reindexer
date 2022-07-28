@@ -13,11 +13,12 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
-      - name: Install Reindexer
-        run: |
-          curl https://repo.reindexer.io/RX-KEY.GPG | sudo apt-key add
-          echo 'deb https://repo.reindexer.io/ubuntu-bionic /' | sudo tee -a /etc/apt/sources.list
-          sudo apt-get update
-          sudo apt-get install reindexer-dev
+      # TODO: Repo's SSL certificate has expired.
+      #      - name: Install Reindexer
+      #        run: |
+      #          curl https://repo.reindexer.io/RX-KEY.GPG | sudo apt-key add
+      #          echo 'deb https://repo.reindexer.io/ubuntu-bionic /' | sudo tee -a /etc/apt/sources.list
+      #          sudo apt-get update
+      #          sudo apt-get install reindexer-dev
       - name: Build with Maven
         run: mvn --batch-mode --update-snapshots verify
