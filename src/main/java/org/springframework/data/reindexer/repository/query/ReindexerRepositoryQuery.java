@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.data.reindexer.repository.support;
+package org.springframework.data.reindexer.repository.query;
 
 import java.util.Iterator;
 
@@ -21,7 +21,6 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
 
-import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 import org.springframework.data.repository.query.ParametersParameterAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.parser.Part;

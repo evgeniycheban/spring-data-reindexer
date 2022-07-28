@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.data.reindexer.repository.support;
+package org.springframework.data.reindexer.repository.query;
 
 import java.lang.reflect.Method;
 import java.util.Iterator;
