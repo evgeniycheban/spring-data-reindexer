@@ -19,7 +19,7 @@ Provides Spring Data approach to work with Reindexer database.
 
 Here is an example of basic `spring-data-reindexer` usage:
 
-Configuration:
+Configuration
 
 ```java
 import ru.rt.restream.reindexer.Reindexer;
@@ -34,7 +34,7 @@ import org.springframework.data.reindexer.repository.config.EnableReindexerRepos
 public class ReindexerConfig {
 
 	@Bean
-	Reindexer reindexer() {
+	public Reindexer reindexer() {
 		return ReindexerConfiguration.builder()
 				.url("cproto://localhost:6534/items")
 				.getReindexer();
@@ -43,7 +43,7 @@ public class ReindexerConfig {
 }
 ```
 
-Entity:
+Entity
 
 ```java
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -78,7 +78,7 @@ public class Item {
 }
 ```
 
-Repository:
+Repository
 
 ```java
 import java.util.Optional;
@@ -101,6 +101,9 @@ any other Spring Framework's approach.
 @Autowired
 private ItemRepository repository;
 ```
+
+More examples can be found
+[here](https://github.com/evgeniycheban/spring-data-reindexer/blob/main/src/test/java/org/springframework/data/reindexer/repository/ReindexerRepositoryTests.java).
 
 ## Work in progress
 
