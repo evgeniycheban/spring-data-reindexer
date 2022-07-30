@@ -19,7 +19,7 @@ Provides Spring Data approach to work with Reindexer database.
 
 Here is an example of basic `spring-data-reindexer` usage:
 
-Configuration
+### Configuration
 
 ```java
 import ru.rt.restream.reindexer.Reindexer;
@@ -43,7 +43,7 @@ public class ReindexerConfig {
 }
 ```
 
-Entity
+### Entity
 
 ```java
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -78,7 +78,7 @@ public class Item {
 }
 ```
 
-Repository
+### Repository
 
 ```java
 import java.util.Optional;
@@ -94,8 +94,8 @@ public interface ItemRepository extends ReindexerRepository<Item, Long> {
 }
 ```
 
-The `ItemRepository` can be injected to other spring-managed beans using `@Autowired` or
-any other Spring Framework's approach.
+The `ItemRepository` can be injected into spring-managed beans using `@Autowired` or
+another Spring Framework approach.
 
 ```java
 @Autowired
@@ -107,6 +107,6 @@ More examples can be found
 
 ## Work in progress
 
-- Transactions support using `@Transactional` annotation.
+- Transaction support using `@Transactional` annotation.
 - Binding parameters for a native query using `@Param` annotation.
 - Support more return types for `ReindexerRepository`.
