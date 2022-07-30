@@ -1,0 +1,50 @@
+name: Release Build
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.repository == 'evgeniycheban/spring-data-reindexer'
+    env:
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      # TODO: Repo's SSL certificate has expired.
+      #      - name: Install Reindexer
+      #        run: |
+      #          curl https://repo.reindexer.io/RX-KEY.GPG | sudo apt-key add
+      #          echo 'deb https://repo.reindexer.io/ubuntu-bionic /' | sudo tee -a /etc/apt/sources.list
+      #          sudo apt-get update
+      #          sudo apt-get install reindexer-dev
+
+      - name: Prepare release
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          mvn --batch-mode release:prepare -Psign-artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Apache Maven Central
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+          server-id: sonatype-nexus-staging
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Perform release
+        run: mvn --batch-mode release:perform -Psign-artifacts
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
