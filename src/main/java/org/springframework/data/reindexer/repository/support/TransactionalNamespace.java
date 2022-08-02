@@ -28,6 +28,7 @@ import org.springframework.util.Assert;
  * delegates a call if it exists otherwise fallbacks to the original {@link Namespace}.
  *
  * @author Evgeniy Cheban
+ * @since 1.1
  */
 public class TransactionalNamespace<T> implements Namespace<T> {
 

@@ -50,6 +50,7 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 	 *
 	 * @param domainClass the domain class to use
 	 * @return the {@link MappingReindexerEntityInformation} to use
+	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T, ID> MappingReindexerEntityInformation<T, ID> getInstance(Class<T> domainClass) {

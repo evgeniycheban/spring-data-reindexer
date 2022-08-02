@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
  * @see org.springframework.transaction.annotation.Transactional
  *
  * @author Evgeniy Cheban
+ * @since 1.1
  */
 public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionManager {
 
