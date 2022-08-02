@@ -16,6 +16,8 @@
 package org.springframework.data.reindexer.repository.support;
 
 import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -33,6 +35,8 @@ import org.springframework.util.Assert;
  */
 public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntityInformation<T, ID> {
 
+	private static final Map<Class<?>, MappingReindexerEntityInformation<?, ?>> CACHE = new ConcurrentHashMap<>();
+
 	private final Class<T> domainClass;
 
 	private final Field idField;
@@ -40,6 +44,17 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 	private final String namespaceName;
 
 	private final NamespaceOptions namespaceOptions;
+
+	/**
+	 * Creates and caches an instance of {@link MappingReindexerEntityInformation} for the given domain class.
+	 *
+	 * @param domainClass the domain class to use
+	 * @return the {@link MappingReindexerEntityInformation} to use
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T, ID> MappingReindexerEntityInformation<T, ID> getInstance(Class<T> domainClass) {
+		return (MappingReindexerEntityInformation<T, ID>) CACHE.computeIfAbsent(domainClass, MappingReindexerEntityInformation::new);
+	}
 
 	/**
 	 * Creates an instance.
@@ -71,7 +86,7 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 				return reindexAnnotation != null && reindexAnnotation.isPrimaryKey();
 			}
 		}, true);
-		Assert.state(idField != null, () -> "ID is not found consider add @Reindex(isPrimaryKey = true) field to " + domainClass);
+		Assert.state(idField != null, () -> "ID is not found consider adding @Reindex(isPrimaryKey = true) field to " + domainClass);
 		org.springframework.util.ReflectionUtils.makeAccessible(idField);
 		return idField;
 	}

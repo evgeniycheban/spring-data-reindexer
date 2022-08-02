@@ -50,13 +50,18 @@ import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Service;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -88,6 +93,9 @@ class ReindexerRepositoryTests {
 
 	@Autowired
 	TestItemReindexerRepository repository;
+
+	@Autowired
+	TestItemTransactionalService service;
 
 	@BeforeAll
 	static void beforeAll() throws Exception {
@@ -208,6 +216,24 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void saveTransactional() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertNotNull(testItem);
+		TestItem item = this.repository.findById(1L).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void saveTransactionalExceptionally() {
+		assertThrows(IllegalStateException.class,
+				() -> this.service.saveExceptionally(new TestItem(1L, "TestName", "TestValue")));
+		assertFalse(this.repository.existsById(1L));
 	}
 
 	@Test
@@ -348,6 +374,8 @@ class ReindexerRepositoryTests {
 
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
+	@EnableTransactionManagement
+	@ComponentScan(basePackageClasses = TestItemTransactionalService.class)
 	static class TestConfig {
 
 		@Bean
@@ -355,6 +383,32 @@ class ReindexerRepositoryTests {
 			return ReindexerConfiguration.builder()
 					.url("cproto://localhost:" + reindexer.getMappedPort(RPC_PORT) + "/" + DATABASE_NAME)
 					.getReindexer();
+		}
+
+		@Bean
+		ReindexerTransactionManager<TestItem> txManager(Reindexer reindexer) {
+			return new ReindexerTransactionManager<>(reindexer, TestItem.class);
+		}
+
+	}
+
+	@Transactional(transactionManager = "txManager")
+	@Service
+	public static class TestItemTransactionalService {
+
+		private final TestItemReindexerRepository repository;
+
+		public TestItemTransactionalService(TestItemReindexerRepository repository) {
+			this.repository = repository;
+		}
+
+		public TestItem save(TestItem item) {
+			return this.repository.save(item);
+		}
+
+		public void saveExceptionally(TestItem item) {
+			this.repository.save(item);
+			throw new IllegalStateException();
 		}
 
 	}

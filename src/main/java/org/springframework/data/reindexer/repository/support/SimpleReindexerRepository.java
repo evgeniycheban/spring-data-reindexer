@@ -48,8 +48,13 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	 */
 	public SimpleReindexerRepository(ReindexerEntityInformation<T, ID> entityInformation, Reindexer reindexer) {
 		this.entityInformation = entityInformation;
-		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
-				entityInformation.getJavaType());
+		this.namespace = getNamespace(entityInformation, reindexer);
+	}
+
+	private TransactionalNamespace<T> getNamespace(ReindexerEntityInformation<T, ID> entityInformation, Reindexer reindexer) {
+		Namespace<T> namespace = reindexer.openNamespace(entityInformation.getNamespaceName(),
+				entityInformation.getNamespaceOptions(), entityInformation.getJavaType());
+		return new TransactionalNamespace<>(namespace);
 	}
 
 	@Override

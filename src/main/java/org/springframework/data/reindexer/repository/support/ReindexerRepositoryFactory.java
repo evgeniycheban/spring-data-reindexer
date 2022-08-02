@@ -17,9 +17,7 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import ru.rt.restream.reindexer.Reindexer;
 
@@ -47,8 +45,6 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final Reindexer reindexer;
 
-	private final Map<Class<?>, ReindexerEntityInformation<?, ?>> entityInformationCache;
-
 	/**
 	 * Creates an instance.
 	 *
@@ -56,13 +52,11 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	 */
 	public ReindexerRepositoryFactory(Reindexer reindexer) {
 		this.reindexer = reindexer;
-		this.entityInformationCache = new ConcurrentHashMap<>();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public <T, ID> ReindexerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
-		return (ReindexerEntityInformation<T, ID>) entityInformationCache.computeIfAbsent(domainClass, MappingReindexerEntityInformation::new);
+		return MappingReindexerEntityInformation.getInstance(domainClass);
 	}
 
 	@Override
