@@ -15,6 +15,17 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
 
@@ -55,7 +66,63 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		if (this.queryMethod.isIteratorQuery()) {
 			return this.namespace.execSql(query);
 		}
+		if (this.queryMethod.isStreamQuery()) {
+			return toStream(this.namespace.execSql(query));
+		}
+		if (this.queryMethod.isListQuery()) {
+			return toCollection(this.namespace.execSql(query), ArrayList::new);
+		}
+		if (this.queryMethod.isSetQuery()) {
+			return toCollection(this.namespace.execSql(query), HashSet::new);
+		}
+		if (this.queryMethod.isOptionalQuery()) {
+			return toOptionalEntity(this.namespace.execSql(query));
+		}
+		if (this.queryMethod.isQueryForEntity()) {
+			return toEntity(this.namespace.execSql(query));
+		}
 		throw new IllegalStateException("Unsupported method return type " + this.queryMethod.getReturnedObjectType());
+	}
+
+	private <T> Stream<T> toStream(CloseableIterator<T> iterator) {
+		Spliterator<T> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
+		return StreamSupport.stream(spliterator, false);
+	}
+
+	private <T> Collection<T> toCollection(CloseableIterator<T> iterator, Supplier<Collection<T>> collectionSupplier) {
+		Collection<T> result = collectionSupplier.get();
+		try (CloseableIterator<T> it = iterator) {
+			while (it.hasNext()) {
+				result.add(it.next());
+			}
+		}
+		return result;
+	}
+
+	public <T> Optional<T> toOptionalEntity(CloseableIterator<T> iterator) {
+		T item = getOneInternal(iterator);
+		return Optional.ofNullable(item);
+	}
+
+	public <T> T toEntity(CloseableIterator<T> iterator) {
+		T item = getOneInternal(iterator);
+		if (item == null) {
+			throw new IllegalStateException("Exactly one item expected, but there is zero");
+		}
+		return item;
+	}
+
+	private <T> T getOneInternal(CloseableIterator<T> iterator) {
+		try (CloseableIterator<T> it = iterator) {
+			T item = null;
+			if (it.hasNext()) {
+				item = it.next();
+			}
+			if (it.hasNext()) {
+				throw new IllegalStateException("Exactly one item expected, but there are more");
+			}
+			return item;
+		}
 	}
 
 	@Override
