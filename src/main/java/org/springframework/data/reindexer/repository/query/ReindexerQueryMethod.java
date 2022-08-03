@@ -55,9 +55,9 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	public ReindexerQueryMethod(Method method, RepositoryMetadata metadata, ProjectionFactory factory) {
 		super(method, metadata, factory);
 		this.isIteratorQuery = Lazy.of(() -> Iterator.class.isAssignableFrom(getReturnedObjectType()));
-		this.isOptionalQuery = Lazy.of(() -> Optional.class.isAssignableFrom(getReturnedObjectType()));
-		this.isListQuery = Lazy.of(() -> List.class.isAssignableFrom(getReturnedObjectType()));
-		this.isSetQuery = Lazy.of(() -> Set.class.isAssignableFrom(getReturnedObjectType()));
+		this.isOptionalQuery = Lazy.of(() -> Optional.class.isAssignableFrom(method.getReturnType()));
+		this.isListQuery = Lazy.of(() -> List.class.isAssignableFrom(method.getReturnType()));
+		this.isSetQuery = Lazy.of(() -> Set.class.isAssignableFrom(method.getReturnType()));
 		this.queryAnnotationExtractor = Lazy.of(() -> method.getAnnotation(Query.class));
 	}
 
