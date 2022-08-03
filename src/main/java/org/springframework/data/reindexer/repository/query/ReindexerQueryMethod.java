@@ -65,7 +65,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	 * Returns true if the method's return type is {@link Iterator}.
 	 *
 	 * @return true if the method's return type is {@link Iterator}
-	 * @since 1.1
 	 */
 	public boolean isIteratorQuery() {
 		return this.isIteratorQuery.get();
