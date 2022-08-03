@@ -58,30 +58,33 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	@Override
 	public Object execute(Object[] parameters) {
-		String query = String.format(this.queryMethod.getQuery(), parameters);
 		if (this.queryMethod.isUpdateQuery()) {
-			this.namespace.updateSql(query);
+			this.namespace.updateSql(prepareQuery(parameters));
 			return null;
 		}
 		if (this.queryMethod.isIteratorQuery()) {
-			return this.namespace.execSql(query);
+			return this.namespace.execSql(prepareQuery(parameters));
 		}
 		if (this.queryMethod.isStreamQuery()) {
-			return toStream(this.namespace.execSql(query));
+			return toStream(this.namespace.execSql(prepareQuery(parameters)));
 		}
 		if (this.queryMethod.isListQuery()) {
-			return toCollection(this.namespace.execSql(query), ArrayList::new);
+			return toCollection(this.namespace.execSql(prepareQuery(parameters)), ArrayList::new);
 		}
 		if (this.queryMethod.isSetQuery()) {
-			return toCollection(this.namespace.execSql(query), HashSet::new);
+			return toCollection(this.namespace.execSql(prepareQuery(parameters)), HashSet::new);
 		}
 		if (this.queryMethod.isOptionalQuery()) {
-			return toOptionalEntity(this.namespace.execSql(query));
+			return toOptionalEntity(this.namespace.execSql(prepareQuery(parameters)));
 		}
 		if (this.queryMethod.isQueryForEntity()) {
-			return toEntity(this.namespace.execSql(query));
+			return toEntity(this.namespace.execSql(prepareQuery(parameters)));
 		}
 		throw new IllegalStateException("Unsupported method return type " + this.queryMethod.getReturnedObjectType());
+	}
+
+	private String prepareQuery(Object[] parameters) {
+		return String.format(this.queryMethod.getQuery(), parameters);
 	}
 
 	private <T> Stream<T> toStream(CloseableIterator<T> iterator) {
@@ -99,12 +102,12 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return result;
 	}
 
-	public <T> Optional<T> toOptionalEntity(CloseableIterator<T> iterator) {
+	private <T> Optional<T> toOptionalEntity(CloseableIterator<T> iterator) {
 		T item = getOneInternal(iterator);
 		return Optional.ofNullable(item);
 	}
 
-	public <T> T toEntity(CloseableIterator<T> iterator) {
+	private <T> T toEntity(CloseableIterator<T> iterator) {
 		T item = getOneInternal(iterator);
 		if (item == null) {
 			throw new IllegalStateException("Exactly one item expected, but there is zero");
@@ -113,16 +116,16 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private <T> T getOneInternal(CloseableIterator<T> iterator) {
+		T item = null;
 		try (CloseableIterator<T> it = iterator) {
-			T item = null;
 			if (it.hasNext()) {
 				item = it.next();
 			}
 			if (it.hasNext()) {
 				throw new IllegalStateException("Exactly one item expected, but there are more");
 			}
-			return item;
 		}
+		return item;
 	}
 
 	@Override
