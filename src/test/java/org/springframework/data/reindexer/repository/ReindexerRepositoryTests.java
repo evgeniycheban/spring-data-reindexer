@@ -21,8 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -190,6 +192,25 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void getOneSqlByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.getOneSqlByName("TestName");
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.findOneSqlByName("TestName").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
 	public void getByNameWhenNotExistsThenException() {
 		assertThrows(IllegalStateException.class, () -> this.repository.getByName("notExists"),
 				"Exactly one item expected, but there is zero");
@@ -283,6 +304,56 @@ class ReindexerRepositoryTests {
 			assertEquals(expected.getId(), actual.getId());
 			assertEquals(expected.getName(), actual.getName());
 			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllListSql() {
+		Map<Long, TestItem> expectedItems = new HashMap<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		for (TestItem actual : this.repository.findAllListSql()) {
+			TestItem expected = expectedItems.remove(actual.getId());
+			assertNotNull(expected);
+			assertEquals(expected.getId(), actual.getId());
+			assertEquals(expected.getName(), actual.getName());
+			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllSetSql() {
+		Map<Long, TestItem> expectedItems = new HashMap<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		for (TestItem actual : this.repository.findAllSetSql()) {
+			TestItem expected = expectedItems.remove(actual.getId());
+			assertNotNull(expected);
+			assertEquals(expected.getId(), actual.getId());
+			assertEquals(expected.getName(), actual.getName());
+			assertEquals(expected.getValue(), actual.getValue());
+		}
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllStreamSql() {
+		Map<Long, TestItem> expectedItems = new HashMap<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.put(i, this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		try (Stream<TestItem> itemStream = this.repository.findAllStreamSql()) {
+			itemStream.forEach(actual -> {
+				TestItem expected = expectedItems.remove(actual.getId());
+				assertNotNull(expected);
+				assertEquals(expected.getId(), actual.getId());
+				assertEquals(expected.getName(), actual.getName());
+				assertEquals(expected.getValue(), actual.getValue());
+			});
 		}
 		assertEquals(0, expectedItems.size());
 	}
@@ -431,6 +502,21 @@ class ReindexerRepositoryTests {
 		void updateNameSql(String name, Long id);
 
 		TestItem getByName(String name);
+
+		@Query("SELECT * FROM items WHERE name = '%s'")
+		Optional<TestItem> findOneSqlByName(String name);
+
+		@Query("SELECT * FROM items WHERE name = '%s'")
+		TestItem getOneSqlByName(String name);
+
+		@Query("SELECT * FROM items")
+		List<TestItem> findAllListSql();
+
+		@Query("SELECT * FROM items")
+		Set<TestItem> findAllSetSql();
+
+		@Query("SELECT * FROM items")
+		Stream<TestItem> findAllStreamSql();
 
 	}
 
