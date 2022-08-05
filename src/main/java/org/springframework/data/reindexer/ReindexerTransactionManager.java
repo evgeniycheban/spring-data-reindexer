@@ -38,9 +38,9 @@ import org.springframework.util.Assert;
  */
 public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionManager {
 
-	private final ReindexerNamespace<T> namespace;
-
 	private final Reindexer reindexer;
+
+	private final ReindexerNamespace<T> namespace;
 
 	/**
 	 * Creates an instance.
@@ -52,12 +52,12 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 		Assert.notNull(reindexer, "reindexer cannot be null");
 		Assert.notNull(domainClass, "domainClass cannot be null");
 		this.reindexer = reindexer;
-		this.namespace = getNamespace(reindexer, domainClass);
+		this.namespace = openNamespace(domainClass);
 	}
 
-	private ReindexerNamespace<T> getNamespace(Reindexer reindexer, Class<T> domainClass) {
+	private ReindexerNamespace<T> openNamespace(Class<T> domainClass) {
 		ReindexerEntityInformation<T, ?> entityInformation = MappingReindexerEntityInformation.getInstance(domainClass);
-		return (ReindexerNamespace<T>) reindexer.openNamespace(entityInformation.getNamespaceName(),
+		return (ReindexerNamespace<T>) this.reindexer.openNamespace(entityInformation.getNamespaceName(),
 				entityInformation.getNamespaceOptions(), domainClass);
 	}
 
