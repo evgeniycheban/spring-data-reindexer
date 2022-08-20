@@ -44,10 +44,10 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
+import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -159,7 +159,7 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findIteratorByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestValue", null));
-		try (CloseableIterator<TestItem> it = this.repository.findIteratorByName("TestValue")) {
+		try (ResultIterator<TestItem> it = this.repository.findIteratorByName("TestValue")) {
 			assertTrue(it.hasNext());
 			TestItem item = it.next();
 			assertEquals(testItem.getId(), item.getId());
@@ -172,7 +172,7 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findIteratorSqlByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestValue", null));
-		try (CloseableIterator<TestItem> it = this.repository.findIteratorSqlByName("TestValue")) {
+		try (ResultIterator<TestItem> it = this.repository.findIteratorSqlByName("TestValue")) {
 			assertTrue(it.hasNext());
 			TestItem item = it.next();
 			assertEquals(testItem.getId(), item.getId());
@@ -493,10 +493,10 @@ class ReindexerRepositoryTests {
 
 		Optional<TestItem> findByNameOrValue(String name, String value);
 
-		CloseableIterator<TestItem> findIteratorByName(String name);
+		ResultIterator<TestItem> findIteratorByName(String name);
 
 		@Query("SELECT * FROM items WHERE name = '%s'")
-		CloseableIterator<TestItem> findIteratorSqlByName(String name);
+		ResultIterator<TestItem> findIteratorSqlByName(String name);
 
 		@Query(value = "UPDATE items SET name = '%s' WHERE id = %d", update = true)
 		void updateNameSql(String name, Long id);

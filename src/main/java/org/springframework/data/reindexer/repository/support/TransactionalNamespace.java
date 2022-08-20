@@ -15,9 +15,9 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
-import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
+import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.Transaction;
 
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -160,7 +160,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	}
 
 	@Override
-	public CloseableIterator<T> execSql(String query) {
+	public ResultIterator<T> execSql(String query) {
 		return this.fallback.execSql(query);
 	}
 

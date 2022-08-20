@@ -25,9 +25,9 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import ru.rt.restream.reindexer.CloseableIterator;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.ResultIterator;
 
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
@@ -87,14 +87,14 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return String.format(this.queryMethod.getQuery(), parameters);
 	}
 
-	private <T> Stream<T> toStream(CloseableIterator<T> iterator) {
+	private <T> Stream<T> toStream(ResultIterator<T> iterator) {
 		Spliterator<T> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
 		return StreamSupport.stream(spliterator, false);
 	}
 
-	private <T> Collection<T> toCollection(CloseableIterator<T> iterator, Supplier<Collection<T>> collectionSupplier) {
+	private <T> Collection<T> toCollection(ResultIterator<T> iterator, Supplier<Collection<T>> collectionSupplier) {
 		Collection<T> result = collectionSupplier.get();
-		try (CloseableIterator<T> it = iterator) {
+		try (ResultIterator<T> it = iterator) {
 			while (it.hasNext()) {
 				result.add(it.next());
 			}
@@ -102,12 +102,12 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return result;
 	}
 
-	private <T> Optional<T> toOptionalEntity(CloseableIterator<T> iterator) {
+	private <T> Optional<T> toOptionalEntity(ResultIterator<T> iterator) {
 		T item = getOneInternal(iterator);
 		return Optional.ofNullable(item);
 	}
 
-	private <T> T toEntity(CloseableIterator<T> iterator) {
+	private <T> T toEntity(ResultIterator<T> iterator) {
 		T item = getOneInternal(iterator);
 		if (item == null) {
 			throw new IllegalStateException("Exactly one item expected, but there is zero");
@@ -115,9 +115,9 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return item;
 	}
 
-	private <T> T getOneInternal(CloseableIterator<T> iterator) {
+	private <T> T getOneInternal(ResultIterator<T> iterator) {
 		T item = null;
-		try (CloseableIterator<T> it = iterator) {
+		try (ResultIterator<T> it = iterator) {
 			if (it.hasNext()) {
 				item = it.next();
 			}
