@@ -54,7 +54,7 @@
 		<spring-test.version>5.3.14</spring-test.version>
 		<junit.version>5.8.2</junit.version>
 		<logback.version>1.2.11</logback.version>
-		<testcontainers.version>1.17.3</testcontainers.version>
+		<testcontainers.version>1.20.4</testcontainers.version>
 		<httpclient.version>4.5.13</httpclient.version>
 	</properties>
 
