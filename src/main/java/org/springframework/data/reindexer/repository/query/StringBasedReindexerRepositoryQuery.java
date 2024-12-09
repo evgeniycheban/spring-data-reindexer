@@ -18,6 +18,8 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -29,8 +31,10 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
 
+import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
+import org.springframework.util.Assert;
 
 /**
  * A string-based {@link RepositoryQuery} implementation for Reindexer.
@@ -43,6 +47,8 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final Namespace<?> namespace;
 
+	private final Map<String, Integer> namedParameters;
+
 	/**
 	 * Creates an instance.
 	 *
@@ -54,6 +60,12 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		this.queryMethod = queryMethod;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
+		this.namedParameters = new LinkedHashMap<>();
+		for (Parameter parameter : queryMethod.getParameters()) {
+			if (parameter.isNamedParameter()) {
+				parameter.getName().ifPresent(name -> this.namedParameters.put(name, parameter.getIndex()));
+			}
+		}
 	}
 
 	@Override
@@ -84,7 +96,60 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private String prepareQuery(Object[] parameters) {
-		return String.format(this.queryMethod.getQuery(), parameters);
+		String query = this.queryMethod.getQuery();
+		StringBuilder sb = new StringBuilder(query);
+		char[] queryParts = query.toCharArray();
+		int offset = 0;
+		for (int i = 1; i < queryParts.length; i++) {
+			char c = queryParts[i - 1];
+			switch (c) {
+				case '?': {
+					int j = i;
+					int index = 0;
+					int digits = 0;
+					while (j < queryParts.length) {
+						if (!Character.isDigit(queryParts[j])) {
+							break;
+						}
+						index *= 10;
+						index += Character.getNumericValue(queryParts[j++]);
+						digits++;
+					}
+					String value = getParameterValuePart(parameters[index - 1]);
+					sb.replace(offset + i - 1, offset + i + digits, value);
+					offset += value.length() - digits - 1;
+					break;
+				}
+				case ':': {
+					String parameterName = getParameterName(queryParts, i);
+					Integer index = this.namedParameters.get(parameterName);
+					Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
+					String value = getParameterValuePart(parameters[index]);
+					sb.replace(offset + i - 1, offset + i + parameterName.length(), value);
+					offset += value.length() - parameterName.length() - 1;
+					break;
+				}
+			}
+		}
+		return sb.toString();
+	}
+
+	private String getParameterName(char[] queryParts, int i) {
+		StringBuilder sb = new StringBuilder();
+		while (i < queryParts.length) {
+			if (Character.isWhitespace(queryParts[i])) {
+				break;
+			}
+			sb.append(queryParts[i++]);
+		}
+		return sb.toString();
+	}
+
+	private String getParameterValuePart(Object value) {
+		if (value instanceof String) {
+			return "'" + value + "'";
+		}
+		return String.valueOf(value);
 	}
 
 	private <T> Stream<T> toStream(ResultIterator<T> iterator) {

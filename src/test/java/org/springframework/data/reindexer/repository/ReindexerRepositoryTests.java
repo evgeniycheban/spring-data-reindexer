@@ -58,6 +58,7 @@ import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import org.springframework.test.context.ContextConfiguration;
@@ -183,6 +184,19 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findIteratorSqlByNameParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		try (ResultIterator<TestItem> it = this.repository.findIteratorSqlByNameParam("TestName")) {
+			assertTrue(it.hasNext());
+			TestItem item = it.next();
+			assertEquals(testItem.getId(), item.getId());
+			assertEquals(testItem.getName(), item.getName());
+			assertEquals(testItem.getValue(), item.getValue());
+			assertFalse(it.hasNext());
+		}
+	}
+
+	@Test
 	public void getByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
 		TestItem item = this.repository.getByName("TestName");
@@ -201,9 +215,79 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void getOneSqlByNameParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.getOneSqlByNameParam("TestName");
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
 	public void findOneSqlByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
 		TestItem item = this.repository.findOneSqlByName("TestName").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByNameParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.findOneSqlByNameParam("TestName").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByNameManyParameters() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlByNameAndValueManyParams(null, null,
+				null, null, null, null, null, null, null, null, "TestName", "TestValue").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByNameOrValue() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlByIdAndNameAndValue(1L, "TestName", "TestValue").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByNameOrValueParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlByIdAndNameAndValueParam(1L, "TestName", "TestValue").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByIdAndNameAndValueAnyParameterOrder() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlByIdAndNameAndValue("TestValue", 1L, "TestName").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlByIdAndNameAndValueParamAnyParameterOrder() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlByIdAndNameAndValueParam("TestValue", 1L, "TestName").orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
@@ -221,6 +305,18 @@ class ReindexerRepositoryTests {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		assertNotNull(testItem);
 		this.repository.updateNameSql("TestNameUpdated", 1L);
+		TestItem item = this.repository.findById(1L).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals("TestNameUpdated", item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void updateNameSqlParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertNotNull(testItem);
+		this.repository.updateNameSqlParam("TestNameUpdated", 1L);
 		TestItem item = this.repository.findById(1L).orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
@@ -495,19 +591,47 @@ class ReindexerRepositoryTests {
 
 		ResultIterator<TestItem> findIteratorByName(String name);
 
-		@Query("SELECT * FROM items WHERE name = '%s'")
+		@Query("SELECT * FROM items WHERE name = ?1")
 		ResultIterator<TestItem> findIteratorSqlByName(String name);
 
-		@Query(value = "UPDATE items SET name = '%s' WHERE id = %d", update = true)
+		@Query("SELECT * FROM items WHERE name = :name")
+		ResultIterator<TestItem> findIteratorSqlByNameParam(@Param("name") String name);
+
+		@Query(value = "UPDATE items SET name = ?1 WHERE id = ?2", update = true)
 		void updateNameSql(String name, Long id);
+
+		@Query(value = "UPDATE items SET name = :name WHERE id = :id", update = true)
+		void updateNameSqlParam(@Param("name") String name, @Param("id") Long id);
 
 		TestItem getByName(String name);
 
-		@Query("SELECT * FROM items WHERE name = '%s'")
+		@Query("SELECT * FROM items WHERE name = ?1")
 		Optional<TestItem> findOneSqlByName(String name);
 
-		@Query("SELECT * FROM items WHERE name = '%s'")
+		@Query("SELECT * FROM items WHERE name = :name")
+		Optional<TestItem> findOneSqlByNameParam(@Param("name") String name);
+
+		@Query("SELECT * FROM items WHERE name = ?11 AND value = ?12")
+		Optional<TestItem> findOneSqlByNameAndValueManyParams(String name1, String name2, String name3, String name4, String name5,
+				String name6, String name7, String name8, String name9, String name10, String name11, String value);
+
+		@Query("SELECT * FROM items WHERE id = ?1 AND name = ?2 AND value = ?3")
+		Optional<TestItem> findOneSqlByIdAndNameAndValue(Long id, String name, String value);
+
+		@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
+		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name, @Param("value") String value);
+
+		@Query("SELECT * FROM items WHERE id = ?2 AND name = ?3 AND value = ?1")
+		Optional<TestItem> findOneSqlByIdAndNameAndValue(String value, Long id, String name);
+
+		@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
+		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("value") String value, @Param("id") Long id, @Param("name") String name);
+
+		@Query("SELECT * FROM items WHERE name = ?1")
 		TestItem getOneSqlByName(String name);
+
+		@Query("SELECT * FROM items WHERE name = :name")
+		TestItem getOneSqlByNameParam(@Param("name") String name);
 
 		@Query("SELECT * FROM items")
 		List<TestItem> findAllListSql();
