@@ -115,7 +115,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 						index += Character.getNumericValue(queryParts[j++]);
 						digits++;
 					}
-					String value = getParameterValuePart(parameters[index - 1]);
+					String value = getParameterValuePart(parameters, index - 1);
 					sb.replace(offset + i - 1, offset + i + digits, value);
 					offset += value.length() - digits - 1;
 					break;
@@ -124,7 +124,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					String parameterName = getParameterName(queryParts, i);
 					Integer index = this.namedParameters.get(parameterName);
 					Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
-					String value = getParameterValuePart(parameters[index]);
+					String value = getParameterValuePart(parameters, index);
 					sb.replace(offset + i - 1, offset + i + parameterName.length(), value);
 					offset += value.length() - parameterName.length() - 1;
 					break;
@@ -145,7 +145,9 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return sb.toString();
 	}
 
-	private String getParameterValuePart(Object value) {
+	private String getParameterValuePart(Object[] parameters, int index) {
+		Assert.state(index >= 0 && index < parameters.length, () -> "No parameter found at index: " + index);
+		Object value = parameters[index];
 		if (value instanceof String) {
 			return "'" + value + "'";
 		}
