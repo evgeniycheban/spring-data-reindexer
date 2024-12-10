@@ -173,7 +173,21 @@ public class ItemTransactionalService {
 }
 ```
 
+### @Query annotation support
+The `@Query` annotation is used to declare SQL-based Reindexer queries
+directly on repository methods.
+
+Parameter binding supports named parameters using `@Param` annotation as well
+as parameter number links.
+
+```java
+@Query("SELECT * FROM items WHERE name = :name")
+Optional<TestItem> findOneByName(@Param("name") String name);
+
+@Query("SELECT * FROM items WHERE name = ?1")
+Optional<TestItem> findOneByName(String name);
+```
+
 ## Work in progress
 
-- Binding parameters for a native query using `@Param` annotation.
 - Support more return types for `ReindexerRepository`.
