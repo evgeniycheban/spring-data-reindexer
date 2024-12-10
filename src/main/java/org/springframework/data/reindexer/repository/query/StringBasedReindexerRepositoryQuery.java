@@ -17,8 +17,8 @@ package org.springframework.data.reindexer.repository.query;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -60,7 +60,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		this.queryMethod = queryMethod;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
-		this.namedParameters = new LinkedHashMap<>();
+		this.namedParameters = new HashMap<>();
 		for (Parameter parameter : queryMethod.getParameters()) {
 			if (parameter.isNamedParameter()) {
 				parameter.getName().ifPresent(name -> this.namedParameters.put(name, parameter.getIndex()));
