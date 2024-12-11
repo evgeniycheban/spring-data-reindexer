@@ -115,7 +115,10 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 						index += digit;
 						digits++;
 					}
-					String value = getParameterValuePart(parameters, index - 1);
+					if (index < 1 || index > parameters.length) {
+						throw new IllegalStateException("Invalid parameter reference at index: " + i);
+					}
+					String value = getParameterValuePart(parameters[index - 1]);
 					result.replace(offset + i - 1, offset + i + digits, value);
 					offset += value.length() - digits - 1;
 					break;
@@ -131,7 +134,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					String parameterName = sb.toString();
 					Integer index = this.namedParameters.get(parameterName);
 					Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
-					String value = getParameterValuePart(parameters, index);
+					String value = getParameterValuePart(parameters[index]);
 					result.replace(offset + i - 1, offset + i + parameterName.length(), value);
 					offset += value.length() - parameterName.length() - 1;
 					break;
@@ -141,9 +144,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return result.toString();
 	}
 
-	private String getParameterValuePart(Object[] parameters, int index) {
-		Assert.state(index >= 0 && index < parameters.length, () -> "No parameter found at index: " + index);
-		Object value = parameters[index];
+	private String getParameterValuePart(Object value) {
 		if (value instanceof String) {
 			return "'" + value + "'";
 		}
