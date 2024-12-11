@@ -10,7 +10,7 @@
 
 	<groupId>io.github.evgeniycheban</groupId>
 	<artifactId>spring-data-reindexer</artifactId>
-	<version>1.2-SNAPSHOT</version>
+	<version>1.2</version>
 	<packaging>jar</packaging>
 
 	<name>spring-data-reindexer</name>
