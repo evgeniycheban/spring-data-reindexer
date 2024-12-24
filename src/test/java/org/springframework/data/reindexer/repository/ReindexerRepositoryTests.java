@@ -539,6 +539,54 @@ class ReindexerRepositoryTests {
 		assertEquals(0, this.repository.count());
 	}
 
+	@Test
+	public void findByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+	}
+
+	@Test
+	public void findByIdContaining() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findByIdContaining(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+	}
+
+	@Test
+	public void findByIdNotIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findByIdNotIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(0, foundItems.size());
+	}
+
+	@Test
+	public void findByIdNotContaining() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findByIdNotContaining(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(0, foundItems.size());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -642,6 +690,13 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items")
 		Stream<TestItem> findAllStreamSql();
 
+		List<TestItem> findByIdIn(List<Long> ids);
+
+		List<TestItem> findByIdContaining(List<Long> ids);
+
+		List<TestItem> findByIdNotIn(List<Long> ids);
+
+		List<TestItem> findByIdNotContaining(List<Long> ids);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
