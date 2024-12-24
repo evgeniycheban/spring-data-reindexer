@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.util.Collection;
 import java.util.Iterator;
 
 import ru.rt.restream.reindexer.Namespace;
@@ -101,6 +102,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				return criteria.where(indexName, Query.Condition.LT, parameters.next());
 			case LESS_THAN_EQUAL:
 				return criteria.where(indexName, Query.Condition.LE, parameters.next());
+			case IN:
+			case CONTAINING:
+				return createInQuery(criteria, indexName, parameters);
+			case NOT_IN:
+			case NOT_CONTAINING:
+				return createInQuery(criteria.not(), indexName, parameters);
 			case IS_NOT_NULL:
 				return criteria.isNotNull(indexName);
 			case IS_NULL:
@@ -113,6 +120,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				throw new IllegalArgumentException("Unsupported keyword!");
 		}
 	}
+
+    private Query<?> createInQuery(Query<?> criteria, String indexName, Iterator<Object> parameters) {
+        Object value = parameters.next();
+        Assert.isInstanceOf(Collection.class, value, () -> "Expected Collection but got " + value);
+        return criteria.where(indexName, Query.Condition.SET, (Collection<?>) value);
+    }
 
 	@Override
 	public ReindexerQueryMethod getQueryMethod() {
