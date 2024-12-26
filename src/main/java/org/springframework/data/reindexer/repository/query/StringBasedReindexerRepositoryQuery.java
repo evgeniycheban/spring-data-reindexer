@@ -261,7 +261,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 		@Override
 		public Class<?>[] getSpecificTargetClasses() {
-			return new Class[0];
+			return new Class[] { Object.class.arrayType() };
 		}
 
 	}
