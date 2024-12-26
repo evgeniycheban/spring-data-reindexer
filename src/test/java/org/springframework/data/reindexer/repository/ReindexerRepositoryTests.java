@@ -648,6 +648,12 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void existsByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertTrue(this.repository.existsByName(testItem.getName()));
+	}
+
+	@Test
 	public void findByEnumStringIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
@@ -829,6 +835,8 @@ class ReindexerRepositoryTests {
 		List<TestItem> findByTestEnumOrdinalIn(List<TestEnum> values);
 
 		List<TestItem> findByTestEnumOrdinalIn(TestEnum... values);
+
+		boolean existsByName(String name);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)

@@ -85,6 +85,9 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		if (this.queryMethod.isQueryForEntity()) {
 			return query.getOne();
 		}
+		if (this.tree.isExistsProjection()) {
+			return query.exists();
+		}
 		return query.findOne();
 	}
 
