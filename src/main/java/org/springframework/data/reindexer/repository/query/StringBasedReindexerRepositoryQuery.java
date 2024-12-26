@@ -34,6 +34,12 @@ import ru.rt.restream.reindexer.ResultIterator;
 import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.Expression;
+import org.springframework.expression.PropertyAccessor;
+import org.springframework.expression.TypedValue;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.util.Assert;
 
 /**
@@ -42,6 +48,10 @@ import org.springframework.util.Assert;
  * @author Evgeniy Cheban
  */
 public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
+
+	private final SpelExpressionParser spelExpressionParser = new SpelExpressionParser();
+
+	private final NamedParameterPropertyAccessor propertyAccessor = new NamedParameterPropertyAccessor();
 
 	private final ReindexerQueryMethod queryMethod;
 
@@ -121,22 +131,50 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					String value = getParameterValuePart(parameters[index - 1]);
 					result.replace(offset + i - 1, offset + i + digits, value);
 					offset += value.length() - digits - 1;
+					i += digits + 1;
 					break;
 				}
 				case ':': {
-					StringBuilder sb = new StringBuilder();
-					for (int j = i; j < queryParts.length; j++) {
-						if (Character.isWhitespace(queryParts[j])) {
-							break;
+					if (queryParts[i] == '#') {
+						int special = 1;
+						StringBuilder sb = new StringBuilder();
+						for (int j = i + 1; j < queryParts.length; j++) {
+							if (queryParts[j] == '{') {
+								special++;
+								continue;
+							}
+							if (queryParts[j] == '}') {
+								special++;
+								break;
+							}
+							sb.append(queryParts[j]);
 						}
-						sb.append(queryParts[j]);
+						if (special != 3) {
+							throw new IllegalStateException("Invalid SpEL expression provided at index: " + i);
+						}
+						Expression expression = this.spelExpressionParser.parseExpression(sb.toString());
+						StandardEvaluationContext ctx = new StandardEvaluationContext(parameters);
+						ctx.addPropertyAccessor(this.propertyAccessor);
+						String value = getParameterValuePart(expression.getValue(ctx));
+						result.replace(offset + i - 1, offset + i + expression.getExpressionString().length() + special, value);
+						offset += value.length() - expression.getExpressionString().length() - special - 1;
+						i += expression.getExpressionString().length() + special;
+					} else {
+						StringBuilder sb = new StringBuilder();
+						for (int j = i; j < queryParts.length; j++) {
+							if (Character.isWhitespace(queryParts[j])) {
+								break;
+							}
+							sb.append(queryParts[j]);
+						}
+						String parameterName = sb.toString();
+						Integer index = this.namedParameters.get(parameterName);
+						Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
+						String value = getParameterValuePart(parameters[index]);
+						result.replace(offset + i - 1, offset + i + parameterName.length(), value);
+						offset += value.length() - parameterName.length() - 1;
+						i += parameterName.length() + 1;
 					}
-					String parameterName = sb.toString();
-					Integer index = this.namedParameters.get(parameterName);
-					Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
-					String value = getParameterValuePart(parameters[index]);
-					result.replace(offset + i - 1, offset + i + parameterName.length(), value);
-					offset += value.length() - parameterName.length() - 1;
 					break;
 				}
 			}
@@ -195,6 +233,40 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	@Override
 	public QueryMethod getQueryMethod() {
 		return this.queryMethod;
+	}
+
+	private final class NamedParameterPropertyAccessor implements PropertyAccessor {
+
+		@Override
+		public boolean canRead(EvaluationContext context, Object target, String name) {
+			return StringBasedReindexerRepositoryQuery.this.namedParameters.containsKey(name);
+		}
+
+		@Override
+		public TypedValue read(EvaluationContext context, Object target, String name) {
+			Assert.state(target instanceof Object[], "target must be an array");
+			Object[] arguments = (Object[]) target;
+			Integer index = StringBasedReindexerRepositoryQuery.this.namedParameters.get(name);
+			Assert.notNull(index, () -> "No parameter found for name: " + name);
+			Object value = arguments[index];
+			return new TypedValue(value);
+		}
+
+		@Override
+		public boolean canWrite(EvaluationContext context, Object target, String name) {
+			return false;
+		}
+
+		@Override
+		public void write(EvaluationContext context, Object target, String name, Object newValue) {
+			// NOOP
+		}
+
+		@Override
+		public Class<?>[] getSpecificTargetClasses() {
+			return new Class[0];
+		}
+
 	}
 
 }
