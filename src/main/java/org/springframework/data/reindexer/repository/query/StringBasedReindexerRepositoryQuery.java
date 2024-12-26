@@ -131,7 +131,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					String value = getParameterValuePart(parameters[index - 1]);
 					result.replace(offset + i - 1, offset + i + digits, value);
 					offset += value.length() - digits - 1;
-					i += digits + 1;
+					i += digits;
 					break;
 				}
 				case ':': {
@@ -173,7 +173,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 						String value = getParameterValuePart(parameters[index]);
 						result.replace(offset + i - 1, offset + i + parameterName.length(), value);
 						offset += value.length() - parameterName.length() - 1;
-						i += parameterName.length() + 1;
+						i += parameterName.length();
 					}
 					break;
 				}
