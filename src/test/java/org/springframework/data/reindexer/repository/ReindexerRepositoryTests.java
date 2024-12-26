@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -44,10 +45,12 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+import ru.rt.restream.reindexer.EnumType;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.ResultIterator;
+import ru.rt.restream.reindexer.annotations.Enumerated;
 import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -155,6 +158,30 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findByTestEnumString() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", TestEnum.TEST_CONSTANT_1, null));
+		TestItem item = this.repository.findByTestEnumString(TestEnum.TEST_CONSTANT_1).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+		assertEquals(testItem.getTestEnumString(), item.getTestEnumString());
+		assertEquals(testItem.getTestEnumOrdinal(), item.getTestEnumOrdinal());
+	}
+
+	@Test
+	public void findByTestEnumOrdinal() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", null, TestEnum.TEST_CONSTANT_1));
+		TestItem item = this.repository.findByTestEnumOrdinal(TestEnum.TEST_CONSTANT_1).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+		assertEquals(testItem.getTestEnumString(), item.getTestEnumString());
+		assertEquals(testItem.getTestEnumOrdinal(), item.getTestEnumOrdinal());
 	}
 
 	@Test
@@ -587,6 +614,58 @@ class ReindexerRepositoryTests {
 		assertEquals(0, foundItems.size());
 	}
 
+	@Test
+	public void findByEnumStringIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (int i = 0; i < 3; i++) {
+			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, TestEnum.values()[i], null)));
+		}
+		List<TestItem> foundItems = this.repository.findByTestEnumStringIn(expectedItems.stream()
+				.map(TestItem::getTestEnumString)
+				.toList());
+		expectedItems.removeAll(foundItems);
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findByEnumStringInArray() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (int i = 0; i < 3; i++) {
+			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, TestEnum.values()[i], null)));
+		}
+		List<TestItem> foundItems = this.repository.findByTestEnumStringIn(expectedItems.stream()
+				.map(TestItem::getTestEnumString)
+				.toArray(TestEnum[]::new));
+		expectedItems.removeAll(foundItems);
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findByEnumOrdinalIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (int i = 0; i < 3; i++) {
+			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, null, TestEnum.values()[i])));
+		}
+		List<TestItem> foundItems = this.repository.findByTestEnumOrdinalIn(expectedItems.stream()
+				.map(TestItem::getTestEnumOrdinal)
+				.toList());
+		expectedItems.removeAll(foundItems);
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findByEnumOrdinalInArray() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (int i = 0; i < 3; i++) {
+			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, null, TestEnum.values()[i])));
+		}
+		List<TestItem> foundItems = this.repository.findByTestEnumOrdinalIn(expectedItems.stream()
+				.map(TestItem::getTestEnumOrdinal)
+				.toArray(TestEnum[]::new));
+		expectedItems.removeAll(foundItems);
+		assertEquals(0, expectedItems.size());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -636,6 +715,10 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByNameAndValue(String name, String value);
 
 		Optional<TestItem> findByNameOrValue(String name, String value);
+
+		Optional<TestItem> findByTestEnumString(TestEnum testEnum);
+
+		Optional<TestItem> findByTestEnumOrdinal(TestEnum testEnum);
 
 		ResultIterator<TestItem> findIteratorByName(String name);
 
@@ -697,6 +780,14 @@ class ReindexerRepositoryTests {
 		List<TestItem> findByIdNotIn(List<Long> ids);
 
 		List<TestItem> findByIdNotContaining(List<Long> ids);
+
+		List<TestItem> findByTestEnumStringIn(List<TestEnum> values);
+
+		List<TestItem> findByTestEnumStringIn(TestEnum... values);
+
+		List<TestItem> findByTestEnumOrdinalIn(List<TestEnum> values);
+
+		List<TestItem> findByTestEnumOrdinalIn(TestEnum... values);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
@@ -711,6 +802,14 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "value")
 		private String value;
 
+		@Enumerated(EnumType.STRING)
+		@Reindex(name = "testEnumString")
+		private TestEnum testEnumString;
+
+		@Enumerated(EnumType.ORDINAL)
+		@Reindex(name = "testEnumOrdinal")
+		private TestEnum testEnumOrdinal;
+
 		public TestItem() {
 		}
 
@@ -718,6 +817,14 @@ class ReindexerRepositoryTests {
 			this.id = id;
 			this.name = name;
 			this.value = value;
+		}
+
+		public TestItem(Long id, String name, String value, TestEnum testEnumString, TestEnum testEnumOrdinal) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
+			this.testEnumString = testEnumString;
+			this.testEnumOrdinal = testEnumOrdinal;
 		}
 
 		public Long getId() {
@@ -744,15 +851,54 @@ class ReindexerRepositoryTests {
 			this.value = value;
 		}
 
+		public TestEnum getTestEnumString() {
+			return testEnumString;
+		}
+
+		public void setTestEnumString(TestEnum testEnumString) {
+			this.testEnumString = testEnumString;
+		}
+
+		public TestEnum getTestEnumOrdinal() {
+			return testEnumOrdinal;
+		}
+
+		public void setTestEnumOrdinal(TestEnum testEnumOrdinal) {
+			this.testEnumOrdinal = testEnumOrdinal;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
+			TestItem testItem = (TestItem) o;
+			return Objects.equals(id, testItem.id) && Objects.equals(name, testItem.name) && Objects.equals(value, testItem.value)
+					&& testEnumString == testItem.testEnumString && testEnumOrdinal == testItem.testEnumOrdinal;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal);
+		}
+
 		@Override
 		public String toString() {
 			return "TestItem{" +
 					"id=" + this.id +
 					", name='" + this.name + '\'' +
 					", value='" + this.value + '\'' +
+					", testEnumString=" + this.testEnumString +
+					", testEnumOrdinal=" + this.testEnumOrdinal +
 					'}';
 		}
 
+	}
+
+	public enum TestEnum {
+		TEST_CONSTANT_1,
+		TEST_CONSTANT_2,
+		TEST_CONSTANT_3,
 	}
 
 	public static class CreateDatabase {
