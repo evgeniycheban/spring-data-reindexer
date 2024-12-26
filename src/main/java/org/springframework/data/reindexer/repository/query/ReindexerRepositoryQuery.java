@@ -15,12 +15,19 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
+import ru.rt.restream.reindexer.FieldType;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.ReindexerIndex;
+import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.data.repository.query.ParametersParameterAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
@@ -42,6 +49,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final PartTree tree;
 
+	private final Map<String, ReindexerIndex> indexes;
+
 	/**
 	 * Creates an instance.
 	 *
@@ -54,6 +63,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.tree = new PartTree(queryMethod.getName(), entityInformation.getJavaType());
+		this.indexes = new HashMap<>();
+		for (ReindexerIndex index : ((ReindexerNamespace<?>) this.namespace).getIndexes()) {
+			this.indexes.put(index.getName(), index);
+		}
 	}
 
 	@Override
@@ -95,13 +108,13 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		String indexName = part.getProperty().toDotPath();
 		switch (part.getType()) {
 			case GREATER_THAN:
-				return criteria.where(indexName, Query.Condition.GT, parameters.next());
+				return criteria.where(indexName, Query.Condition.GT, getParameterValue(indexName, parameters.next()));
 			case GREATER_THAN_EQUAL:
-				return criteria.where(indexName, Query.Condition.GE, parameters.next());
+				return criteria.where(indexName, Query.Condition.GE, getParameterValue(indexName, parameters.next()));
 			case LESS_THAN:
-				return criteria.where(indexName, Query.Condition.LT, parameters.next());
+				return criteria.where(indexName, Query.Condition.LT, getParameterValue(indexName, parameters.next()));
 			case LESS_THAN_EQUAL:
-				return criteria.where(indexName, Query.Condition.LE, parameters.next());
+				return criteria.where(indexName, Query.Condition.LE, getParameterValue(indexName, parameters.next()));
 			case IN:
 			case CONTAINING:
 				return createInQuery(criteria, indexName, parameters);
@@ -113,19 +126,45 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			case IS_NULL:
 				return criteria.isNull(indexName);
 			case SIMPLE_PROPERTY:
-				return criteria.where(indexName, Query.Condition.EQ, parameters.next());
+				return criteria.where(indexName, Query.Condition.EQ, getParameterValue(indexName, parameters.next()));
 			case NEGATING_SIMPLE_PROPERTY:
-				return criteria.not().where(indexName, Query.Condition.EQ, parameters.next());
+				return criteria.not().where(indexName, Query.Condition.EQ, getParameterValue(indexName, parameters.next()));
 			default:
 				throw new IllegalArgumentException("Unsupported keyword!");
 		}
 	}
 
     private Query<?> createInQuery(Query<?> criteria, String indexName, Iterator<Object> parameters) {
-        Object value = parameters.next();
+        Object value = getParameterValue(indexName, parameters.next());
         Assert.isInstanceOf(Collection.class, value, () -> "Expected Collection but got " + value);
         return criteria.where(indexName, Query.Condition.SET, (Collection<?>) value);
     }
+
+	private Object getParameterValue(String indexName, Object value) {
+		if (value instanceof Enum<?>) {
+			ReindexerIndex index = this.indexes.get(indexName);
+			Assert.notNull(index, () -> "Index not found: " + indexName);
+			if (index.getFieldType() == FieldType.STRING) {
+				return ((Enum<?>) value).name();
+			}
+			return ((Enum<?>) value).ordinal();
+		}
+		if (value instanceof Collection<?> values) {
+			List<Object> result = new ArrayList<>();
+			for (Object object : values) {
+				result.add(getParameterValue(indexName, object));
+			}
+			return result;
+		}
+		if (value instanceof Object[] values) {
+			List<Object> result = new ArrayList<>();
+			for (Object object : values) {
+				result.add(getParameterValue(indexName, object));
+			}
+			return result;
+		}
+		return value;
+	}
 
 	@Override
 	public ReindexerQueryMethod getQueryMethod() {
