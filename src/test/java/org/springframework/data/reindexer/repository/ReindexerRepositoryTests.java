@@ -302,6 +302,26 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findOneSqlSpelByItemIdAndNameAndValueParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlSpelByItemIdAndNameAndValueParam(testItem).orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneSqlSpelByIdAndNameAndValueParam() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TEST_NAME", "test_value"));
+		TestItem item = this.repository.findOneSqlSpelByIdAndNameAndValueParam(0L, "test_name", "TEST", "VALUE").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
 	public void findOneSqlByIdAndNameAndValueAnyParameterOrder() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		TestItem item = this.repository.findOneSqlByIdAndNameAndValue("TestValue", 1L, "TestName").orElse(null);
@@ -764,6 +784,12 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
 		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name, @Param("value") String value);
+
+		@Query("SELECT * FROM items WHERE id = :#{id + 1} AND name = :#{name.toUpperCase()} AND value = :#{value1.toLowerCase() + '_' + value2.toLowerCase()}")
+		Optional<TestItem> findOneSqlSpelByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name, @Param("value1") String value1, @Param("value2") String value2);
+
+		@Query("SELECT * FROM items WHERE id = :#{item.id} AND name = :#{item.name} AND value = :#{item.value}")
+		Optional<TestItem> findOneSqlSpelByItemIdAndNameAndValueParam(@Param("item") TestItem item);
 
 		@Query("SELECT * FROM items WHERE id = ?2 AND name = ?3 AND value = ?1")
 		Optional<TestItem> findOneSqlByIdAndNameAndValue(String value, Long id, String name);
