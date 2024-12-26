@@ -579,6 +579,19 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findByIdInArray() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.mapToLong(TestItem::getId)
+				.toArray());
+		expectedItems.removeAll(foundItems);
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
 	public void findByIdContaining() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
@@ -774,6 +787,8 @@ class ReindexerRepositoryTests {
 		Stream<TestItem> findAllStreamSql();
 
 		List<TestItem> findByIdIn(List<Long> ids);
+
+		List<TestItem> findByIdIn(long... ids);
 
 		List<TestItem> findByIdContaining(List<Long> ids);
 

@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -150,16 +151,17 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			return ((Enum<?>) value).ordinal();
 		}
 		if (value instanceof Collection<?> values) {
-			List<Object> result = new ArrayList<>();
+			List<Object> result = new ArrayList<>(values.size());
 			for (Object object : values) {
 				result.add(getParameterValue(indexName, object));
 			}
 			return result;
 		}
-		if (value instanceof Object[] values) {
-			List<Object> result = new ArrayList<>();
-			for (Object object : values) {
-				result.add(getParameterValue(indexName, object));
+		if (value != null && value.getClass().isArray()) {
+			int length = Array.getLength(value);
+			List<Object> result = new ArrayList<>(length);
+			for (int i = 0; i < length; i++) {
+				result.add(getParameterValue(indexName, Array.get(value, i)));
 			}
 			return result;
 		}
