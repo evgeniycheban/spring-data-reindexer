@@ -244,10 +244,10 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		@Override
 		public TypedValue read(EvaluationContext context, Object target, String name) {
 			Assert.state(target instanceof Object[], "target must be an array");
-			Object[] arguments = (Object[]) target;
 			Integer index = StringBasedReindexerRepositoryQuery.this.namedParameters.get(name);
 			Assert.notNull(index, () -> "No parameter found for name: " + name);
-			Object value = arguments[index];
+			Object[] parameters = (Object[]) target;
+			Object value = parameters[index];
 			return new TypedValue(value);
 		}
 
