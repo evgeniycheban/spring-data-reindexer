@@ -654,6 +654,14 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void countByValue() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue1"));
+		assertEquals(2, this.repository.countByValue("TestValue"));
+	}
+
+	@Test
 	public void findByEnumStringIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
@@ -837,6 +845,8 @@ class ReindexerRepositoryTests {
 		List<TestItem> findByTestEnumOrdinalIn(TestEnum... values);
 
 		boolean existsByName(String name);
+
+		int countByValue(String name);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
