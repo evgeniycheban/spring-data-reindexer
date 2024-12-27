@@ -112,67 +112,69 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		int offset = 0;
 		for (int i = 1; i < queryParts.length; i++) {
 			char c = queryParts[i - 1];
-			if (c == '?') {
-				int index = 0;
-				int digits = 0;
-				for (int j = i; j < queryParts.length; j++) {
-					int digit = Character.digit(queryParts[j], 10);
-					if (digit < 0) {
-						break;
-					}
-					index *= 10;
-					index += digit;
-					digits++;
-				}
-				if (index < 1 || index > parameters.length) {
-					throw new IllegalStateException("Invalid parameter reference at index: " + i);
-				}
-				String value = getParameterValuePart(parameters[index - 1]);
-				result.replace(offset + i - 1, offset + i + digits, value);
-				offset += value.length() - digits - 1;
-				i += digits;
-			}
-			else if (c == ':') {
-				if (queryParts[i] == '#') {
-					int special = 1;
-					StringBuilder sb = new StringBuilder();
-					for (int j = i + 1; j < queryParts.length; j++) {
-						if (queryParts[j] == '{') {
-							special++;
-							continue;
-						}
-						if (queryParts[j] == '}') {
-							special++;
-							break;
-						}
-						sb.append(queryParts[j]);
-					}
-					if (special != 3) {
-						throw new IllegalStateException("Invalid SpEL expression provided at index: " + i);
-					}
-					Expression expression = this.spelExpressionParser.parseExpression(sb.toString());
-					StandardEvaluationContext ctx = new StandardEvaluationContext(parameters);
-					ctx.addPropertyAccessor(this.propertyAccessor);
-					String value = getParameterValuePart(expression.getValue(ctx));
-					result.replace(offset + i - 1, offset + i + expression.getExpressionString().length() + special, value);
-					offset += value.length() - expression.getExpressionString().length() - special - 1;
-					i += expression.getExpressionString().length() + special;
-				}
-				else {
-					StringBuilder sb = new StringBuilder();
+			switch (c) {
+				case '?' -> {
+					int index = 0;
+					int digits = 0;
 					for (int j = i; j < queryParts.length; j++) {
-						if (Character.isWhitespace(queryParts[j])) {
+						int digit = Character.digit(queryParts[j], 10);
+						if (digit < 0) {
 							break;
 						}
-						sb.append(queryParts[j]);
+						index *= 10;
+						index += digit;
+						digits++;
 					}
-					String parameterName = sb.toString();
-					Integer index = this.namedParameters.get(parameterName);
-					Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
-					String value = getParameterValuePart(parameters[index]);
-					result.replace(offset + i - 1, offset + i + parameterName.length(), value);
-					offset += value.length() - parameterName.length() - 1;
-					i += parameterName.length();
+					if (index < 1 || index > parameters.length) {
+						throw new IllegalStateException("Invalid parameter reference at index: " + i);
+					}
+					String value = getParameterValuePart(parameters[index - 1]);
+					result.replace(offset + i - 1, offset + i + digits, value);
+					offset += value.length() - digits - 1;
+					i += digits;
+				}
+				case ':' -> {
+					if (queryParts[i] == '#') {
+						int special = 1;
+						StringBuilder sb = new StringBuilder();
+						for (int j = i + 1; j < queryParts.length; j++) {
+							if (queryParts[j] == '{') {
+								special++;
+								continue;
+							}
+							if (queryParts[j] == '}') {
+								special++;
+								break;
+							}
+							sb.append(queryParts[j]);
+						}
+						if (special != 3) {
+							throw new IllegalStateException("Invalid SpEL expression provided at index: " + i);
+						}
+						Expression expression = this.spelExpressionParser.parseExpression(sb.toString());
+						StandardEvaluationContext ctx = new StandardEvaluationContext(parameters);
+						ctx.addPropertyAccessor(this.propertyAccessor);
+						String value = getParameterValuePart(expression.getValue(ctx));
+						result.replace(offset + i - 1, offset + i + expression.getExpressionString().length() + special, value);
+						offset += value.length() - expression.getExpressionString().length() - special - 1;
+						i += expression.getExpressionString().length() + special;
+					}
+					else {
+						StringBuilder sb = new StringBuilder();
+						for (int j = i; j < queryParts.length; j++) {
+							if (Character.isWhitespace(queryParts[j])) {
+								break;
+							}
+							sb.append(queryParts[j]);
+						}
+						String parameterName = sb.toString();
+						Integer index = this.namedParameters.get(parameterName);
+						Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
+						String value = getParameterValuePart(parameters[index]);
+						result.replace(offset + i - 1, offset + i + parameterName.length(), value);
+						offset += value.length() - parameterName.length() - 1;
+						i += parameterName.length();
+					}
 				}
 			}
 		}
