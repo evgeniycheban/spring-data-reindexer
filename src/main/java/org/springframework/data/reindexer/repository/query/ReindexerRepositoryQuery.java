@@ -97,12 +97,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	private Query<?> createQuery(Object[] parameters) {
 		ParametersParameterAccessor accessor =
 				new ParametersParameterAccessor(this.queryMethod.getParameters(), parameters);
-		Query<?> base = null;
+		Query<?> base = this.namespace.query();
 		Iterator<Object> iterator = accessor.iterator();
 		for (OrPart node : this.tree) {
 			Iterator<Part> parts = node.iterator();
 			Assert.state(parts.hasNext(), () -> "No part found in PartTree " + this.tree);
-			Query<?> criteria = where(parts.next(), (base != null) ? base : this.namespace.query(), iterator);
+			Query<?> criteria = where(parts.next(), base, iterator);
 			while (parts.hasNext()) {
 				criteria = where(parts.next(), criteria, iterator);
 			}
