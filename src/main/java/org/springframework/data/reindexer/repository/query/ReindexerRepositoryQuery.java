@@ -30,6 +30,8 @@ import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.repository.query.ParametersParameterAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.parser.Part;
@@ -107,6 +109,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				criteria = where(parts.next(), criteria, iterator);
 			}
 			base = criteria.or();
+		}
+		if (this.queryMethod.getParameters().hasSortParameter()) {
+			Sort sort = (Sort) parameters[this.queryMethod.getParameters().getSortIndex()];
+			for (Order order : sort) {
+				base = base.sort(order.getProperty(), order.isDescending());
+			}
 		}
 		return base;
 	}

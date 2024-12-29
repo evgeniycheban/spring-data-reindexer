@@ -57,6 +57,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.Query;
@@ -662,6 +664,36 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllByIdInSortedByIdInAscOrder() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAllByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.toList(), Sort.by(Direction.ASC, "id"));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < expectedItems.size(); i++) {
+			assertEquals(expectedItems.get(i), foundItems.get(i));
+		}
+	}
+
+	@Test
+	public void findAllByIdInSortedByIdInDescOrder() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAllByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.toList(), Sort.by(Direction.DESC, "id"));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < expectedItems.size(); i++) {
+			assertEquals(expectedItems.get(i), foundItems.get(foundItems.size() - 1 - i));
+		}
+	}
+
+	@Test
 	public void findByEnumStringIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
@@ -847,6 +879,8 @@ class ReindexerRepositoryTests {
 		boolean existsByName(String name);
 
 		int countByValue(String name);
+
+		List<TestItem> findAllByIdIn(List<Long> ids, Sort sort);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
