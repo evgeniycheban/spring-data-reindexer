@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import ru.rt.restream.reindexer.FieldType;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
@@ -63,11 +64,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	 */
 	public ReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
 		this.queryMethod = queryMethod;
-		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
+		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
+		this.namespace = new TransactionalNamespace<>(namespace);
 		this.tree = new PartTree(queryMethod.getName(), entityInformation.getJavaType());
 		this.indexes = new HashMap<>();
-		for (ReindexerIndex index : ((ReindexerNamespace<?>) this.namespace).getIndexes()) {
+		for (ReindexerIndex index : namespace.getIndexes()) {
 			this.indexes.put(index.getName(), index);
 		}
 	}
@@ -92,6 +94,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 		if (this.tree.isCountProjection()) {
 			return query.count();
+		}
+		if (this.tree.isDelete()) {
+			query.delete();
+			return null;
 		}
 		return query.findOne();
 	}

@@ -71,11 +71,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link ReindexerRepository}.
@@ -745,6 +741,21 @@ class ReindexerRepositoryTests {
 		assertEquals(0, expectedItems.size());
 	}
 
+	@Test
+	public void deleteByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		assertEquals(1, this.repository.count());
+		this.repository.deleteByName(testItem.getName());
+		assertEquals(0, this.repository.count());
+	}
+
+	@Test
+	public void saveAndDelete() {
+		TestItem testItem = new TestItem(1L, "TestName", "TestValue");
+		this.service.saveAndDelete(testItem);
+		assertFalse(this.repository.existsById(testItem.getId()));
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -777,6 +788,11 @@ class ReindexerRepositoryTests {
 
 		public TestItem save(TestItem item) {
 			return this.repository.save(item);
+		}
+
+		public void saveAndDelete(TestItem testItem) {
+			this.repository.save(testItem);
+			this.repository.delete(testItem);
 		}
 
 		public void saveExceptionally(TestItem item) {
@@ -878,7 +894,9 @@ class ReindexerRepositoryTests {
 
 		boolean existsByName(String name);
 
-		int countByValue(String name);
+		int countByValue(String value);
+
+		void deleteByName(String name);
 
 		List<TestItem> findAllByIdIn(List<Long> ids, Sort sort);
 	}
