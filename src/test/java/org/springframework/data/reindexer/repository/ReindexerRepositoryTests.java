@@ -57,6 +57,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
@@ -629,6 +630,54 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findItemPreferredConstructorDtoByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemPreferredConstructorDto> foundItems = this.repository.findItemPreferredConstructorDtoByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
+	public void findItemRecordByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemRecord> foundItems = this.repository.findItemRecordByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).id());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).name());
+		}
+	}
+
+	@Test
+	public void findItemPreferredConstructorRecordByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemPreferredConstructorRecord> foundItems = this.repository.findItemPreferredConstructorRecordByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertNull(foundItems.get(i).id());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).name());
+		}
+	}
+
+	@Test
 	public void findDynamicItemProjectionByIdIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
@@ -657,6 +706,54 @@ class ReindexerRepositoryTests {
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
 			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
+	public void findDynamicItemPreferredConstructorDtoDtoByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemPreferredConstructorDto> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()), TestItemPreferredConstructorDto.class);
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
+	public void findDynamicItemRecordByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemRecord> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()), TestItemRecord.class);
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).id());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).name());
+		}
+	}
+
+	@Test
+	public void findDynamicItemPreferredConstructorRecordByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemPreferredConstructorRecord> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()), TestItemPreferredConstructorRecord.class);
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertNull(foundItems.get(i).id());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).name());
 		}
 	}
 
@@ -968,6 +1065,12 @@ class ReindexerRepositoryTests {
 
 		List<TestItemDto> findItemDtoByIdIn(List<Long> ids);
 
+		List<TestItemPreferredConstructorDto> findItemPreferredConstructorDtoByIdIn(List<Long> ids);
+
+		List<TestItemRecord> findItemRecordByIdIn(List<Long> ids);
+
+		List<TestItemPreferredConstructorRecord> findItemPreferredConstructorRecordByIdIn(List<Long> ids);
+
 		<T> List<T> findByIdIn(List<Long> ids, Class<T> type);
 	}
 
@@ -1090,7 +1193,9 @@ class ReindexerRepositoryTests {
 
 		private String name;
 
-		public TestItemDto() {
+		public TestItemDto(Long id, String name) {
+			this.id = id;
+			this.name = name;
 		}
 
 		public Long getId() {
@@ -1107,6 +1212,52 @@ class ReindexerRepositoryTests {
 
 		public void setName(String name) {
 			this.name = name;
+		}
+
+	}
+
+	public static class TestItemPreferredConstructorDto {
+
+		private Long id;
+
+		private String name;
+
+		public TestItemPreferredConstructorDto(String name) {
+			this.name = name;
+		}
+
+		@PersistenceCreator
+		public TestItemPreferredConstructorDto(Long id, String name) {
+			this.id = id;
+			this.name = name;
+		}
+
+		public Long getId() {
+			return this.id;
+		}
+
+		public void setId(Long id) {
+			this.id = id;
+		}
+
+		public String getName() {
+			return this.name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+	}
+
+	public record TestItemRecord(Long id, String name) {
+	}
+
+	public record TestItemPreferredConstructorRecord(Long id, String name) {
+
+		@PersistenceCreator
+		TestItemPreferredConstructorRecord(String name) {
+			this(null, name);
 		}
 
 	}
