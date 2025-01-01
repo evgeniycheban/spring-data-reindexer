@@ -597,6 +597,70 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findItemProjectionByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemProjection> foundItems = this.repository.findItemProjectionByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
+	public void findItemDtoByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemDto> foundItems = this.repository.findItemDtoByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
+	public void findDynamicItemProjectionByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemProjection> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()), TestItemProjection.class);
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
+	public void findDynamicItemDtoByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemDto> foundItems = this.repository.findByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.collect(Collectors.toList()), TestItemDto.class);
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < foundItems.size(); i++) {
+			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
+			assertEquals(expectedItems.get(i).getName(), foundItems.get(i).getName());
+		}
+	}
+
+	@Test
 	public void findByIdInArray() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
@@ -899,6 +963,12 @@ class ReindexerRepositoryTests {
 		void deleteByName(String name);
 
 		List<TestItem> findAllByIdIn(List<Long> ids, Sort sort);
+
+		List<TestItemProjection> findItemProjectionByIdIn(List<Long> ids);
+
+		List<TestItemDto> findItemDtoByIdIn(List<Long> ids);
+
+		<T> List<T> findByIdIn(List<Long> ids, Class<T> type);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
@@ -1002,6 +1072,41 @@ class ReindexerRepositoryTests {
 					", testEnumString=" + this.testEnumString +
 					", testEnumOrdinal=" + this.testEnumOrdinal +
 					'}';
+		}
+
+	}
+
+	interface TestItemProjection {
+
+		Long getId();
+
+		String getName();
+
+	}
+
+	public static class TestItemDto {
+
+		private Long id;
+
+		private String name;
+
+		public TestItemDto() {
+		}
+
+		public Long getId() {
+			return this.id;
+		}
+
+		public void setId(Long id) {
+			this.id = id;
+		}
+
+		public String getName() {
+			return this.name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
 		}
 
 	}

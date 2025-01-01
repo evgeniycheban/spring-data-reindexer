@@ -27,6 +27,7 @@ import org.springframework.data.reindexer.repository.query.ReindexerEntityInform
 import org.springframework.data.reindexer.repository.query.ReindexerQueryMethod;
 import org.springframework.data.reindexer.repository.query.ReindexerRepositoryQuery;
 import org.springframework.data.reindexer.repository.query.StringBasedReindexerRepositoryQuery;
+import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.core.EntityInformation;
 import org.springframework.data.repository.core.NamedQueries;
 import org.springframework.data.repository.core.RepositoryInformation;
@@ -35,6 +36,7 @@ import org.springframework.data.repository.core.support.RepositoryFactorySupport
 import org.springframework.data.repository.query.QueryLookupStrategy;
 import org.springframework.data.repository.query.QueryMethodEvaluationContextProvider;
 import org.springframework.data.repository.query.RepositoryQuery;
+import org.springframework.util.Assert;
 
 /**
  * Factory to create {@link ReindexerRepository} instances.
@@ -57,6 +59,13 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	@Override
 	public <T, ID> ReindexerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
 		return MappingReindexerEntityInformation.getInstance(domainClass);
+	}
+
+	@Override
+	protected RepositoryMetadata getRepositoryMetadata(Class<?> repositoryInterface) {
+		Assert.notNull(repositoryInterface, "Repository interface must not be null");
+		return Repository.class.isAssignableFrom(repositoryInterface) ? new ReindexerDefaultRepositoryMetadata(repositoryInterface)
+				: new ReindexerAnnotationRepositoryMetadata(repositoryInterface);
 	}
 
 	@Override

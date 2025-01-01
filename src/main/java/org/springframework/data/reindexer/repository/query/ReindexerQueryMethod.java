@@ -44,6 +44,10 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	private final Lazy<Query> queryAnnotationExtractor;
 
+	private final Class<?> returnType;
+
+	private final ProjectionFactory factory;
+
 	/**
 	 * Creates a new {@link QueryMethod} from the given parameters. Looks up the correct query to use for following
 	 * invocations of the method given.
@@ -54,11 +58,13 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	 */
 	public ReindexerQueryMethod(Method method, RepositoryMetadata metadata, ProjectionFactory factory) {
 		super(method, metadata, factory);
-		this.isIteratorQuery = Lazy.of(() -> Iterator.class.isAssignableFrom(getReturnedObjectType()));
+		this.isIteratorQuery = Lazy.of(() -> Iterator.class.isAssignableFrom(method.getReturnType()));
 		this.isOptionalQuery = Lazy.of(() -> Optional.class.isAssignableFrom(method.getReturnType()));
 		this.isListQuery = Lazy.of(() -> List.class.isAssignableFrom(method.getReturnType()));
 		this.isSetQuery = Lazy.of(() -> Set.class.isAssignableFrom(method.getReturnType()));
 		this.queryAnnotationExtractor = Lazy.of(() -> method.getAnnotation(Query.class));
+		this.returnType = method.getReturnType();
+		this.factory = factory;
 	}
 
 	/**
@@ -127,6 +133,32 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	public boolean isUpdateQuery() {
 		Query query = this.queryAnnotationExtractor.get();
 		return query.update();
+	}
+
+	/**
+	 * Returns method's return type
+	 *
+	 * @return the method's return type
+	 */
+	Class<?> getReturnType() {
+		return this.returnType;
+	}
+
+	/**
+	 * Returns a {@link ProjectionFactory} to be used.
+	 *
+	 * @return the {@link ProjectionFactory} to use
+	 */
+	ProjectionFactory getFactory() {
+		return this.factory;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public Class<?> getDomainClass() {
+		return super.getDomainClass();
 	}
 
 }
