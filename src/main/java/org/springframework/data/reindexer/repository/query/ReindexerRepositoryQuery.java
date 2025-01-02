@@ -512,13 +512,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 
 		private ReindexerQuery pageable(Pageable pageable) {
-			if (pageable.isUnpaged()) {
-				return this;
+			if (pageable.isPaged()) {
+				for (Order order : pageable.getSort()) {
+					this.query = this.query.sort(order.getProperty(), order.isDescending());
+				}
+				this.query = this.query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
 			}
-			for (Order order : pageable.getSort()) {
-				this.query = this.query.sort(order.getProperty(), order.isDescending());
-			}
-			this.query = this.query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
 			return this;
 		}
 
