@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,6 +59,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
@@ -851,6 +855,90 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findByIdInPageable() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		Pageable pageable = Pageable.ofSize(5);
+		List<Long> expectedIds = expectedItems.stream()
+				.map(TestItem::getId)
+				.toList();
+		long totalCount = this.repository.countByIdIn(expectedIds);
+		do {
+			List<TestItem> foundItems = this.repository.findByIdIn(expectedIds, pageable);
+			for (TestItem item : foundItems) {
+				assertTrue(expectedItems.remove(item));
+			}
+			pageable = new PageImpl<>(foundItems, pageable, totalCount).nextPageable();
+		} while (pageable.isPaged());
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findPageByIdIn() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		Pageable pageable = Pageable.ofSize(5);
+		List<Long> expectedIds = expectedItems.stream()
+				.map(TestItem::getId)
+				.toList();
+		do {
+			Page<TestItem> foundItems = this.repository.findPageByIdIn(expectedIds, pageable);
+			for (TestItem item : foundItems) {
+				assertTrue(expectedItems.remove(item));
+			}
+			pageable = foundItems.nextPageable();
+		} while (pageable.isPaged());
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllPageable() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		Pageable pageable = Pageable.ofSize(5);
+		do {
+			Page<TestItem> foundItems = this.repository.findAll(pageable);
+			for (TestItem item : foundItems) {
+				assertTrue(expectedItems.remove(item));
+			}
+			pageable = foundItems.nextPageable();
+		} while (pageable.isPaged());
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllSortedByIdInAscOrder() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAll(Sort.by(Direction.ASC, "id"));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < expectedItems.size(); i++) {
+			assertEquals(expectedItems.get(i), foundItems.get(i));
+		}
+	}
+
+	@Test
+	public void findAllSortedByIdInDescOrder() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAll(Sort.by(Direction.DESC, "id"));
+		assertEquals(expectedItems.size(), foundItems.size());
+		for (int i = 0; i < expectedItems.size(); i++) {
+			assertEquals(expectedItems.get(i), foundItems.get(foundItems.size() - 1 - i));
+		}
+	}
+
+	@Test
 	public void findByEnumStringIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
@@ -1057,9 +1145,15 @@ class ReindexerRepositoryTests {
 
 		int countByValue(String value);
 
+		int countByIdIn(List<Long> ids);
+
 		void deleteByName(String name);
 
 		List<TestItem> findAllByIdIn(List<Long> ids, Sort sort);
+
+		List<TestItem> findByIdIn(List<Long> ids, Pageable pageable);
+
+		Page<TestItem> findPageByIdIn(List<Long> ids, Pageable pageable);
 
 		List<TestItemProjection> findItemProjectionByIdIn(List<Long> ids);
 
