@@ -19,8 +19,10 @@ import java.util.List;
 
 import ru.rt.restream.reindexer.Query;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.NoRepositoryBean;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.Repository;
 
 /**
@@ -29,7 +31,7 @@ import org.springframework.data.repository.Repository;
  * @author Evgeniy Cheban
  */
 @NoRepositoryBean
-public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID> {
+public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
 
 	@Override
 	<S extends T> List<S> saveAll(Iterable<S> entities);
@@ -39,6 +41,9 @@ public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID> {
 
 	@Override
 	List<T> findAllById(Iterable<ID> ids);
+
+	@Override
+	List<T> findAll(Sort sort);
 
 	/**
 	 * Returns a new {@link Query} instance for further customizations.

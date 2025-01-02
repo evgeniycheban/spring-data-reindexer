@@ -24,9 +24,16 @@ import java.util.Set;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.ResultIterator;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.Assert;
 
 /**
@@ -94,6 +101,34 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public List<T> findAll() {
 		return this.namespace.query().toList();
+	}
+
+	@Override
+	public List<T> findAll(Sort sort) {
+		Query<T> query = this.namespace.query();
+		for (Order order : sort) {
+			query = query.sort(order.getProperty(), order.isDescending());
+		}
+		return query.toList();
+	}
+
+	@Override
+	public Page<T> findAll(Pageable pageable) {
+		if (pageable.isUnpaged()) {
+			return new PageImpl<>(findAll());
+		}
+		Query<T> query = this.namespace.query();
+		for (Order order : pageable.getSort()) {
+			query = query.sort(order.getProperty(), order.isDescending());
+		}
+		query = query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
+		try (ResultIterator<T> iterator = query.execute()) {
+			List<T> content = new ArrayList<>();
+			while (iterator.hasNext()) {
+				content.add(iterator.next());
+			}
+			return PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount);
+		}
 	}
 
 	@Override
