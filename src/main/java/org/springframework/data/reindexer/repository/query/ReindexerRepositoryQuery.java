@@ -102,8 +102,9 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	@Override
 	public Object execute(Object[] parameters) {
 		ParameterAccessor parameterAccessor = new ParametersParameterAccessor(this.queryMethod.getParameters(), parameters);
-		ReindexerQuery query = this.queryPostProcessor.postProcess(new ReindexerQuery(this), parameterAccessor);
-		return this.queryExecution.execute(query, parameterAccessor);
+		ReindexerQuery reindexerQuery = new ReindexerQuery(this);
+		this.queryPostProcessor.postProcess(reindexerQuery, parameterAccessor);
+		return this.queryExecution.execute(reindexerQuery, parameterAccessor);
 	}
 
 	@Override
@@ -112,7 +113,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private interface QueryPostProcessor {
-		ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor);
+		void postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor);
 	}
 
 	private static final class DelegatingQueryPostProcessor implements QueryPostProcessor {
@@ -124,57 +125,55 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 
 		@Override
-		public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+		public void postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 			for (QueryPostProcessor delegate : this.delegates) {
-				query = delegate.postProcess(query, parameterAccessor);
+				delegate.postProcess(query, parameterAccessor);
 			}
-			return query;
 		}
 	}
 
 	private enum QueryMethodPostProcessor implements QueryPostProcessor {
 		WHERE {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+			public void postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				Iterator<Object> parameters = parameterAccessor.iterator();
 				PartTree tree = query.repositoryQuery.tree;
 				for (OrPart node : tree) {
 					Iterator<Part> parts = node.iterator();
 					Assert.state(parts.hasNext(), () -> "No part found in PartTree " + tree);
 					do {
-						query = query.where(parts.next(), parameters);
+						query.applyWhere(parts.next(), parameters);
 					} while (parts.hasNext());
-					query = query.or();
+					query.applyOr();
 				}
-				return query;
 			}
 		},
 		FROM {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+			public void postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				if (query.repositoryQuery.queryMethod.getDomainClass() == query.repositoryQuery.queryMethod.getReturnedObjectType()) {
-					return query;
+					return;
 				}
 				Class<?> type = parameterAccessor.findDynamicProjection();
 				if (type == null) {
 					type = query.repositoryQuery.queryMethod.getReturnedObjectType();
 				}
 				ReturnedType projectionType = ReturnedType.of(type, query.repositoryQuery.queryMethod.getDomainClass(), query.repositoryQuery.queryMethod.getFactory());
-				return query.from(projectionType);
+				query.applyFrom(projectionType);
 			}
 		},
 		SORT {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+			public void postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				Sort sort = parameterAccessor.getSort();
-				return query.sort(sort);
+				query.applySort(sort);
 			}
 		},
 		PAGEABLE {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+			public void postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				Pageable pageable = parameterAccessor.getPageable();
-				return query.pageable(pageable);
+				query.applyPageable(pageable);
 			}
 		}
 	}
@@ -403,7 +402,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 		private final ReindexerRepositoryQuery repositoryQuery;
 
-		private Query<?> query;
+		private final Query<?> query;
 
 		private ReturnedType projectionType;
 
@@ -412,28 +411,36 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			this.query = repositoryQuery.namespace.query();
 		}
 
-		private ReindexerQuery where(Part part, Iterator<Object> parameters) {
+		private void applyWhere(Part part, Iterator<Object> parameters) {
 			String indexName = part.getProperty().toDotPath();
-			return switch (part.getType()) {
-				case GREATER_THAN -> where(indexName, Query.Condition.GT, parameters);
-				case GREATER_THAN_EQUAL -> where(indexName, Query.Condition.GE, parameters);
-				case LESS_THAN -> where(indexName, Query.Condition.LT, parameters);
-				case LESS_THAN_EQUAL -> where(indexName, Query.Condition.LE, parameters);
-				case IN, CONTAINING -> where(indexName, Condition.SET, parameters);
-				case NOT_IN, NOT_CONTAINING -> not().where(indexName, Condition.SET, parameters);
-				case IS_NOT_NULL -> isNotNull(indexName);
-				case IS_NULL -> isNull(indexName);
-				case SIMPLE_PROPERTY -> where(indexName, Query.Condition.EQ, parameters);
-				case NEGATING_SIMPLE_PROPERTY -> not().where(indexName, Query.Condition.EQ, parameters);
+			switch (part.getType()) {
+				case GREATER_THAN -> applyWhere(indexName, Condition.GT, parameters);
+				case GREATER_THAN_EQUAL -> applyWhere(indexName, Condition.GE, parameters);
+				case LESS_THAN -> applyWhere(indexName, Condition.LT, parameters);
+				case LESS_THAN_EQUAL -> applyWhere(indexName, Condition.LE, parameters);
+				case IN, CONTAINING -> applyWhere(indexName, Condition.SET, parameters);
+				case NOT_IN, NOT_CONTAINING -> applyWhereNot(indexName, Condition.SET, parameters);
+				case IS_NOT_NULL -> applyIsNotNull(indexName);
+				case IS_NULL -> applyIsNull(indexName);
+				case SIMPLE_PROPERTY -> applyWhere(indexName, Condition.EQ, parameters);
+				case NEGATING_SIMPLE_PROPERTY -> applyWhereNot(indexName, Condition.EQ, parameters);
 				default -> throw new IllegalArgumentException("Unsupported keyword!");
-			};
+			}
 		}
 
-		private ReindexerQuery where(String indexName, Condition condition, Iterator<Object> parameters) {
+		private void applyWhereNot(String indexName, Condition condition, Iterator<Object> parameters) {
+			this.query.not();
+			applyWhere(indexName, condition, parameters);
+		}
+
+		private void applyWhere(String indexName, Condition condition, Iterator<Object> parameters) {
 			Object value = getParameterValue(indexName, parameters.next());
-			this.query = value instanceof Collection<?> ? this.query.where(indexName, condition, (Collection<?>) value)
-					: this.query.where(indexName, condition, value);
-			return this;
+			if (value instanceof Collection<?> values) {
+				this.query.where(indexName, condition, values);
+			}
+			else {
+				this.query.where(indexName, condition, value);
+			}
 		}
 
 		private Object getParameterValue(String indexName, Object value) {
@@ -463,46 +470,35 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			return value;
 		}
 
-		private ReindexerQuery not() {
-			this.query = this.query.not();
-			return this;
+		private void applyOr() {
+			this.query.or();
 		}
 
-		private ReindexerQuery or() {
-			this.query = this.query.or();
-			return this;
+		private void applyIsNull(String indexName) {
+			this.query.isNull(indexName);
 		}
 
-		private ReindexerQuery isNull(String indexName) {
-			this.query = this.query.isNull(indexName);
-			return this;
+		private void applyIsNotNull(String indexName) {
+			this.query.isNotNull(indexName);
 		}
 
-		private ReindexerQuery isNotNull(String indexName) {
-			this.query = this.query.isNotNull(indexName);
-			return this;
-		}
-
-		private ReindexerQuery sort(Sort sort) {
+		private void applySort(Sort sort) {
 			for (Order order : sort) {
-				this.query = this.query.sort(order.getProperty(), order.isDescending());
+				this.query.sort(order.getProperty(), order.isDescending());
 			}
-			return this;
 		}
 
-		private ReindexerQuery pageable(Pageable pageable) {
+		private void applyPageable(Pageable pageable) {
 			if (pageable.isPaged()) {
-				this.query = this.query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
+				this.query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
 			}
-			return this;
 		}
 
-		private ReindexerQuery from(ReturnedType projectionType) {
+		private void applyFrom(ReturnedType projectionType) {
 			this.projectionType = projectionType;
 			if (projectionType.hasInputProperties()) {
-				this.query = this.query.select(projectionType.getInputProperties().toArray(String[]::new));
+				this.query.select(projectionType.getInputProperties().toArray(String[]::new));
 			}
-			return this;
 		}
 
 		private ResultIterator<?> execute() {
