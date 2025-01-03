@@ -49,6 +49,7 @@ import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 import org.springframework.core.CollectionFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ParametersParameterAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ReturnedType;
@@ -100,7 +101,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	@Override
 	public Object execute(Object[] parameters) {
-		ReindexerQuery query = this.queryPostProcessor.postProcess(new ReindexerQuery(this.namespace.query()), this, parameters);
+		ParametersParameterAccessor accessor = new ParametersParameterAccessor(queryMethod.getParameters(), parameters);
+		ReindexerQuery query = this.queryPostProcessor.postProcess(new ReindexerQuery(this.namespace.query()), this, accessor);
 		return this.queryExecution.execute(query, this, parameters);
 	}
 
@@ -110,7 +112,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private interface QueryPostProcessor {
-		ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters);
+		ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor);
 	}
 
 	private static final class DelegatingQueryPostProcessor implements QueryPostProcessor {
@@ -122,9 +124,9 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 
 		@Override
-		public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
+		public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
 			for (QueryPostProcessor delegate : this.delegates) {
-				query = delegate.postProcess(query, repositoryQuery, parameters);
+				query = delegate.postProcess(query, repositoryQuery, parameterAccessor);
 			}
 			return query;
 		}
@@ -133,17 +135,15 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	private enum QueryMethodPostProcessor implements QueryPostProcessor {
 		WHERE {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				ParametersParameterAccessor accessor =
-						new ParametersParameterAccessor(repositoryQuery.queryMethod.getParameters(), parameters);
-				Iterator<Object> iterator = accessor.iterator();
+			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+				Iterator<Object> parameters = parameterAccessor.iterator();
 				ReindexerQuery base = query;
 				for (OrPart node : repositoryQuery.tree) {
 					Iterator<Part> parts = node.iterator();
 					Assert.state(parts.hasNext(), () -> "No part found in PartTree " + repositoryQuery.tree);
-					ReindexerQuery criteria = where(repositoryQuery, parts.next(), base, iterator);
+					ReindexerQuery criteria = where(repositoryQuery, parts.next(), base, parameters);
 					while (parts.hasNext()) {
-						criteria = where(repositoryQuery, parts.next(), criteria, iterator);
+						criteria = where(repositoryQuery, parts.next(), criteria, parameters);
 					}
 					base = criteria.or();
 				}
@@ -209,34 +209,29 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		},
 		FROM {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
+			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
 				if (repositoryQuery.queryMethod.getDomainClass() == repositoryQuery.queryMethod.getReturnedObjectType()) {
 					return query;
 				}
-				Class<?> type = repositoryQuery.queryMethod.getParameters().hasDynamicProjection()
-						? (Class<?>) parameters[repositoryQuery.queryMethod.getParameters().getDynamicProjectionIndex()]
-						: repositoryQuery.queryMethod.getReturnedObjectType();
+				Class<?> type = parameterAccessor.findDynamicProjection();
+				if (type == null) {
+					type = repositoryQuery.queryMethod.getReturnedObjectType();
+				}
 				ReturnedType projectionType = ReturnedType.of(type, repositoryQuery.queryMethod.getDomainClass(), repositoryQuery.queryMethod.getFactory());
 				return query.from(projectionType);
 			}
 		},
 		SORT {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				if (!repositoryQuery.queryMethod.getParameters().hasSortParameter()) {
-					return query;
-				}
-				Sort sort = (Sort) parameters[repositoryQuery.queryMethod.getParameters().getSortIndex()];
+			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+				Sort sort = parameterAccessor.getSort();
 				return query.sort(sort);
 			}
 		},
 		PAGEABLE {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				if (!repositoryQuery.queryMethod.getParameters().hasPageableParameter()) {
-					return query;
-				}
-				Pageable pageable = (Pageable) parameters[repositoryQuery.queryMethod.getParameters().getPageableIndex()];
+			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+				Pageable pageable = parameterAccessor.getPageable();
 				return query.pageable(pageable);
 			}
 		}
@@ -513,9 +508,6 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 		private ReindexerQuery pageable(Pageable pageable) {
 			if (pageable.isPaged()) {
-				for (Order order : pageable.getSort()) {
-					this.query = this.query.sort(order.getProperty(), order.isDescending());
-				}
 				this.query = this.query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
 			}
 			return this;
