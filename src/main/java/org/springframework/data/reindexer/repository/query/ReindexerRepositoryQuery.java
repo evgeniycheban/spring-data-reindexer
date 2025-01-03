@@ -103,7 +103,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	public Object execute(Object[] parameters) {
 		ParameterAccessor parameterAccessor = new ParametersParameterAccessor(this.queryMethod.getParameters(), parameters);
 		ReindexerQuery query = this.queryPostProcessor.postProcess(new ReindexerQuery(this), parameterAccessor);
-		return this.queryExecution.execute(query, this, parameters);
+		return this.queryExecution.execute(query, parameterAccessor);
 	}
 
 	@Override
@@ -180,7 +180,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private interface QueryExecution {
-		Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters);
+		Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor);
 	}
 
 	private static final class DelegatingQueryExecution implements QueryExecution {
@@ -192,26 +192,26 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 
 		@Override
-		public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
+		public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 			for (QueryMethodExecution execution : this.executions) {
-				if (execution.supports(repositoryQuery)) {
-					return execution.execute(query, repositoryQuery, parameters);
+				if (execution.supports(query)) {
+					return execution.execute(query, parameterAccessor);
 				}
 			}
-			return fallbackToSingleResultQuery(query, repositoryQuery.queryMethod);
+			return fallbackToSingleResultQuery(query);
 		}
 
-		private Object fallbackToSingleResultQuery(ReindexerQuery query, ReindexerQueryMethod queryMethod) {
-			Object entity = toEntity(query, queryMethod);
-			if (queryMethod.isOptionalQuery()) {
+		private Object fallbackToSingleResultQuery(ReindexerQuery query) {
+			Object entity = toEntity(query);
+			if (query.repositoryQuery.queryMethod.isOptionalQuery()) {
 				return Optional.ofNullable(entity);
 			}
 			Assert.state(entity != null, "Exactly one item expected, but there is zero");
 			return entity;
 		}
 
-		private Object toEntity(ReindexerQuery query, ReindexerQueryMethod queryMethod) {
-			try (ResultIterator<?> iterator = new ProjectingResultIterator(query, queryMethod)) {
+		private Object toEntity(ReindexerQuery query) {
+			try (ResultIterator<?> iterator = new ProjectingResultIterator(query)) {
 				Object item = null;
 				if (iterator.hasNext()) {
 					item = iterator.next();
@@ -229,10 +229,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	private enum QueryMethodExecution implements QueryExecution {
 		COLLECTION {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				try (ResultIterator<?> iterator = new ProjectingResultIterator(query, repositoryQuery.queryMethod)) {
-					Collection<Object> result = CollectionFactory.createCollection(repositoryQuery.queryMethod.getReturnType(),
-							repositoryQuery.queryMethod.getReturnedObjectType(), (int) iterator.size());
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+				try (ResultIterator<?> iterator = new ProjectingResultIterator(query)) {
+					Collection<Object> result = CollectionFactory.createCollection(query.repositoryQuery.queryMethod.getReturnType(),
+							query.repositoryQuery.queryMethod.getReturnedObjectType(), (int) iterator.size());
 					while (iterator.hasNext()) {
 						result.add(iterator.next());
 					}
@@ -241,110 +241,108 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			}
 
 			@Override
-			public boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.queryMethod.isCollectionQuery() && !repositoryQuery.queryMethod.getParameters().hasPageableParameter();
+			public boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.queryMethod.isCollectionQuery()
+						&& !query.repositoryQuery.queryMethod.getParameters().hasPageableParameter();
 			}
 		},
 		STREAM {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				ResultIterator<?> iterator = new ProjectingResultIterator(query, repositoryQuery.queryMethod);
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+				ResultIterator<?> iterator = new ProjectingResultIterator(query);
 				Spliterator<?> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
 				return StreamSupport.stream(spliterator, false).onClose(iterator::close);
 			}
 
 			@Override
-			public boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.queryMethod.isStreamQuery();
+			public boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.queryMethod.isStreamQuery();
 			}
 		},
 		ITERATOR {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				return new ProjectingResultIterator(query, repositoryQuery.queryMethod);
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+				return new ProjectingResultIterator(query);
 			}
 
 			@Override
-			public boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.queryMethod.isIteratorQuery();
+			public boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.queryMethod.isIteratorQuery();
 			}
 		},
 		PAGEABLE {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
-				Pageable pageable = (Pageable) parameters[repositoryQuery.queryMethod.getParameters().getPageableIndex()];
-				try (ProjectingResultIterator iterator = new ProjectingResultIterator(query, repositoryQuery.queryMethod)) {
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+				try (ProjectingResultIterator iterator = new ProjectingResultIterator(query)) {
 					List<Object> content = new ArrayList<>();
 					while (iterator.hasNext()) {
 						content.add(iterator.next());
 					}
-					if (repositoryQuery.queryMethod.isPageQuery()) {
+					if (query.repositoryQuery.queryMethod.isPageQuery()) {
+						Pageable pageable = parameterAccessor.getPageable();
 						return pageable.isPaged() ? PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount)
 								: new PageImpl<>(content);
 					}
-					if (repositoryQuery.queryMethod.isListQuery()) {
+					if (query.repositoryQuery.queryMethod.isListQuery()) {
 						return content;
 					}
-					throw new IllegalStateException("Unsupported return type for Pageable query " + repositoryQuery.queryMethod.getReturnType());
+					throw new IllegalStateException("Unsupported return type for Pageable query " + query.repositoryQuery.queryMethod.getReturnType());
 				}
 			}
 
 			@Override
-			public boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.queryMethod.getParameters().hasPageableParameter();
+			public boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.queryMethod.getParameters().hasPageableParameter();
 			}
 		},
 		COUNT {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				return query.count();
 			}
 
 			@Override
-			boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.tree.isCountProjection();
+			boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.tree.isCountProjection();
 			}
 		},
 		EXISTS {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				return query.exists();
 			}
 
 			@Override
-			boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.tree.isExistsProjection();
+			boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.tree.isExistsProjection();
 			}
 		},
 		DELETE {
 			@Override
-			public Object execute(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, Object[] parameters) {
+			public Object execute(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				query.delete();
 				return null;
 			}
 
 			@Override
-			boolean supports(ReindexerRepositoryQuery repositoryQuery) {
-				return repositoryQuery.tree.isDelete();
+			boolean supports(ReindexerQuery query) {
+				return query.repositoryQuery.tree.isDelete();
 			}
 		};
-		abstract boolean supports(ReindexerRepositoryQuery repositoryQuery);
+		abstract boolean supports(ReindexerQuery query);
 	}
 
 	private static final class ProjectingResultIterator implements ResultIterator<Object> {
 
 		private static final Map<Class<?>, Constructor<?>> cache = new ConcurrentHashMap<>();
 
+		private final ReindexerQuery query;
+
 		private final ResultIterator<?> delegate;
 
-		private final ReindexerQueryMethod queryMethod;
-
-		private final ReturnedType projectionType;
-
-		private ProjectingResultIterator(ReindexerQuery query, ReindexerQueryMethod queryMethod) {
+		private ProjectingResultIterator(ReindexerQuery query) {
+			this.query = query;
 			this.delegate = query.execute();
-			this.queryMethod = queryMethod;
-			this.projectionType = query.projectionType;
 		}
 
 		@Override
@@ -375,16 +373,16 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		@Override
 		public Object next() {
 			Object item = this.delegate.next();
-			if (this.projectionType != null) {
-				if (this.projectionType.getReturnedType().isInterface()) {
-					return this.queryMethod.getFactory().createProjection(this.projectionType.getReturnedType(), item);
+			if (this.query.projectionType != null) {
+				if (this.query.projectionType.getReturnedType().isInterface()) {
+					return this.query.repositoryQuery.queryMethod.getFactory().createProjection(this.query.projectionType.getReturnedType(), item);
 				}
-				List<String> properties = this.projectionType.getInputProperties();
+				List<String> properties = this.query.projectionType.getInputProperties();
 				Object[] values = new Object[properties.size()];
 				for (int i = 0; i < properties.size(); i++) {
 					values[i] = BeanPropertyUtils.getProperty(item, properties.get(i));
 				}
-				Constructor<?> constructor = cache.computeIfAbsent(this.projectionType.getReturnedType(), (type) -> {
+				Constructor<?> constructor = cache.computeIfAbsent(this.query.projectionType.getReturnedType(), (type) -> {
 					PreferredConstructor<?, ?> preferredConstructor = PreferredConstructorDiscoverer.discover(type);
 					Assert.state(preferredConstructor != null, () -> "No preferred constructor found for " + type);
 					return preferredConstructor.getConstructor();
