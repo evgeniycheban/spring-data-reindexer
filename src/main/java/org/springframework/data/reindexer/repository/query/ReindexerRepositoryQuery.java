@@ -101,8 +101,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	@Override
 	public Object execute(Object[] parameters) {
-		ParametersParameterAccessor accessor = new ParametersParameterAccessor(queryMethod.getParameters(), parameters);
-		ReindexerQuery query = this.queryPostProcessor.postProcess(new ReindexerQuery(this.namespace.query()), this, accessor);
+		ParameterAccessor parameterAccessor = new ParametersParameterAccessor(this.queryMethod.getParameters(), parameters);
+		ReindexerQuery query = this.queryPostProcessor.postProcess(new ReindexerQuery(this), parameterAccessor);
 		return this.queryExecution.execute(query, this, parameters);
 	}
 
@@ -112,7 +112,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private interface QueryPostProcessor {
-		ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor);
+		ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor);
 	}
 
 	private static final class DelegatingQueryPostProcessor implements QueryPostProcessor {
@@ -124,9 +124,9 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		}
 
 		@Override
-		public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+		public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 			for (QueryPostProcessor delegate : this.delegates) {
-				query = delegate.postProcess(query, repositoryQuery, parameterAccessor);
+				query = delegate.postProcess(query, parameterAccessor);
 			}
 			return query;
 		}
@@ -135,102 +135,44 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	private enum QueryMethodPostProcessor implements QueryPostProcessor {
 		WHERE {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				Iterator<Object> parameters = parameterAccessor.iterator();
-				ReindexerQuery base = query;
-				for (OrPart node : repositoryQuery.tree) {
+				PartTree tree = query.repositoryQuery.tree;
+				for (OrPart node : tree) {
 					Iterator<Part> parts = node.iterator();
-					Assert.state(parts.hasNext(), () -> "No part found in PartTree " + repositoryQuery.tree);
-					ReindexerQuery criteria = where(repositoryQuery, parts.next(), base, parameters);
-					while (parts.hasNext()) {
-						criteria = where(repositoryQuery, parts.next(), criteria, parameters);
-					}
-					base = criteria.or();
+					Assert.state(parts.hasNext(), () -> "No part found in PartTree " + tree);
+					do {
+						query = query.where(parts.next(), parameters);
+					} while (parts.hasNext());
+					query = query.or();
 				}
 				return query;
-			}
-
-			private ReindexerQuery where(ReindexerRepositoryQuery repositoryQuery, Part part, ReindexerQuery criteria, Iterator<Object> parameters) {
-				String indexName = part.getProperty().toDotPath();
-				return switch (part.getType()) {
-					case GREATER_THAN ->
-							criteria.where(indexName, Query.Condition.GT, getParameterValue(repositoryQuery, indexName, parameters.next()));
-					case GREATER_THAN_EQUAL ->
-							criteria.where(indexName, Query.Condition.GE, getParameterValue(repositoryQuery, indexName, parameters.next()));
-					case LESS_THAN ->
-							criteria.where(indexName, Query.Condition.LT, getParameterValue(repositoryQuery, indexName, parameters.next()));
-					case LESS_THAN_EQUAL ->
-							criteria.where(indexName, Query.Condition.LE, getParameterValue(repositoryQuery, indexName, parameters.next()));
-					case IN, CONTAINING -> createInQuery(repositoryQuery, criteria, indexName, parameters);
-					case NOT_IN, NOT_CONTAINING ->
-							createInQuery(repositoryQuery, criteria.not(), indexName, parameters);
-					case IS_NOT_NULL -> criteria.isNotNull(indexName);
-					case IS_NULL -> criteria.isNull(indexName);
-					case SIMPLE_PROPERTY ->
-							criteria.where(indexName, Query.Condition.EQ, getParameterValue(repositoryQuery, indexName, parameters.next()));
-					case NEGATING_SIMPLE_PROPERTY ->
-							criteria.not().where(indexName, Query.Condition.EQ, getParameterValue(repositoryQuery, indexName, parameters.next()));
-					default -> throw new IllegalArgumentException("Unsupported keyword!");
-				};
-			}
-
-			private ReindexerQuery createInQuery(ReindexerRepositoryQuery repositoryQuery, ReindexerQuery criteria, String indexName, Iterator<Object> parameters) {
-				Object value = getParameterValue(repositoryQuery, indexName, parameters.next());
-				Assert.isInstanceOf(Collection.class, value, () -> "Expected Collection but got " + value);
-				return criteria.where(indexName, Query.Condition.SET, (Collection<?>) value);
-			}
-
-			private Object getParameterValue(ReindexerRepositoryQuery repositoryQuery, String indexName, Object value) {
-				if (value instanceof Enum<?>) {
-					ReindexerIndex index = repositoryQuery.indexes.get(indexName);
-					Assert.notNull(index, () -> "Index not found: " + indexName);
-					if (index.getFieldType() == FieldType.STRING) {
-						return ((Enum<?>) value).name();
-					}
-					return ((Enum<?>) value).ordinal();
-				}
-				if (value instanceof Collection<?> values) {
-					List<Object> result = new ArrayList<>(values.size());
-					for (Object object : values) {
-						result.add(getParameterValue(repositoryQuery, indexName, object));
-					}
-					return result;
-				}
-				if (value != null && value.getClass().isArray()) {
-					int length = Array.getLength(value);
-					List<Object> result = new ArrayList<>(length);
-					for (int i = 0; i < length; i++) {
-						result.add(getParameterValue(repositoryQuery, indexName, Array.get(value, i)));
-					}
-					return result;
-				}
-				return value;
 			}
 		},
 		FROM {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
-				if (repositoryQuery.queryMethod.getDomainClass() == repositoryQuery.queryMethod.getReturnedObjectType()) {
+			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
+				if (query.repositoryQuery.queryMethod.getDomainClass() == query.repositoryQuery.queryMethod.getReturnedObjectType()) {
 					return query;
 				}
 				Class<?> type = parameterAccessor.findDynamicProjection();
 				if (type == null) {
-					type = repositoryQuery.queryMethod.getReturnedObjectType();
+					type = query.repositoryQuery.queryMethod.getReturnedObjectType();
 				}
-				ReturnedType projectionType = ReturnedType.of(type, repositoryQuery.queryMethod.getDomainClass(), repositoryQuery.queryMethod.getFactory());
+				ReturnedType projectionType = ReturnedType.of(type, query.repositoryQuery.queryMethod.getDomainClass(), query.repositoryQuery.queryMethod.getFactory());
 				return query.from(projectionType);
 			}
 		},
 		SORT {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				Sort sort = parameterAccessor.getSort();
 				return query.sort(sort);
 			}
 		},
 		PAGEABLE {
 			@Override
-			public ReindexerQuery postProcess(ReindexerQuery query, ReindexerRepositoryQuery repositoryQuery, ParameterAccessor parameterAccessor) {
+			public ReindexerQuery postProcess(ReindexerQuery query, ParameterAccessor parameterAccessor) {
 				Pageable pageable = parameterAccessor.getPageable();
 				return query.pageable(pageable);
 			}
@@ -461,22 +403,66 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private static final class ReindexerQuery {
 
+		private final ReindexerRepositoryQuery repositoryQuery;
+
 		private Query<?> query;
 
 		private ReturnedType projectionType;
 
-		private ReindexerQuery(Query<?> query) {
-			this.query = query;
+		private ReindexerQuery(ReindexerRepositoryQuery repositoryQuery) {
+			this.repositoryQuery = repositoryQuery;
+			this.query = repositoryQuery.namespace.query();
 		}
 
-		private ReindexerQuery where(String indexName, Condition condition, Object... values) {
-			this.query = this.query.where(indexName, condition, values);
+		private ReindexerQuery where(Part part, Iterator<Object> parameters) {
+			String indexName = part.getProperty().toDotPath();
+			return switch (part.getType()) {
+				case GREATER_THAN -> where(indexName, Query.Condition.GT, parameters);
+				case GREATER_THAN_EQUAL -> where(indexName, Query.Condition.GE, parameters);
+				case LESS_THAN -> where(indexName, Query.Condition.LT, parameters);
+				case LESS_THAN_EQUAL -> where(indexName, Query.Condition.LE, parameters);
+				case IN, CONTAINING -> where(indexName, Condition.SET, parameters);
+				case NOT_IN, NOT_CONTAINING -> not().where(indexName, Condition.SET, parameters);
+				case IS_NOT_NULL -> isNotNull(indexName);
+				case IS_NULL -> isNull(indexName);
+				case SIMPLE_PROPERTY -> where(indexName, Query.Condition.EQ, parameters);
+				case NEGATING_SIMPLE_PROPERTY -> not().where(indexName, Query.Condition.EQ, parameters);
+				default -> throw new IllegalArgumentException("Unsupported keyword!");
+			};
+		}
+
+		private ReindexerQuery where(String indexName, Condition condition, Iterator<Object> parameters) {
+			Object value = getParameterValue(indexName, parameters.next());
+			this.query = value instanceof Collection<?> ? this.query.where(indexName, condition, (Collection<?>) value)
+					: this.query.where(indexName, condition, value);
 			return this;
 		}
 
-		private ReindexerQuery where(String indexName, Condition condition, Collection<?> values) {
-			this.query = this.query.where(indexName, condition, values);
-			return this;
+		private Object getParameterValue(String indexName, Object value) {
+			if (value instanceof Enum<?>) {
+				ReindexerIndex index = this.repositoryQuery.indexes.get(indexName);
+				Assert.notNull(index, () -> "Index not found: " + indexName);
+				if (index.getFieldType() == FieldType.STRING) {
+					return ((Enum<?>) value).name();
+				}
+				return ((Enum<?>) value).ordinal();
+			}
+			if (value instanceof Collection<?> values) {
+				List<Object> result = new ArrayList<>(values.size());
+				for (Object object : values) {
+					result.add(getParameterValue(indexName, object));
+				}
+				return result;
+			}
+			if (value != null && value.getClass().isArray()) {
+				int length = Array.getLength(value);
+				List<Object> result = new ArrayList<>(length);
+				for (int i = 0; i < length; i++) {
+					result.add(getParameterValue(indexName, Array.get(value, i)));
+				}
+				return result;
+			}
+			return value;
 		}
 
 		private ReindexerQuery not() {
