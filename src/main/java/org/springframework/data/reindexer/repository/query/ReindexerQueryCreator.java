@@ -159,7 +159,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria = criteria.select(this.returnedType.getInputProperties().toArray(String[]::new));
 		}
 		else if (this.tree.isExistsProjection()) {
-			criteria = criteria.select(this.entityInformation.getIdFieldName()).limit(1);
+			criteria = criteria.select(this.entityInformation.getIdFieldName());
 		}
 		Pageable pageable = this.parameters.getPageable();
 		if (pageable.isPaged()) {
