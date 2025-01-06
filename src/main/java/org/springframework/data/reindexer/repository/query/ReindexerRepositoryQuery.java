@@ -86,7 +86,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		this.namespace = new TransactionalNamespace<>(namespace);
 		this.tree = new PartTree(queryMethod.getName(), entityInformation.getJavaType());
 		this.queryExecution = Lazy.of(() -> {
-			if (queryMethod.isCollectionQuery() && !queryMethod.getParameters().hasPageableParameter()) {
+			if (queryMethod.isCollectionQuery()) {
 				return QueryMethodExecution.COLLECTION;
 			}
 			if (queryMethod.isStreamQuery()) {
@@ -95,7 +95,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			if (queryMethod.isIteratorQuery()) {
 				return QueryMethodExecution.ITERATOR;
 			}
-			if (queryMethod.getParameters().hasPageableParameter()) {
+			if (queryMethod.isPageQuery()) {
 				return QueryMethodExecution.PAGEABLE;
 			}
 			if (tree.isCountProjection()) {
@@ -173,15 +173,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 					while (iterator.hasNext()) {
 						content.add(iterator.next());
 					}
-					if (queryCreator.getQueryMethod().isPageQuery()) {
-						Pageable pageable = queryCreator.getParameters().getPageable();
-						return pageable.isPaged() ? PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount)
-								: new PageImpl<>(content);
-					}
-					if (queryCreator.getQueryMethod().isListQuery()) {
-						return content;
-					}
-					throw new IllegalStateException("Unsupported return type for Pageable query " + queryCreator.getQueryMethod().getReturnType());
+					Pageable pageable = queryCreator.getParameters().getPageable();
+					return PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount);
 				}
 			}
 		},
