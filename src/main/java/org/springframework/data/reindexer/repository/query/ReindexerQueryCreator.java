@@ -165,9 +165,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		Pageable pageable = this.parameters.getPageable();
 		if (pageable.isPaged()) {
 			criteria.limit(pageable.getPageSize()).offset(getOffsetAsInteger(pageable));
-			if (this.queryMethod.isPageQuery()) {
-				criteria = criteria.reqTotal();
-			}
 		}
 		if (sort.isSorted()) {
 			for (Order order : sort) {

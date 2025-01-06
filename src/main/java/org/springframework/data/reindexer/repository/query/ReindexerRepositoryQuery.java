@@ -36,7 +36,6 @@ import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mapping.PreferredConstructor;
 import org.springframework.data.mapping.model.PreferredConstructorDiscoverer;
@@ -168,7 +167,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		PAGEABLE {
 			@Override
 			public Object execute(ReindexerQueryCreator queryCreator) {
-				try (ProjectingResultIterator iterator = new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType())) {
+				try (ProjectingResultIterator iterator = new ProjectingResultIterator(queryCreator.createQuery().reqTotal(), queryCreator.getReturnedType())) {
 					List<Object> content = new ArrayList<>();
 					while (iterator.hasNext()) {
 						content.add(iterator.next());
