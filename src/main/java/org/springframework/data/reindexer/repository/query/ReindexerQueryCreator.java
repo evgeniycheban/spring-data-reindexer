@@ -28,6 +28,7 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.ReindexerIndex;
 
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
@@ -156,29 +157,48 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria = this.namespace.query();
 		}
 		if (this.returnedType.needsCustomConstruction()) {
-			criteria = criteria.select(this.returnedType.getInputProperties().toArray(String[]::new));
+			criteria.select(this.returnedType.getInputProperties().toArray(String[]::new));
 		}
 		else if (this.tree.isExistsProjection()) {
-			criteria = criteria.select(this.entityInformation.getIdFieldName());
+			criteria.select(this.entityInformation.getIdFieldName());
 		}
 		Pageable pageable = this.parameters.getPageable();
 		if (pageable.isPaged()) {
-			criteria.limit(pageable.getPageSize()).offset((int) pageable.getOffset());
+			criteria.limit(pageable.getPageSize()).offset(getOffsetAsInteger(pageable));
 			if (this.queryMethod.isPageQuery()) {
 				criteria = criteria.reqTotal();
 			}
 		}
 		if (sort.isSorted()) {
 			for (Order order : sort) {
-				criteria = criteria.sort(order.getProperty(), order.isDescending());
+				criteria.sort(order.getProperty(), order.isDescending());
 			}
 		}
 		if (this.tree.getMaxResults() != null) {
-			criteria = criteria.limit(this.tree.getMaxResults());
+			if (pageable.isPaged()) {
+				/*
+				 * In order to return the correct results, we have to adjust the first result offset to be returned if:
+				 * - a Pageable parameter is present
+				 * - AND the requested page number > 0
+				 * - AND the requested page size was bigger than the derived result limitation via the First/Top keyword.
+				 */
+				int firstResult = getOffsetAsInteger(pageable);
+				if (pageable.getPageSize() > this.tree.getMaxResults() && firstResult > 0) {
+					criteria.offset(firstResult - (pageable.getPageSize() - this.tree.getMaxResults()));
+				}
+			}
+			criteria.limit(this.tree.getMaxResults());
 		}
 		if (this.tree.isExistsProjection()) {
 			criteria.limit(1);
 		}
 		return criteria;
+	}
+
+	private int getOffsetAsInteger(Pageable pageable) {
+		if (pageable.getOffset() > Integer.MAX_VALUE) {
+			throw new InvalidDataAccessApiUsageException("Page offset exceeds Integer.MAX_VALUE (" + Integer.MAX_VALUE + ")");
+		}
+		return Math.toIntExact(pageable.getOffset());
 	}
 }

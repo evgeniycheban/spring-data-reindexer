@@ -59,8 +59,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -76,7 +78,13 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link ReindexerRepository}.
@@ -896,6 +904,28 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findFirst2By() {
+		TestItem item1 = this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
+		TestItem item2 = this.repository.save(new TestItem(2L, "TestName2", "TestValue2"));
+		TestItem item3 = this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		Page<TestItem> firstPage = this.repository.findFirst2By(PageRequest.of(0, 3, Direction.ASC, "id"));
+		assertThat(firstPage.getContent()).contains(item1, item2);
+		Page<TestItem> secondPage = this.repository.findFirst2By(PageRequest.of(1, 3, Direction.ASC, "id"));
+		assertThat(secondPage).contains(item3);
+	}
+
+	@Test
+	public void findFirst3By() {
+		TestItem item1 = this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
+		TestItem item2 = this.repository.save(new TestItem(2L, "TestName2", "TestValue2"));
+		TestItem item3 = this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		Page<TestItem> firstPage = this.repository.findFirst3By(PageRequest.of(0, 2, Direction.ASC, "id"));
+		assertThat(firstPage.getContent()).contains(item1, item2);
+		Page<TestItem> secondPage = this.repository.findFirst3By(PageRequest.of(1, 2, Direction.ASC, "id"));
+		assertThat(secondPage).contains(item3);
+	}
+
+	@Test
 	public void findAllPageable() {
 		Set<TestItem> expectedItems = new HashSet<>();
 		for (long i = 0; i < 100; i++) {
@@ -1003,6 +1033,87 @@ class ReindexerRepositoryTests {
 		TestItem testItem = new TestItem(1L, "TestName", "TestValue");
 		this.service.saveAndDelete(testItem);
 		assertFalse(this.repository.existsById(testItem.getId()));
+	}
+
+	@Test
+	public void findAllByLimit() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAllBy(Limit.of(10));
+		for (TestItem item : foundItems) {
+			assertTrue(expectedItems.remove(item));
+		}
+		assertEquals(90, expectedItems.size());
+	}
+
+	@Test
+	public void findFirstByOrderByIdAsc() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		TestItem foundItem = this.repository.findFirstByOrderByIdAsc().orElse(null);
+		assertNotNull(foundItem);
+		assertEquals(expectedItems.get(0), foundItem);
+	}
+
+	@Test
+	public void findFirstByOrderByIdDesc() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		TestItem foundItem = this.repository.findFirstByOrderByIdDesc().orElse(null);
+		assertNotNull(foundItem);
+		assertEquals(expectedItems.get(expectedItems.size() - 1), foundItem);
+	}
+
+	@Test
+	public void findTopByOrderByIdAsc() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		TestItem foundItem = this.repository.findTopByOrderByIdAsc().orElse(null);
+		assertEquals(expectedItems.get(0), foundItem);
+	}
+
+	@Test
+	public void findTopByOrderByIdDesc() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		TestItem foundItem = this.repository.findTopByOrderByIdDesc().orElse(null);
+		assertEquals(expectedItems.get(expectedItems.size() - 1), foundItem);
+	}
+
+	@Test
+	public void findTop10ByOrderByIdAsc() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findTop10ByOrderByIdAsc();
+		for (TestItem item : foundItems) {
+			assertTrue(expectedItems.remove(item));
+		}
+		assertEquals(90, expectedItems.size());
+	}
+
+	@Test
+	public void findTop10ByOrderByIdDesc() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findTop10ByOrderByIdDesc();
+		for (TestItem item : foundItems) {
+			assertTrue(expectedItems.remove(item));
+		}
+		assertEquals(90, expectedItems.size());
 	}
 
 	@Configuration
@@ -1155,6 +1266,10 @@ class ReindexerRepositoryTests {
 
 		Page<TestItem> findPageByIdIn(List<Long> ids, Pageable pageable);
 
+		Page<TestItem> findFirst2By(Pageable pageable);
+
+		Page<TestItem> findFirst3By(Pageable pageable);
+
 		List<TestItemProjection> findItemProjectionByIdIn(List<Long> ids);
 
 		List<TestItemDto> findItemDtoByIdIn(List<Long> ids);
@@ -1166,6 +1281,20 @@ class ReindexerRepositoryTests {
 		List<TestItemPreferredConstructorRecord> findItemPreferredConstructorRecordByIdIn(List<Long> ids);
 
 		<T> List<T> findByIdIn(List<Long> ids, Class<T> type);
+
+		List<TestItem> findAllBy(Limit limit);
+
+		Optional<TestItem> findFirstByOrderByIdAsc();
+
+		Optional<TestItem> findFirstByOrderByIdDesc();
+
+		Optional<TestItem> findTopByOrderByIdAsc();
+
+		Optional<TestItem> findTopByOrderByIdDesc();
+
+		List<TestItem> findTop10ByOrderByIdAsc();
+
+		List<TestItem> findTop10ByOrderByIdDesc();
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
