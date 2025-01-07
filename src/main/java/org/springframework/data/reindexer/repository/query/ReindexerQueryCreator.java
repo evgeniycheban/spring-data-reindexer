@@ -156,6 +156,17 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		if (criteria == null) {
 			criteria = this.namespace.query();
 		}
+		if (this.tree.isDistinct()) {
+			if (this.returnedType.needsCustomConstruction()) {
+				for (String field : this.returnedType.getInputProperties()) {
+					criteria.aggregateDistinct(field);
+				}
+				criteria.aggregateFacet(this.returnedType.getInputProperties().toArray(String[]::new));
+			}
+			else {
+				criteria.aggregateDistinct(this.entityInformation.getIdFieldName());
+			}
+		}
 		if (this.returnedType.needsCustomConstruction()) {
 			criteria.select(this.returnedType.getInputProperties().toArray(String[]::new));
 		}

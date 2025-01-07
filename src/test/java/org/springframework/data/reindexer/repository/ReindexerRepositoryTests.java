@@ -1116,6 +1116,75 @@ class ReindexerRepositoryTests {
 		assertEquals(90, expectedItems.size());
 	}
 
+	@Test
+	public void findDistinctNameRecordByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName2", "TestValue3"));
+		List<TestItemNameRecord> foundItems = this.repository.findDistinctNameRecordByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameRecord::name).toList()).containsOnly("TestName1", "TestName2");
+	}
+
+	@Test
+	public void findDistinctNameValueRecordByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		List<TestItemNameValueRecord> foundItems = this.repository.findDistinctNameValueRecordByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1", "TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2", "TestValue3");
+	}
+
+	@Test
+	public void findDistinctNameValueProjectionByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		List<TestItemNameValueProjection> foundItems = this.repository.findDistinctNameValueProjectionByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameValueProjection::getName).toList()).containsOnly("TestName1", "TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+	}
+
+	@Test
+	public void findDistinctNameValueDtoByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		List<TestItemNameValueDto> foundItems = this.repository.findDistinctNameValueDtoByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getName).toList()).containsOnly("TestName1", "TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+	}
+
+	@Test
+	public void findDistinctDynamicProjectionRecordByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		List<TestItemNameValueRecord> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L), TestItemNameValueRecord.class);
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1", "TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2", "TestValue3");
+	}
+
+	@Test
+	public void findDistinctDynamicProjectionInterfaceByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		List<TestItemNameValueProjection> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L), TestItemNameValueProjection.class);
+		assertThat(foundItems.stream().map(TestItemNameValueProjection::getName).toList()).containsOnly("TestName1", "TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+	}
+
+	@Test
+	public void findDistinctDynamicProjectionClassByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		List<TestItemNameValueDto> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L), TestItemNameValueDto.class);
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getName).toList()).containsOnly("TestName1", "TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1295,6 +1364,16 @@ class ReindexerRepositoryTests {
 		List<TestItem> findTop10ByOrderByIdAsc();
 
 		List<TestItem> findTop10ByOrderByIdDesc();
+
+		List<TestItemNameRecord> findDistinctNameRecordByIdIn(List<Long> ids);
+
+		List<TestItemNameValueRecord> findDistinctNameValueRecordByIdIn(List<Long> ids);
+
+		List<TestItemNameValueProjection> findDistinctNameValueProjectionByIdIn(List<Long> ids);
+
+		List<TestItemNameValueDto> findDistinctNameValueDtoByIdIn(List<Long> ids);
+
+		<T> List<T> findDistinctByIdIn(List<Long> ids, Class<T> type);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
@@ -1410,11 +1489,19 @@ class ReindexerRepositoryTests {
 
 	}
 
+	interface TestItemNameValueProjection {
+
+		String getName();
+
+		String getValue();
+
+	}
+
 	public static class TestItemDto {
 
-		private Long id;
+		private final Long id;
 
-		private String name;
+		private final String name;
 
 		public TestItemDto(Long id, String name) {
 			this.id = id;
@@ -1425,16 +1512,29 @@ class ReindexerRepositoryTests {
 			return this.id;
 		}
 
-		public void setId(Long id) {
-			this.id = id;
+		public String getName() {
+			return this.name;
+		}
+
+	}
+
+	public static class TestItemNameValueDto {
+
+		private final String name;
+
+		private final String value;
+
+		public TestItemNameValueDto(String name, String value) {
+			this.name = name;
+			this.value = value;
 		}
 
 		public String getName() {
 			return this.name;
 		}
 
-		public void setName(String name) {
-			this.name = name;
+		public String getValue() {
+			return this.value;
 		}
 
 	}
@@ -1474,6 +1574,12 @@ class ReindexerRepositoryTests {
 	}
 
 	public record TestItemRecord(Long id, String name) {
+	}
+
+	public record TestItemNameRecord(String name) {
+	}
+
+	public record TestItemNameValueRecord(String name, String value) {
 	}
 
 	public record TestItemPreferredConstructorRecord(Long id, String name) {
