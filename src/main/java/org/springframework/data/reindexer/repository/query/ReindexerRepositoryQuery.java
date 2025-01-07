@@ -16,10 +16,14 @@
 package org.springframework.data.reindexer.repository.query;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,6 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import ru.rt.restream.reindexer.AggregationResult;
+import ru.rt.restream.reindexer.AggregationResult.Facet;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
@@ -144,7 +149,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				try (ResultIterator<?> iterator = new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType())) {
 					List<Object> result = new ArrayList<>();
 					while (iterator.hasNext()) {
-						result.add(iterator.next());
+						Object next = iterator.next();
+						if (next != null) {
+							result.add(next);
+						}
 					}
 					return result;
 				}
@@ -224,9 +232,17 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 		private final ReturnedType projectionType;
 
+		private final AggregationResult aggregationFacet;
+
+		private final Map<String, Set<String>> distinctAggregationResults;
+
+		private int aggregationPosition;
+
 		private ProjectingResultIterator(Query<?> query, ReturnedType projectionType) {
 			this.delegate = query.execute();
 			this.projectionType = projectionType;
+			this.aggregationFacet = getAggregationFacet();
+			this.distinctAggregationResults = getDistinctAggregationResults();
 		}
 
 		@Override
@@ -251,11 +267,49 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 		@Override
 		public boolean hasNext() {
-			return this.delegate.hasNext();
+			return this.delegate.hasNext() || this.aggregationFacet != null && this.aggregationPosition < this.aggregationFacet.getFacets().size();
 		}
 
 		@Override
 		public Object next() {
+			if (!this.distinctAggregationResults.isEmpty() && this.aggregationFacet != null && this.projectionType != null) {
+				Object item = null;
+				Object[] arguments = null;
+				List<String> fields = this.aggregationFacet.getFields();
+				if (this.projectionType.getReturnedType().isInterface()) {
+					try {
+						item = this.projectionType.getDomainType().getDeclaredConstructor().newInstance();
+					}
+					catch (NoSuchMethodException | InvocationTargetException |
+						   InstantiationException | IllegalAccessException e) {
+						throw new RuntimeException(e);
+					}
+				}
+				else {
+					arguments = new Object[fields.size()];
+				}
+				for (int i = 0; i < fields.size(); i++) {
+					String field = fields.get(i);
+					Facet facet = this.aggregationFacet.getFacets().get(this.aggregationPosition);
+					if (i < facet.getValues().size() && this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
+						if (arguments != null) {
+							arguments[i] = facet.getValues().get(i);
+						}
+						else {
+							BeanPropertyUtils.setProperty(item, field, facet.getValues().get(i));
+						}
+					}
+					else {
+						this.aggregationPosition++;
+						return null;
+					}
+				}
+				this.aggregationPosition++;
+				if (item != null) {
+					return item;
+				}
+				return constructTargetObject(arguments);
+			}
 			Object item = this.delegate.next();
 			if (this.projectionType != null && this.projectionType.needsCustomConstruction()
 					&& !this.projectionType.getReturnedType().isInterface()) {
@@ -264,20 +318,42 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				for (int i = 0; i < properties.size(); i++) {
 					values[i] = BeanPropertyUtils.getProperty(item, properties.get(i));
 				}
-				Constructor<?> constructor = cache.computeIfAbsent(this.projectionType.getReturnedType(), (type) -> {
-					PreferredConstructor<?, ?> preferredConstructor = PreferredConstructorDiscoverer.discover(type);
-					Assert.state(preferredConstructor != null, () -> "No preferred constructor found for " + type);
-					return preferredConstructor.getConstructor();
-				});
-				try {
-					return constructor.newInstance(values);
-				}
-				catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return constructTargetObject(values);
 			}
 			return item;
 		}
 
+		private Object constructTargetObject(Object[] values) {
+			Constructor<?> constructor = cache.computeIfAbsent(this.projectionType.getReturnedType(), (type) -> {
+				PreferredConstructor<?, ?> preferredConstructor = PreferredConstructorDiscoverer.discover(type);
+				Assert.state(preferredConstructor != null, () -> "No preferred constructor found for " + type);
+				return preferredConstructor.getConstructor();
+			});
+			try {
+				return constructor.newInstance(values);
+			}
+			catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		private Map<String, Set<String>> getDistinctAggregationResults() {
+			Map<String, Set<String>> result = new HashMap<>();
+			for (AggregationResult aggregationResult : aggResults()) {
+				if ("distinct".equals(aggregationResult.getType())) {
+					result.put(aggregationResult.getFields().get(0), new HashSet<>(aggregationResult.getDistincts()));
+				}
+			}
+			return result;
+		}
+
+		private AggregationResult getAggregationFacet() {
+			for (AggregationResult aggregationResult : aggResults()) {
+				if ("facet".equals(aggregationResult.getType())) {
+					return aggregationResult;
+				}
+			}
+			return null;
+		}
 	}
 }
