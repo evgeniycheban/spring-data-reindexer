@@ -41,6 +41,8 @@ import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
+import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mapping.PreferredConstructor;
 import org.springframework.data.mapping.model.PreferredConstructorDiscoverer;
@@ -53,6 +55,7 @@ import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.util.Lazy;
+import org.springframework.data.util.ReflectionUtils;
 import org.springframework.util.Assert;
 
 /**
@@ -236,6 +239,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 		private final Map<String, Set<String>> distinctAggregationResults;
 
+		private final ConversionService conversionService = DefaultConversionService.getSharedInstance();
+
 		private int aggregationPosition;
 
 		private ProjectingResultIterator(Query<?> query, ReturnedType projectionType) {
@@ -292,11 +297,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 					String field = fields.get(i);
 					Facet facet = this.aggregationFacet.getFacets().get(this.aggregationPosition);
 					if (i < facet.getValues().size() && this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
+						Object value = this.conversionService.convert(facet.getValues().get(i), ReflectionUtils.findRequiredField(this.projectionType.getDomainType(), field).getType());
 						if (arguments != null) {
-							arguments[i] = facet.getValues().get(i);
+							arguments[i] = value;
 						}
 						else {
-							BeanPropertyUtils.setProperty(item, field, facet.getValues().get(i));
+							BeanPropertyUtils.setProperty(item, field, value);
 						}
 					}
 					else {
