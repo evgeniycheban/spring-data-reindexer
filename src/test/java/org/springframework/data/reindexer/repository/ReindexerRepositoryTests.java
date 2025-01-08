@@ -1280,7 +1280,7 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findOneSqlSpelByIdAndNameAndValueParam(Long id, String name, String value);
 
 		@Query("SELECT * FROM items WHERE id = :#{#item.id} AND name = :#{#item.name} AND value = :#{#item.value}")
-		Optional<TestItem> findOneSqlSpelByItemIdAndNameAndValueParam(@Param("item") TestItem item);
+		Optional<TestItem> findOneSqlSpelByItemIdAndNameAndValueParam(TestItem item);
 
 		@Query("SELECT * FROM items WHERE id = ?2 AND name = ?3 AND value = ?1")
 		Optional<TestItem> findOneSqlByIdAndNameAndValue(String value, Long id, String name);

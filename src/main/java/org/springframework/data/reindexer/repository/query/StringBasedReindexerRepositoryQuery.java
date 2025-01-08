@@ -137,7 +137,13 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 							value = parameters[index];
 						}
 						else {
-							int index = Integer.parseInt(parameterReference);
+							int index;
+							try {
+								index = Integer.parseInt(parameterReference);
+							}
+							catch (NumberFormatException e) {
+								throw new IllegalStateException("Invalid parameter reference: " + parameterReference + " at index: " + i);
+							}
 							value = parameters[index - 1];
 						}
 					}
