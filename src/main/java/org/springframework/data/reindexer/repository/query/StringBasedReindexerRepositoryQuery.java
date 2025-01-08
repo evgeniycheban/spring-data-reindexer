@@ -38,9 +38,6 @@ import org.springframework.data.repository.query.QueryMethodValueEvaluationConte
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
-import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.PropertyAccessor;
-import org.springframework.expression.TypedValue;
 import org.springframework.util.Assert;
 
 /**
@@ -206,39 +203,4 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	public QueryMethod getQueryMethod() {
 		return this.queryMethod;
 	}
-
-	private final class NamedParameterPropertyAccessor implements PropertyAccessor {
-
-		@Override
-		public boolean canRead(EvaluationContext context, Object target, String name) {
-			return StringBasedReindexerRepositoryQuery.this.namedParameters.containsKey(name);
-		}
-
-		@Override
-		public TypedValue read(EvaluationContext context, Object target, String name) {
-			Assert.state(target instanceof Object[], "target must be an array");
-			Integer index = StringBasedReindexerRepositoryQuery.this.namedParameters.get(name);
-			Assert.notNull(index, () -> "No parameter found for name: " + name);
-			Object[] parameters = (Object[]) target;
-			Object value = parameters[index];
-			return new TypedValue(value);
-		}
-
-		@Override
-		public boolean canWrite(EvaluationContext context, Object target, String name) {
-			return false;
-		}
-
-		@Override
-		public void write(EvaluationContext context, Object target, String name, Object newValue) {
-			// NOOP
-		}
-
-		@Override
-		public Class<?>[] getSpecificTargetClasses() {
-			return new Class[] { Object.class.arrayType() };
-		}
-
-	}
-
 }
