@@ -131,7 +131,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					String parameterReference = sb.toString();
 					Object value = parameterMap.get(parameterReference);
 					if (value == null) {
-						if (c ==  ':') {
+						if (c == ':') {
 							Integer index = this.namedParameters.get(parameterReference);
 							Assert.notNull(index, () -> "No parameter found for name: " + parameterReference);
 							value = parameters[index];
