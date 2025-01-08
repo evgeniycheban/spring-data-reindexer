@@ -65,6 +65,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	 *
 	 * @param queryMethod the {@link QueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
+	 * @param accessor the {@link QueryMethodValueEvaluationContextAccessor} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 */
 	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation,
