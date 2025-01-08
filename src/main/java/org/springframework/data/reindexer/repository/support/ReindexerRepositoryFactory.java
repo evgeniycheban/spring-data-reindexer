@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import ru.rt.restream.reindexer.Reindexer;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
@@ -35,6 +36,7 @@ import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
 import org.springframework.data.repository.query.QueryLookupStrategy;
 import org.springframework.data.repository.query.QueryMethodEvaluationContextProvider;
+import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.util.Assert;
 
@@ -47,13 +49,17 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final Reindexer reindexer;
 
+	private final ApplicationContext ctx;
+
 	/**
 	 * Creates an instance.
 	 *
 	 * @param reindexer the {@link Reindexer} to use
+	 * @param ctx the {@link ApplicationContext} to use
 	 */
-	public ReindexerRepositoryFactory(Reindexer reindexer) {
+	public ReindexerRepositoryFactory(Reindexer reindexer, ApplicationContext ctx) {
 		this.reindexer = reindexer;
+		this.ctx = ctx;
 	}
 
 	@Override
@@ -91,7 +97,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
 			if (queryMethod.hasQueryAnnotation()) {
 				return new StringBasedReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-						ReindexerRepositoryFactory.this.reindexer);
+						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer);
 			}
 			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
 					ReindexerRepositoryFactory.this.reindexer);

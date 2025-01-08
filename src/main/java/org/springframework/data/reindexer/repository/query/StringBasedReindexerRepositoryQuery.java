@@ -31,15 +31,16 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
 
+import org.springframework.data.expression.ValueExpressionParser;
 import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethod;
+import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
+import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
+import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
 import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.Expression;
 import org.springframework.expression.PropertyAccessor;
 import org.springframework.expression.TypedValue;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.util.Assert;
 
 /**
@@ -49,11 +50,11 @@ import org.springframework.util.Assert;
  */
 public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
-	private final SpelExpressionParser spelExpressionParser = new SpelExpressionParser();
-
-	private final NamedParameterPropertyAccessor propertyAccessor = new NamedParameterPropertyAccessor();
+	private static final String EXPRESSION_PARAMETER_PREFIX = "__$synthetic$__";
 
 	private final ReindexerQueryMethod queryMethod;
+
+	private final QueryMethodValueEvaluationContextAccessor accessor;
 
 	private final Namespace<?> namespace;
 
@@ -66,8 +67,10 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 */
-	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
+	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation,
+			QueryMethodValueEvaluationContextAccessor accessor, Reindexer reindexer) {
 		this.queryMethod = queryMethod;
+		this.accessor = accessor;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.namedParameters = new HashMap<>();
@@ -106,75 +109,42 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private String prepareQuery(Object[] parameters) {
-		String query = this.queryMethod.getQuery();
-		StringBuilder result = new StringBuilder(query);
-		char[] queryParts = query.toCharArray();
+		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter
+				.of(ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_PREFIX + index, String::concat);
+		QueryExpressionEvaluator evaluator = queryRewriter
+				.withEvaluationContextAccessor(this.accessor).parse(this.queryMethod.getQuery(), this.queryMethod.getParameters());
+		Map<String, Object> parameterMap = evaluator.evaluate(parameters);
+		StringBuilder result = new StringBuilder(evaluator.getQueryString());
+		char[] queryParts = evaluator.getQueryString().toCharArray();
 		int offset = 0;
 		for (int i = 1; i < queryParts.length; i++) {
 			char c = queryParts[i - 1];
 			switch (c) {
-				case '?' -> {
-					int index = 0;
-					int digits = 0;
+				case ':', '?' -> {
+					StringBuilder sb = new StringBuilder();
 					for (int j = i; j < queryParts.length; j++) {
-						int digit = Character.digit(queryParts[j], 10);
-						if (digit < 0) {
+						if (Character.isWhitespace(queryParts[j])) {
 							break;
 						}
-						index *= 10;
-						index += digit;
-						digits++;
+						sb.append(queryParts[j]);
 					}
-					if (index < 1 || index > parameters.length) {
-						throw new IllegalStateException("Invalid parameter reference at index: " + i);
-					}
-					String value = getParameterValuePart(parameters[index - 1]);
-					result.replace(offset + i - 1, offset + i + digits, value);
-					offset += value.length() - digits - 1;
-					i += digits;
-				}
-				case ':' -> {
-					if (queryParts[i] == '#') {
-						int special = 1;
-						StringBuilder sb = new StringBuilder();
-						for (int j = i + 1; j < queryParts.length; j++) {
-							if (queryParts[j] == '{') {
-								special++;
-								continue;
-							}
-							if (queryParts[j] == '}') {
-								special++;
-								break;
-							}
-							sb.append(queryParts[j]);
+					String parameterReference = sb.toString();
+					Object value = parameterMap.get(parameterReference);
+					if (value == null) {
+						if (c ==  ':') {
+							Integer index = this.namedParameters.get(parameterReference);
+							Assert.notNull(index, () -> "No parameter found for name: " + parameterReference);
+							value = parameters[index];
 						}
-						if (special != 3) {
-							throw new IllegalStateException("Invalid SpEL expression provided at index: " + i);
+						else {
+							int index = Integer.parseInt(parameterReference);
+							value = parameters[index - 1];
 						}
-						Expression expression = this.spelExpressionParser.parseExpression(sb.toString());
-						StandardEvaluationContext ctx = new StandardEvaluationContext(parameters);
-						ctx.addPropertyAccessor(this.propertyAccessor);
-						String value = getParameterValuePart(expression.getValue(ctx));
-						result.replace(offset + i - 1, offset + i + expression.getExpressionString().length() + special, value);
-						offset += value.length() - expression.getExpressionString().length() - special - 1;
-						i += expression.getExpressionString().length() + special;
 					}
-					else {
-						StringBuilder sb = new StringBuilder();
-						for (int j = i; j < queryParts.length; j++) {
-							if (Character.isWhitespace(queryParts[j])) {
-								break;
-							}
-							sb.append(queryParts[j]);
-						}
-						String parameterName = sb.toString();
-						Integer index = this.namedParameters.get(parameterName);
-						Assert.notNull(index, () -> "No parameter found for name: " + parameterName);
-						String value = getParameterValuePart(parameters[index]);
-						result.replace(offset + i - 1, offset + i + parameterName.length(), value);
-						offset += value.length() - parameterName.length() - 1;
-						i += parameterName.length();
-					}
+					String valueString = getParameterValuePart(value);
+					result.replace(offset + i - 1, offset + i + parameterReference.length(), valueString);
+					offset += valueString.length() - parameterReference.length() - 1;
+					i += parameterReference.length();
 				}
 			}
 		}

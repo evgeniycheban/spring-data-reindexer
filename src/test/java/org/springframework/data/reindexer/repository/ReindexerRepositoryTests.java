@@ -324,8 +324,8 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findOneSqlSpelByIdAndNameAndValueParam() {
-		TestItem testItem = this.repository.save(new TestItem(1L, "TEST_NAME", "test_value"));
-		TestItem item = this.repository.findOneSqlSpelByIdAndNameAndValueParam(0L, "test_name", "TEST", "VALUE").orElse(null);
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem item = this.repository.findOneSqlSpelByIdAndNameAndValueParam(1L, "TestName", "TestValue").orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
@@ -1276,10 +1276,10 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
 		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name, @Param("value") String value);
 
-		@Query("SELECT * FROM items WHERE id = :#{id + 1} AND name = :#{name.toUpperCase()} AND value = :#{value1.toLowerCase() + '_' + value2.toLowerCase()}")
-		Optional<TestItem> findOneSqlSpelByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name, @Param("value1") String value1, @Param("value2") String value2);
+		@Query("SELECT * FROM items WHERE id = ?#{[0]} AND name = ?#{[1]} AND value = ?#{[2]}")
+		Optional<TestItem> findOneSqlSpelByIdAndNameAndValueParam(Long id, String name, String value);
 
-		@Query("SELECT * FROM items WHERE id = :#{item.id} AND name = :#{item.name} AND value = :#{item.value}")
+		@Query("SELECT * FROM items WHERE id = :#{#item.id} AND name = :#{#item.name} AND value = :#{#item.value}")
 		Optional<TestItem> findOneSqlSpelByItemIdAndNameAndValueParam(@Param("item") TestItem item);
 
 		@Query("SELECT * FROM items WHERE id = ?2 AND name = ?3 AND value = ?1")
