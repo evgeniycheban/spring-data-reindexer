@@ -54,9 +54,9 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final ReindexerQueryMethod queryMethod;
 
-	private final QueryMethodValueEvaluationContextAccessor accessor;
-
 	private final Namespace<?> namespace;
+
+	private final QueryExpressionEvaluator queryEvaluator;
 
 	private final Map<String, Integer> namedParameters;
 
@@ -70,15 +70,21 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation,
 			QueryMethodValueEvaluationContextAccessor accessor, Reindexer reindexer) {
 		this.queryMethod = queryMethod;
-		this.accessor = accessor;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
+		this.queryEvaluator = createQueryExpressionEvaluator(accessor);
 		this.namedParameters = new HashMap<>();
 		for (Parameter parameter : queryMethod.getParameters()) {
 			if (parameter.isNamedParameter()) {
 				parameter.getName().ifPresent(name -> this.namedParameters.put(name, parameter.getIndex()));
 			}
 		}
+	}
+
+	private QueryExpressionEvaluator createQueryExpressionEvaluator(QueryMethodValueEvaluationContextAccessor accessor) {
+		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter
+				.of(ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_PREFIX + index, String::concat);
+		return queryRewriter.withEvaluationContextAccessor(accessor).parse(queryMethod.getQuery(), queryMethod.getParameters());
 	}
 
 	@Override
@@ -109,13 +115,9 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private String prepareQuery(Object[] parameters) {
-		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter
-				.of(ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_PREFIX + index, String::concat);
-		QueryExpressionEvaluator evaluator = queryRewriter
-				.withEvaluationContextAccessor(this.accessor).parse(this.queryMethod.getQuery(), this.queryMethod.getParameters());
-		Map<String, Object> parameterMap = evaluator.evaluate(parameters);
-		StringBuilder result = new StringBuilder(evaluator.getQueryString());
-		char[] queryParts = evaluator.getQueryString().toCharArray();
+		Map<String, Object> parameterMap = this.queryEvaluator.evaluate(parameters);
+		StringBuilder result = new StringBuilder(this.queryEvaluator.getQueryString());
+		char[] queryParts = this.queryEvaluator.getQueryString().toCharArray();
 		int offset = 0;
 		for (int i = 1; i < queryParts.length; i++) {
 			char c = queryParts[i - 1];
