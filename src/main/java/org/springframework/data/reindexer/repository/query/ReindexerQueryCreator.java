@@ -104,8 +104,10 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			case IS_NOT_NULL -> base.not().isNull(indexName);
 			case IS_NULL -> base.isNull(indexName);
 			case SIMPLE_PROPERTY -> where(base, indexName, Condition.EQ, parameters);
-			case NEGATING_SIMPLE_PROPERTY -> base.not().where(indexName, Condition.EQ, parameters);
-			case BETWEEN -> base.where(indexName, Condition.RANGE, getParameterValues(indexName, parameters.next(), parameters.next())); 
+			case NEGATING_SIMPLE_PROPERTY -> where(base.not(), indexName, Condition.EQ, parameters);
+			case BETWEEN -> base.where(indexName, Condition.RANGE, getParameterValues(indexName, parameters.next(), parameters.next()));
+			case TRUE -> base.where(indexName, Condition.EQ, true);
+			case FALSE -> base.where(indexName, Condition.EQ, false);
 			default -> throw new IllegalArgumentException("Unsupported keyword!");
 		};
 	}
