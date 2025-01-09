@@ -105,6 +105,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			case IS_NULL -> base.isNull(indexName);
 			case SIMPLE_PROPERTY -> where(base, indexName, Condition.EQ, parameters);
 			case NEGATING_SIMPLE_PROPERTY -> base.not().where(indexName, Condition.EQ, parameters);
+			case BETWEEN -> base.where(indexName, Condition.RANGE, getParameterValues(indexName, parameters.next(), parameters.next())); 
 			default -> throw new IllegalArgumentException("Unsupported keyword!");
 		};
 	}
@@ -117,6 +118,14 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		else {
 			return base.where(indexName, condition, value);
 		}
+	}
+
+	private Object[] getParameterValues(String indexName, Object... values) {
+		Object[] result = new Object[values.length];
+		for (int i = 0; i < values.length; i++) {
+			result[i] = getParameterValue(indexName, values[i]);
+		}
+		return result;
 	}
 
 	private Object getParameterValue(String indexName, Object value) {

@@ -1185,6 +1185,16 @@ class ReindexerRepositoryTests {
 		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2", "TestValue3");
 	}
 
+	@Test
+	public void findAllByIdBetween() {
+		for (long i = 0; i < 100; i++) {
+			this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i));
+		}
+		List<TestItem> foundItems = this.repository.findAllByIdBetween(80L, 90L);
+		assertThat(foundItems.stream().map(TestItem::getId).toList())
+				.containsExactly(80L, 81L, 82L, 83L, 84L, 85L, 86L, 87L, 88L, 89L, 90L);
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1374,6 +1384,8 @@ class ReindexerRepositoryTests {
 		List<TestItemNameValueDto> findDistinctNameValueDtoByIdIn(List<Long> ids);
 
 		<T> List<T> findDistinctByIdIn(List<Long> ids, Class<T> type);
+
+		List<TestItem> findAllByIdBetween(Long start, Long end);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
