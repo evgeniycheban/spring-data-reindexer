@@ -1195,6 +1195,26 @@ class ReindexerRepositoryTests {
 				.containsExactly(80L, 81L, 82L, 83L, 84L, 85L, 86L, 87L, 88L, 89L, 90L);
 	}
 
+	@Test
+	public void findByActiveIsTrue() {
+		this.repository.save(new TestItem(1L, true));
+		this.repository.save(new TestItem(2L, true));
+		this.repository.save(new TestItem(3L, false));
+		this.repository.save(new TestItem(4L, false));
+		List<TestItem> foundItems = this.repository.findByActiveIsTrue();
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
+	}
+
+	@Test
+	public void findByActiveIsFalse() {
+		this.repository.save(new TestItem(1L, true));
+		this.repository.save(new TestItem(2L, true));
+		this.repository.save(new TestItem(3L, false));
+		this.repository.save(new TestItem(4L, false));
+		List<TestItem> foundItems = this.repository.findByActiveIsFalse();
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L, 4L);
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1386,6 +1406,10 @@ class ReindexerRepositoryTests {
 		<T> List<T> findDistinctByIdIn(List<Long> ids, Class<T> type);
 
 		List<TestItem> findAllByIdBetween(Long start, Long end);
+
+		List<TestItem> findByActiveIsTrue();
+
+		List<TestItem> findByActiveIsFalse();
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
@@ -1408,6 +1432,9 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "testEnumOrdinal")
 		private TestEnum testEnumOrdinal;
 
+		@Reindex(name = "active")
+		private boolean active;
+
 		public TestItem() {
 		}
 
@@ -1415,6 +1442,11 @@ class ReindexerRepositoryTests {
 			this.id = id;
 			this.name = name;
 			this.value = value;
+		}
+
+		public TestItem(Long id, boolean active) {
+			this.id = id;
+			this.active = active;
 		}
 
 		public TestItem(Long id, String name, String value, TestEnum testEnumString, TestEnum testEnumOrdinal) {
@@ -1465,6 +1497,14 @@ class ReindexerRepositoryTests {
 			this.testEnumOrdinal = testEnumOrdinal;
 		}
 
+		public boolean isActive() {
+			return this.active;
+		}
+
+		public void setActive(boolean active) {
+			this.active = active;
+		}
+
 		@Override
 		public boolean equals(Object o) {
 			if (o == null || getClass() != o.getClass()) {
@@ -1472,12 +1512,12 @@ class ReindexerRepositoryTests {
 			}
 			TestItem testItem = (TestItem) o;
 			return Objects.equals(id, testItem.id) && Objects.equals(name, testItem.name) && Objects.equals(value, testItem.value)
-					&& testEnumString == testItem.testEnumString && testEnumOrdinal == testItem.testEnumOrdinal;
+					&& testEnumString == testItem.testEnumString && testEnumOrdinal == testItem.testEnumOrdinal && active == testItem.active;
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal);
+			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, active);
 		}
 
 		@Override
@@ -1488,6 +1528,7 @@ class ReindexerRepositoryTests {
 					", value='" + this.value + '\'' +
 					", testEnumString=" + this.testEnumString +
 					", testEnumOrdinal=" + this.testEnumOrdinal +
+					", active=" + this.active +
 					'}';
 		}
 
