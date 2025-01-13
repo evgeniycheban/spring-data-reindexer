@@ -174,9 +174,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 				}
 				criteria.aggregateFacet(this.returnedType.getInputProperties().toArray(String[]::new));
 			}
-			else {
-				criteria.aggregateDistinct(this.entityInformation.getIdFieldName());
-			}
 		}
 		if (this.returnedType.needsCustomConstruction()) {
 			criteria.select(this.returnedType.getInputProperties().toArray(String[]::new));
@@ -214,7 +211,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		return criteria;
 	}
 
-	private int getOffsetAsInteger(Pageable pageable) {
+	static int getOffsetAsInteger(Pageable pageable) {
 		if (pageable.getOffset() > Integer.MAX_VALUE) {
 			throw new InvalidDataAccessApiUsageException("Page offset exceeds Integer.MAX_VALUE (" + Integer.MAX_VALUE + ")");
 		}

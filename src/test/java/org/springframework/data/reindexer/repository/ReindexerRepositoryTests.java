@@ -66,6 +66,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.Query;
@@ -1215,6 +1216,135 @@ class ReindexerRepositoryTests {
 		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L, 4L);
 	}
 
+	@Test
+	public void findAllItemProjectionByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemProjection> foundItems = this.repository.findAllItemProjectionByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.toList(), Sort.by(Direction.DESC, "id"));
+		assertThat(foundItems).hasSameSizeAs(expectedItems);
+		for (int i = 0; i < foundItems.size(); i++) {
+			TestItemProjection foundItem = foundItems.get(i);
+			TestItem expectedItem = expectedItems.get(expectedItems.size() - 1 - i);
+			assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+			assertThat(foundItem.getName()).isEqualTo(expectedItem.getName());
+		}
+	}
+
+	@Test
+	public void findAllItemDtoByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemDto> foundItems = this.repository.findAllItemDtoByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.toList(), Sort.by(Direction.ASC, "id"));
+		assertThat(foundItems).hasSameSizeAs(expectedItems);
+		for (int i = 0; i < foundItems.size(); i++) {
+			TestItemDto foundItem = foundItems.get(i);
+			TestItem expectedItem = expectedItems.get(expectedItems.size() - 1 - i);
+			assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+			assertThat(foundItem.getName()).isEqualTo(expectedItem.getName());
+		}
+	}
+
+	@Test
+	public void findAllItemRecordByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemRecord> foundItems = this.repository.findAllItemRecordByIdIn(expectedItems.stream()
+				.map(TestItem::getId)
+				.toList());
+		assertThat(foundItems).hasSameSizeAs(expectedItems);
+		for (int i = 0; i < foundItems.size(); i++) {
+			TestItemRecord foundItem = foundItems.get(i);
+			TestItem expectedItem = expectedItems.get(i);
+			assertThat(foundItem.id()).isEqualTo(expectedItem.getId());
+			assertThat(foundItem.name()).isEqualTo(expectedItem.getName());
+		}
+	}
+
+	@Test
+	public void findAllCountByIdInPageable() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		Pageable pageable = PageRequest.of(0, 5, Sort.by(Order.desc("id"), Order.asc("name")));
+		List<Long> expectedIds = expectedItems.stream()
+				.map(TestItem::getId)
+				.toList();
+		do {
+			Page<TestItem> foundItems = this.repository.findAllCountByIdIn(expectedIds, pageable);
+			for (TestItem item : foundItems) {
+				assertTrue(expectedItems.remove(item));
+			}
+			pageable = foundItems.nextPageable();
+		} while (pageable.isPaged());
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findAllCountCachedByIdInPageable() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		Pageable pageable = PageRequest.of(0, 5, Sort.by(Order.desc("id"), Order.asc("name")));
+		List<Long> expectedIds = expectedItems.stream()
+				.map(TestItem::getId)
+				.toList();
+		do {
+			Page<TestItem> foundItems = this.repository.findAllCountCachedByIdIn(expectedIds, pageable);
+			for (TestItem item : foundItems) {
+				assertTrue(expectedItems.remove(item));
+			}
+			pageable = foundItems.nextPageable();
+		} while (pageable.isPaged());
+		assertEquals(0, expectedItems.size());
+	}
+
+	@Test
+	public void findFirst2Sql() {
+		TestItem item1 = this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
+		TestItem item2 = this.repository.save(new TestItem(2L, "TestName2", "TestValue2"));
+		TestItem item3 = this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		Page<TestItem> firstPage = this.repository.findFirst2Sql(PageRequest.of(0, 3, Direction.ASC, "id"));
+		assertThat(firstPage.getContent()).contains(item1, item2);
+		Page<TestItem> secondPage = this.repository.findFirst2Sql(PageRequest.of(1, 3, Direction.ASC, "id"));
+		assertThat(secondPage).contains(item3);
+	}
+
+	@Test
+	public void findFirst3Sql() {
+		TestItem item1 = this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
+		TestItem item2 = this.repository.save(new TestItem(2L, "TestName2", "TestValue2"));
+		TestItem item3 = this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		Page<TestItem> firstPage = this.repository.findFirst3Sql(PageRequest.of(0, 2, Direction.ASC, "id"));
+		assertThat(firstPage.getContent()).contains(item1, item2);
+		Page<TestItem> secondPage = this.repository.findFirst3Sql(PageRequest.of(1, 2, Direction.ASC, "id"));
+		assertThat(secondPage).contains(item3);
+	}
+
+	@Test
+	public void findAllSqlLimit() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAllSqlLimit(Limit.of(10));
+		for (TestItem item : foundItems) {
+			assertTrue(expectedItems.remove(item));
+		}
+		assertEquals(90, expectedItems.size());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1410,6 +1540,30 @@ class ReindexerRepositoryTests {
 		List<TestItem> findByActiveIsTrue();
 
 		List<TestItem> findByActiveIsFalse();
+
+		@Query("SELECT id, name FROM items WHERE id IN :ids")
+		List<TestItemProjection> findAllItemProjectionByIdIn(List<Long> ids, Sort sort);
+
+		@Query("SELECT id, name FROM items WHERE id IN :ids ORDER BY id DESC")
+		List<TestItemDto> findAllItemDtoByIdIn(List<Long> ids, Sort sort);
+
+		@Query("SELECT id, name FROM items WHERE id IN :ids")
+		List<TestItemRecord> findAllItemRecordByIdIn(List<Long> ids);
+
+		@Query("SELECT *, COUNT(*) FROM items WHERE id IN :ids")
+		Page<TestItem> findAllCountByIdIn(List<Long> ids, Pageable pageable);
+
+		@Query("SELECT *, COUNT_CACHED(*) FROM items WHERE id IN :ids")
+		Page<TestItem> findAllCountCachedByIdIn(List<Long> ids, Pageable pageable);
+
+		@Query("SELECT *, COUNT_CACHED(*) FROM items LIMIT 2")
+		Page<TestItem> findFirst2Sql(Pageable pageable);
+
+		@Query("SELECT *, COUNT_CACHED(*) FROM items LIMIT 3")
+		Page<TestItem> findFirst3Sql(Pageable pageable);
+
+		@Query("SELECT * FROM items")
+		List<TestItem> findAllSqlLimit(Limit limit);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)

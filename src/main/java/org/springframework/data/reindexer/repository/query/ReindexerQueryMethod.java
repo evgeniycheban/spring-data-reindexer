@@ -130,7 +130,8 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	 *
 	 * @return true, if the query is for UPDATE
 	 */
-	public boolean isUpdateQuery() {
+	@Override
+	public boolean isModifyingQuery() {
 		Query query = this.queryAnnotationExtractor.get();
 		return query.update();
 	}
