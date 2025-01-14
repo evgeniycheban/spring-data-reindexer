@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.data.reindexer.repository.util;
+package org.springframework.data.reindexer.repository.support;
 
 import java.util.stream.Stream;
 
@@ -26,28 +26,16 @@ import org.springframework.data.util.TypeInformation;
 import org.springframework.util.Assert;
 
 /**
- * Converters to potentially wrap the execution of a repository method into a variety of wrapper types
- * potentially being available on the classpath.
- * @see QueryExecutionConverters
+ * For internal use only, as this contract is likely to change.
  *
  * @author Evgeniy Cheban
  */
-public final class ReindexerQueryExecutionConverters {
+final class ReindexerQueryExecutionConverters {
 
 	private ReindexerQueryExecutionConverters() {
 	}
 
-	/**
-	 * Recursively unwraps well known wrapper types from the given {@link TypeInformation} but aborts at the given
-	 * reference type.
-	 * This method is a copy of {@link QueryExecutionConverters#unwrapWrapperTypes(TypeInformation, TypeInformation)}
-	 * with extension of adding {@link ResultIterator} type check.
-	 *
-	 * @param type must not be {@literal null}.
-	 * @param reference must not be {@literal null}.
-	 * @return will never be {@literal null}.
-	 */
-	public static TypeInformation<?> unwrapWrapperTypes(TypeInformation<?> type, TypeInformation<?> reference) {
+	static TypeInformation<?> unwrapWrapperTypes(TypeInformation<?> type, TypeInformation<?> reference) {
 		Assert.notNull(type, "type must not be null");
 		if (reference.isAssignableFrom(type)) {
 			return type;
@@ -62,5 +50,4 @@ public final class ReindexerQueryExecutionConverters {
 				|| ResultIterator.class.isAssignableFrom(rawType);
 		return needToUnwrap ? unwrapWrapperTypes(type.getRequiredComponentType(), reference) : type;
 	}
-
 }

@@ -19,10 +19,11 @@ import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Provide a set of utility methods to support {@link Pageable}s.
+ * Provides a set of utility methods to support {@link Pageable}s.
  *
  * @author Greg Turnquist
  * @author Evgeniy Cheban
+ * @since 1.3
  */
 public final class PageableUtils {
 
@@ -31,7 +32,7 @@ public final class PageableUtils {
 	}
 
 	/**
-	 * Convert a {@link Pageable}'s offset value from {@link Long} to {@link Integer} to support JPA spec methods.
+	 * Converts a {@link Pageable}'s offset value from {@link Long} to {@link Integer}.
 	 *
 	 * @param pageable the {@link Pageable} to use
 	 * @return integer
