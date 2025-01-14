@@ -785,14 +785,20 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findByIdContaining() {
-		List<TestItem> expectedItems = new ArrayList<>();
-		for (long i = 0; i < 100; i++) {
-			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
-		}
-		List<TestItem> foundItems = this.repository.findByIdContaining(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
-		assertEquals(expectedItems.size(), foundItems.size());
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue1", List.of("City1", "City2")));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue2", List.of("City1", "City3")));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3", List.of("City2", "City3")));
+		List<TestItem> foundItems = this.repository.findAllByCitiesContaining("City1");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
+	}
+
+	@Test
+	public void findByIdNotContaining() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue1", List.of("City1", "City2")));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue2", List.of("City1", "City3")));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3", List.of("City2", "City3")));
+		List<TestItem> foundItems = this.repository.findAllByCitiesNotContaining("City1");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L);
 	}
 
 	@Test
@@ -802,18 +808,6 @@ class ReindexerRepositoryTests {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
 		List<TestItem> foundItems = this.repository.findByIdNotIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
-		assertEquals(0, foundItems.size());
-	}
-
-	@Test
-	public void findByIdNotContaining() {
-		List<TestItem> expectedItems = new ArrayList<>();
-		for (long i = 0; i < 100; i++) {
-			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
-		}
-		List<TestItem> foundItems = this.repository.findByIdNotContaining(expectedItems.stream()
 				.map(TestItem::getId)
 				.collect(Collectors.toList()));
 		assertEquals(0, foundItems.size());
@@ -1345,6 +1339,60 @@ class ReindexerRepositoryTests {
 		assertEquals(90, expectedItems.size());
 	}
 
+	@Test
+	public void findAllByNameLike() {
+		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
+		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue3"));
+		List<TestItem> foundItems = this.repository.findAllByNameLike("%LIMITED");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
+	}
+
+	@Test
+	public void findAllByNameNotLike() {
+		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
+		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue3"));
+		List<TestItem> foundItems = this.repository.findAllByNameNotLike("%LIMITED");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L);
+	}
+
+	@Test
+	public void findAllByNameContaining() {
+		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
+		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue3"));
+		List<TestItem> foundItems = this.repository.findAllByNameContaining("LIMIT");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
+	}
+
+	@Test
+	public void findAllByNameNotContaining() {
+		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
+		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue3"));
+		List<TestItem> foundItems = this.repository.findAllByNameNotContaining("LIMIT");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L);
+	}
+
+	@Test
+	public void findAllByNameStartingWith() {
+		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
+		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue3"));
+		List<TestItem> foundItems = this.repository.findAllByNameStartingWith("Test");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L);
+	}
+
+	@Test
+	public void findAllByNameEndingWith() {
+		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
+		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue3"));
+		List<TestItem> foundItems = this.repository.findAllByNameEndingWith("ED");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1467,11 +1515,11 @@ class ReindexerRepositoryTests {
 
 		List<TestItem> findByIdIn(long... ids);
 
-		List<TestItem> findByIdContaining(List<Long> ids);
+		List<TestItem> findAllByCitiesContaining(String city);
+
+		List<TestItem> findAllByCitiesNotContaining(String city);
 
 		List<TestItem> findByIdNotIn(List<Long> ids);
-
-		List<TestItem> findByIdNotContaining(List<Long> ids);
 
 		List<TestItem> findByTestEnumStringIn(List<TestEnum> values);
 
@@ -1564,6 +1612,18 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT * FROM items")
 		List<TestItem> findAllSqlLimit(Limit limit);
+
+		List<TestItem> findAllByNameLike(String pattern);
+
+		List<TestItem> findAllByNameNotLike(String pattern);
+
+		List<TestItem> findAllByNameContaining(String text);
+
+		List<TestItem> findAllByNameNotContaining(String text);
+
+		List<TestItem> findAllByNameStartingWith(String text);
+
+		List<TestItem> findAllByNameEndingWith(String text);
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
@@ -1586,6 +1646,9 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "testEnumOrdinal")
 		private TestEnum testEnumOrdinal;
 
+		@Reindex(name = "cities")
+		private List<String> cities = new ArrayList<>();
+
 		@Reindex(name = "active")
 		private boolean active;
 
@@ -1601,6 +1664,13 @@ class ReindexerRepositoryTests {
 		public TestItem(Long id, boolean active) {
 			this.id = id;
 			this.active = active;
+		}
+
+		public TestItem(Long id, String name, String value, List<String> cities) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
+			this.cities = cities;
 		}
 
 		public TestItem(Long id, String name, String value, TestEnum testEnumString, TestEnum testEnumOrdinal) {
@@ -1651,6 +1721,14 @@ class ReindexerRepositoryTests {
 			this.testEnumOrdinal = testEnumOrdinal;
 		}
 
+		public List<String> getCities() {
+			return this.cities;
+		}
+
+		public void setCities(List<String> cities) {
+			this.cities = cities;
+		}
+
 		public boolean isActive() {
 			return this.active;
 		}
@@ -1666,12 +1744,13 @@ class ReindexerRepositoryTests {
 			}
 			TestItem testItem = (TestItem) o;
 			return Objects.equals(id, testItem.id) && Objects.equals(name, testItem.name) && Objects.equals(value, testItem.value)
-					&& testEnumString == testItem.testEnumString && testEnumOrdinal == testItem.testEnumOrdinal && active == testItem.active;
+					&& testEnumString == testItem.testEnumString && testEnumOrdinal == testItem.testEnumOrdinal && Objects.equals(cities, testItem.cities)
+					&& active == testItem.active;
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, active);
+			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities, active);
 		}
 
 		@Override
@@ -1682,6 +1761,7 @@ class ReindexerRepositoryTests {
 					", value='" + this.value + '\'' +
 					", testEnumString=" + this.testEnumString +
 					", testEnumOrdinal=" + this.testEnumOrdinal +
+					", cities=" + this.cities +
 					", active=" + this.active +
 					'}';
 		}

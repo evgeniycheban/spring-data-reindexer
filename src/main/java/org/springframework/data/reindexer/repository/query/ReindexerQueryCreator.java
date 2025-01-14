@@ -36,6 +36,7 @@ import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.AbstractQueryCreator;
 import org.springframework.data.repository.query.parser.Part;
+import org.springframework.data.repository.query.parser.Part.Type;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.util.Assert;
 
@@ -99,15 +100,30 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			case GREATER_THAN_EQUAL -> where(base, indexName, Condition.GE, parameters);
 			case LESS_THAN -> where(base, indexName, Condition.LT, parameters);
 			case LESS_THAN_EQUAL -> where(base, indexName, Condition.LE, parameters);
-			case IN, CONTAINING -> where(base, indexName, Condition.SET, parameters);
-			case NOT_IN, NOT_CONTAINING -> where(base.not(), indexName, Condition.SET, parameters);
-			case IS_NOT_NULL -> base.not().isNull(indexName);
+			case IN -> where(base, indexName, Condition.SET, parameters);
+			case NOT_IN -> where(base.not(), indexName, Condition.SET, parameters);
+			case IS_NOT_NULL -> base.isNotNull(indexName);
 			case IS_NULL -> base.isNull(indexName);
 			case SIMPLE_PROPERTY -> where(base, indexName, Condition.EQ, parameters);
 			case NEGATING_SIMPLE_PROPERTY -> where(base.not(), indexName, Condition.EQ, parameters);
 			case BETWEEN -> base.where(indexName, Condition.RANGE, getParameterValues(indexName, parameters.next(), parameters.next()));
 			case TRUE -> base.where(indexName, Condition.EQ, true);
 			case FALSE -> base.where(indexName, Condition.EQ, false);
+			case LIKE, NOT_LIKE, STARTING_WITH, ENDING_WITH, CONTAINING, NOT_CONTAINING -> {
+				if (part.getProperty().getLeafProperty().isCollection()) {
+					yield where(part.getType() == Type.NOT_CONTAINING ? base.not() : base, indexName, Condition.SET, parameters);
+				}
+				Object value = parameters.next();
+				Assert.isInstanceOf(String.class, value, "Value of '" + part.getType() + "' expression must be String");
+				String expression = switch (part.getType()) {
+					case STARTING_WITH -> value + "%";
+					case ENDING_WITH -> "%" + value;
+					case CONTAINING, NOT_CONTAINING -> "%" + value + "%";
+					default -> (String) value;
+				};
+				yield part.getType() == Type.NOT_LIKE || part.getType() == Type.NOT_CONTAINING 
+						? base.not().like(indexName, expression) : base.like(indexName, expression);
+			}
 			default -> throw new IllegalArgumentException("Unsupported keyword!");
 		};
 	}
@@ -117,9 +133,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		if (value instanceof Collection<?> values) {
 			return base.where(indexName, condition, values);
 		}
-		else {
-			return base.where(indexName, condition, value);
-		}
+		return base.where(indexName, condition, value);
 	}
 
 	private Object[] getParameterValues(String indexName, Object... values) {
@@ -167,16 +181,17 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		if (criteria == null) {
 			criteria = this.namespace.query();
 		}
-		if (this.tree.isDistinct()) {
-			if (this.returnedType.needsCustomConstruction()) {
-				for (String field : this.returnedType.getInputProperties()) {
+		if (this.returnedType.needsCustomConstruction()) {
+			String[] fields = this.returnedType.getInputProperties().toArray(String[]::new);
+			if (this.tree.isDistinct()) {
+				for (String field : fields) {
 					criteria.aggregateDistinct(field);
 				}
-				criteria.aggregateFacet(this.returnedType.getInputProperties().toArray(String[]::new));
+				criteria.aggregateFacet(fields);
 			}
-		}
-		if (this.returnedType.needsCustomConstruction()) {
-			criteria.select(this.returnedType.getInputProperties().toArray(String[]::new));
+			else {
+				criteria.select(fields);
+			}
 		}
 		else if (this.tree.isExistsProjection()) {
 			criteria.select(this.entityInformation.getIdFieldName());
