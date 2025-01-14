@@ -33,6 +33,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
+import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.Assert;
 
@@ -119,9 +120,9 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		}
 		Query<T> query = this.namespace.query();
 		for (Order order : pageable.getSort()) {
-			query = query.sort(order.getProperty(), order.isDescending());
+			query.sort(order.getProperty(), order.isDescending());
 		}
-		query = query.limit(pageable.getPageSize()).offset((int) pageable.getOffset()).reqTotal();
+		query.limit(pageable.getPageSize()).offset(PageableUtils.getOffsetAsInteger(pageable)).reqTotal();
 		try (ResultIterator<T> iterator = query.execute()) {
 			List<T> content = new ArrayList<>();
 			while (iterator.hasNext()) {

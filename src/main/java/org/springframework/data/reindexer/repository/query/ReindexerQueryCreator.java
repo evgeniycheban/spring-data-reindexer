@@ -28,10 +28,10 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.ReindexerIndex;
 
-import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.AbstractQueryCreator;
@@ -191,7 +191,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		Pageable pageable = this.parameters.getPageable();
 		if (pageable.isPaged()) {
-			criteria.limit(pageable.getPageSize()).offset(getOffsetAsInteger(pageable));
+			criteria.limit(pageable.getPageSize()).offset(PageableUtils.getOffsetAsInteger(pageable));
 		}
 		if (sort.isSorted()) {
 			for (Order order : sort) {
@@ -206,7 +206,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 				 * - AND the requested page number > 0
 				 * - AND the requested page size was bigger than the derived result limitation via the First/Top keyword.
 				 */
-				int firstResult = getOffsetAsInteger(pageable);
+				int firstResult = PageableUtils.getOffsetAsInteger(pageable);
 				if (pageable.getPageSize() > this.tree.getMaxResults() && firstResult > 0) {
 					criteria.offset(firstResult - (pageable.getPageSize() - this.tree.getMaxResults()));
 				}
@@ -217,12 +217,5 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria.limit(1);
 		}
 		return criteria;
-	}
-
-	static int getOffsetAsInteger(Pageable pageable) {
-		if (pageable.getOffset() > Integer.MAX_VALUE) {
-			throw new InvalidDataAccessApiUsageException("Page offset exceeds Integer.MAX_VALUE (" + Integer.MAX_VALUE + ")");
-		}
-		return Math.toIntExact(pageable.getOffset());
 	}
 }

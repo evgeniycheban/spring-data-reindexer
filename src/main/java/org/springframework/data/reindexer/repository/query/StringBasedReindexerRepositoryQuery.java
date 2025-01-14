@@ -33,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.expression.ValueExpressionParser;
+import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
@@ -208,7 +209,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				result.append(" limit ").append(maxResults);
 			}
 			if (result.indexOf("offset") == -1) {
-				int firstResult = ReindexerQueryCreator.getOffsetAsInteger(pageable);
+				int firstResult = PageableUtils.getOffsetAsInteger(pageable);
 				if (firstResult > 0) {
 					/*
 					 * In order to return the correct results, we have to adjust the first result offset to be returned if:
