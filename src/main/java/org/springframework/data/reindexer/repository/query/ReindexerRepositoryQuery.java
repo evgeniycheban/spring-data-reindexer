@@ -29,9 +29,7 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
-import ru.rt.restream.reindexer.ResultIterator;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ParametersParameterAccessor;
@@ -78,28 +76,47 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		this.tree = new PartTree(queryMethod.getName(), entityInformation.getJavaType());
 		this.queryExecution = Lazy.of(() -> {
 			if (queryMethod.isCollectionQuery()) {
-				return QueryMethodExecution.COLLECTION;
+				return this::toList;
 			}
 			if (queryMethod.isStreamQuery()) {
-				return QueryMethodExecution.STREAM;
+				return (queryCreator) -> {
+					ProjectingResultIterator iterator = toIterator(queryCreator);
+					Spliterator<Object> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
+					return StreamSupport.stream(spliterator, false).onClose(iterator::close);
+				};
 			}
 			if (queryMethod.isIteratorQuery()) {
-				return QueryMethodExecution.ITERATOR;
+				return this::toIterator;
 			}
 			if (queryMethod.isPageQuery()) {
-				return QueryMethodExecution.PAGEABLE;
+				return (queryCreator) -> {
+					try (ProjectingResultIterator it = new ProjectingResultIterator(queryCreator.createQuery().reqTotal(), queryCreator.getReturnedType())) {
+						return PageableExecutionUtils.getPage(toList(it), queryCreator.getParameters().getPageable(), it::getTotalCount);
+					}
+				};
 			}
 			if (tree.isCountProjection()) {
-				return QueryMethodExecution.COUNT;
+				return (queryCreator) -> queryCreator.createQuery().count();
 			}
 			if (tree.isExistsProjection()) {
-				return QueryMethodExecution.EXISTS;
+				return (queryCreator) -> queryCreator.createQuery().exists();
 			}
 			if (tree.isDelete()) {
-				return QueryMethodExecution.DELETE;
+				return (queryCreator) -> {
+					queryCreator.createQuery().delete();
+					return null;
+				};
 			}
 			return (queryCreator) -> {
-				Object entity = QueryMethodExecution.SINGLE_ENTITY.execute(queryCreator);
+				Object entity = null;
+				try (ProjectingResultIterator it = toIterator(queryCreator)) {
+					if (it.hasNext()) {
+						entity = it.next();
+					}
+					if (it.hasNext()) {
+						throw new IllegalStateException("Exactly one item expected, but there are more");
+					}
+				}
 				if (queryMethod.isOptionalQuery()) {
 					return Optional.ofNullable(entity);
 				}
@@ -107,6 +124,27 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				return entity;
 			};
 		});
+	}
+
+	private List<Object> toList(ReindexerQueryCreator queryCreator) {
+		try (ProjectingResultIterator it = toIterator(queryCreator)) {
+			return toList(it);
+		}
+	}
+
+	private List<Object> toList(ProjectingResultIterator iterator) {
+		List<Object> result = new ArrayList<>();
+		while (iterator.hasNext()) {
+			Object next = iterator.next();
+			if (next != null) {
+				result.add(next);
+			}
+		}
+		return result;
+	}
+
+	private ProjectingResultIterator toIterator(ReindexerQueryCreator queryCreator) {
+		return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType());
 	}
 
 	@Override
@@ -127,87 +165,5 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	@FunctionalInterface
 	private interface QueryExecution {
 		Object execute(ReindexerQueryCreator queryCreator);
-	}
-
-	private enum QueryMethodExecution implements QueryExecution {
-		COLLECTION {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				try (ResultIterator<?> iterator = new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType())) {
-					List<Object> result = new ArrayList<>();
-					while (iterator.hasNext()) {
-						Object next = iterator.next();
-						if (next != null) {
-							result.add(next);
-						}
-					}
-					return result;
-				}
-			}
-		},
-		STREAM {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				ResultIterator<?> iterator = new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType());
-				Spliterator<?> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
-				return StreamSupport.stream(spliterator, false).onClose(iterator::close);
-			}
-		},
-		ITERATOR {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType());
-			}
-		},
-		PAGEABLE {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				try (ProjectingResultIterator iterator = new ProjectingResultIterator(queryCreator.createQuery().reqTotal(), queryCreator.getReturnedType())) {
-					List<Object> content = new ArrayList<>();
-					while (iterator.hasNext()) {
-						content.add(iterator.next());
-					}
-					Pageable pageable = queryCreator.getParameters().getPageable();
-					return PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount);
-				}
-			}
-		},
-		COUNT {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				return queryCreator.createQuery().count();
-			}
-		},
-		EXISTS {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				return queryCreator.createQuery().exists();
-			}
-		},
-		DELETE {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				queryCreator.createQuery().delete();
-				return null;
-			}
-		},
-		SINGLE_ENTITY {
-			@Override
-			public Object execute(ReindexerQueryCreator queryCreator) {
-				try (ResultIterator<?> iterator = new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType())) {
-					Object item = null;
-					if (iterator.hasNext()) {
-						item = iterator.next();
-					}
-					if (iterator.hasNext()) {
-						throw new IllegalStateException("Exactly one item expected, but there are more");
-					}
-					return item;
-				}
-				catch (Exception e) {
-					throw new RuntimeException(e.getMessage(), e);
-				}
-			}
-		}
 	}
 }
