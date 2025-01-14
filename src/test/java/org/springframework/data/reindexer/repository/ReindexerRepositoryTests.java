@@ -784,24 +784,6 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
-	public void findByIdContaining() {
-		this.repository.save(new TestItem(1L, "TestName1", "TestValue1", List.of("City1", "City2")));
-		this.repository.save(new TestItem(2L, "TestName2", "TestValue2", List.of("City1", "City3")));
-		this.repository.save(new TestItem(3L, "TestName3", "TestValue3", List.of("City2", "City3")));
-		List<TestItem> foundItems = this.repository.findAllByCitiesContaining("City1");
-		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
-	}
-
-	@Test
-	public void findByIdNotContaining() {
-		this.repository.save(new TestItem(1L, "TestName1", "TestValue1", List.of("City1", "City2")));
-		this.repository.save(new TestItem(2L, "TestName2", "TestValue2", List.of("City1", "City3")));
-		this.repository.save(new TestItem(3L, "TestName3", "TestValue3", List.of("City2", "City3")));
-		List<TestItem> foundItems = this.repository.findAllByCitiesNotContaining("City1");
-		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L);
-	}
-
-	@Test
 	public void findByIdNotIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
@@ -1358,6 +1340,24 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllByCitiesContaining() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue1", List.of("City1", "City2")));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue2", List.of("City1", "City3")));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3", List.of("City2", "City3")));
+		List<TestItem> foundItems = this.repository.findAllByCitiesContaining("City1");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
+	}
+
+	@Test
+	public void findAllByCitiesNotContaining() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue1", List.of("City1", "City2")));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue2", List.of("City1", "City3")));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3", List.of("City2", "City3")));
+		List<TestItem> foundItems = this.repository.findAllByCitiesNotContaining("City1");
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(3L);
+	}
+
+	@Test
 	public void findAllByNameContaining() {
 		this.repository.save(new TestItem(1L, "LIMITED", "TestValue1"));
 		this.repository.save(new TestItem(2L, "UNLIMITED", "TestValue2"));
@@ -1515,10 +1515,6 @@ class ReindexerRepositoryTests {
 
 		List<TestItem> findByIdIn(long... ids);
 
-		List<TestItem> findAllByCitiesContaining(String city);
-
-		List<TestItem> findAllByCitiesNotContaining(String city);
-
 		List<TestItem> findByIdNotIn(List<Long> ids);
 
 		List<TestItem> findByTestEnumStringIn(List<TestEnum> values);
@@ -1616,6 +1612,10 @@ class ReindexerRepositoryTests {
 		List<TestItem> findAllByNameLike(String pattern);
 
 		List<TestItem> findAllByNameNotLike(String pattern);
+
+		List<TestItem> findAllByCitiesContaining(String city);
+
+		List<TestItem> findAllByCitiesNotContaining(String city);
 
 		List<TestItem> findAllByNameContaining(String text);
 
