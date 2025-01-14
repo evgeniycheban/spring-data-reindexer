@@ -15,15 +15,9 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
@@ -31,14 +25,10 @@ import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
-import org.springframework.data.repository.query.ParameterAccessor;
-import org.springframework.data.repository.query.ParametersParameterAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.parser.PartTree;
-import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.util.Lazy;
-import org.springframework.util.Assert;
 
 /**
  * A {@link RepositoryQuery} implementation for Reindexer.
@@ -47,7 +37,7 @@ import org.springframework.util.Assert;
  */
 public class ReindexerRepositoryQuery implements RepositoryQuery {
 
-	private final ReindexerQueryMethod queryMethod;
+	private final ReindexerQueryMethod method;
 
 	private final ReindexerEntityInformation<?, ?> entityInformation;
 
@@ -57,90 +47,52 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final Map<String, ReindexerIndex> indexes;
 
-	private final Lazy<QueryExecution> queryExecution;
+	private final Lazy<Function<ReindexerQueryCreator, Object>> queryExecution;
 
 	/**
 	 * Creates an instance.
 	 *
-	 * @param queryMethod the {@link ReindexerQueryMethod} to use
+	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param reindexer the {@link Reindexer} to use                         
 	 */
-	public ReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
-		this.queryMethod = queryMethod;
+	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
+		this.method = method;
 		this.entityInformation = entityInformation;
 		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.indexes = namespace.getIndexes().stream().collect(Collectors.toUnmodifiableMap(ReindexerIndex::getName, Function.identity()));
 		this.namespace = new TransactionalNamespace<>(namespace);
-		this.tree = new PartTree(queryMethod.getName(), entityInformation.getJavaType());
+		this.tree = new PartTree(method.getName(), entityInformation.getJavaType());
 		this.queryExecution = Lazy.of(() -> {
-			if (queryMethod.isCollectionQuery()) {
-				return this::toList;
+			if (method.isCollectionQuery()) {
+				return (creator) -> ReindexerQueryExecutions.toList(() -> toIterator(creator));
 			}
-			if (queryMethod.isStreamQuery()) {
-				return (queryCreator) -> {
-					ProjectingResultIterator iterator = toIterator(queryCreator);
-					Spliterator<Object> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
-					return StreamSupport.stream(spliterator, false).onClose(iterator::close);
-				};
+			if (method.isStreamQuery()) {
+				return (creator) -> ReindexerQueryExecutions.toStream(toIterator(creator));
 			}
-			if (queryMethod.isIteratorQuery()) {
+			if (method.isIteratorQuery()) {
 				return this::toIterator;
 			}
-			if (queryMethod.isPageQuery()) {
-				return (queryCreator) -> {
-					try (ProjectingResultIterator it = new ProjectingResultIterator(queryCreator.createQuery().reqTotal(), queryCreator.getReturnedType())) {
-						return PageableExecutionUtils.getPage(toList(it), queryCreator.getParameters().getPageable(), it::getTotalCount);
-					}
-				};
+			if (method.isPageQuery()) {
+				return (creator) -> ReindexerQueryExecutions.toPage(
+						() -> new ProjectingResultIterator(creator.createQuery().reqTotal(), creator.getReturnedType()),
+						creator.getParameters());
 			}
 			if (tree.isCountProjection()) {
-				return (queryCreator) -> queryCreator.createQuery().count();
+				return (creator) -> creator.createQuery().count();
 			}
 			if (tree.isExistsProjection()) {
-				return (queryCreator) -> queryCreator.createQuery().exists();
+				return (creator) -> creator.createQuery().exists();
 			}
 			if (tree.isDelete()) {
-				return (queryCreator) -> {
-					queryCreator.createQuery().delete();
+				return (creator) -> {
+					creator.createQuery().delete();
 					return null;
 				};
 			}
-			return (queryCreator) -> {
-				Object entity = null;
-				try (ProjectingResultIterator it = toIterator(queryCreator)) {
-					if (it.hasNext()) {
-						entity = it.next();
-					}
-					if (it.hasNext()) {
-						throw new IllegalStateException("Exactly one item expected, but there are more");
-					}
-				}
-				if (queryMethod.isOptionalQuery()) {
-					return Optional.ofNullable(entity);
-				}
-				Assert.state(entity != null, "Exactly one item expected, but there is zero");
-				return entity;
-			};
+			return (creator) -> ReindexerQueryExecutions.toEntity(() -> toIterator(creator), method);
 		});
-	}
-
-	private List<Object> toList(ReindexerQueryCreator queryCreator) {
-		try (ProjectingResultIterator it = toIterator(queryCreator)) {
-			return toList(it);
-		}
-	}
-
-	private List<Object> toList(ProjectingResultIterator iterator) {
-		List<Object> result = new ArrayList<>();
-		while (iterator.hasNext()) {
-			Object next = iterator.next();
-			if (next != null) {
-				result.add(next);
-			}
-		}
-		return result;
 	}
 
 	private ProjectingResultIterator toIterator(ReindexerQueryCreator queryCreator) {
@@ -149,21 +101,16 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	@Override
 	public Object execute(Object[] parameters) {
-		ParameterAccessor parameterAccessor = new ParametersParameterAccessor(this.queryMethod.getParameters(), parameters);
-		ResultProcessor resultProcessor = this.queryMethod.getResultProcessor().withDynamicProjection(parameterAccessor);
+		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(), parameters);
+		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
 		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.namespace, this.entityInformation,
-				this.queryMethod, this.indexes, parameterAccessor, resultProcessor.getReturnedType());
-		Object result = this.queryExecution.get().execute(queryCreator);
+				this.indexes, parameterAccessor, resultProcessor.getReturnedType());
+		Object result = this.queryExecution.get().apply(queryCreator);
 		return resultProcessor.processResult(result);
 	}
 
 	@Override
 	public ReindexerQueryMethod getQueryMethod() {
-		return this.queryMethod;
-	}
-
-	@FunctionalInterface
-	private interface QueryExecution {
-		Object execute(ReindexerQueryCreator queryCreator);
+		return this.method;
 	}
 }

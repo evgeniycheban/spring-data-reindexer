@@ -16,20 +16,14 @@
 package org.springframework.data.reindexer.repository.query;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.StringJoiner;
+import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
@@ -47,7 +41,6 @@ import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
-import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 
@@ -62,7 +55,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private static final Pattern LIMIT_PATTERN = Pattern.compile("(?i)\\bLIMIT\\s+(\\d+)");
 
-	private final ReindexerQueryMethod queryMethod;
+	private final ReindexerQueryMethod method;
 
 	private final Namespace<?> namespace;
 
@@ -70,60 +63,49 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final Map<String, Integer> namedParameters;
 
-	private final Lazy<QueryExecution> queryExecution;
+	private final Lazy<BiFunction<ReindexerParameterAccessor, ReturnedType, Object>> queryExecution;
 
 	/**
 	 * Creates an instance.
 	 *
-	 * @param queryMethod the {@link QueryMethod} to use
+	 * @param method the {@link QueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param accessor the {@link QueryMethodValueEvaluationContextAccessor} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 */
-	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod queryMethod, ReindexerEntityInformation<?, ?> entityInformation,
+	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
 			QueryMethodValueEvaluationContextAccessor accessor, Reindexer reindexer) {
-		validate(queryMethod);
-		this.queryMethod = queryMethod;
+		validate(method);
+		this.method = method;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
-		this.queryEvaluator = createQueryExpressionEvaluator(accessor);
+		this.queryEvaluator = createQueryExpressionEvaluator(method, accessor);
 		this.namedParameters = new HashMap<>();
-		for (Parameter parameter : queryMethod.getParameters()) {
+		for (Parameter parameter : method.getParameters()) {
 			if (parameter.isNamedParameter()) {
 				parameter.getName().ifPresent(name -> this.namedParameters.put(name, parameter.getIndex()));
 			}
 		}
 		this.queryExecution = Lazy.of(() -> {
-			if (queryMethod.isCollectionQuery()) {
-				return this::toList;
+			if (method.isCollectionQuery()) {
+				return (parameters, type) -> ReindexerQueryExecutions.toList(() -> toIterator(parameters, type));
 			}
-			if (queryMethod.isPageQuery()) {
-				return (parameters, returnedType) -> {
-					try (ProjectingResultIterator it = toIterator(parameters, returnedType)) {
-						return PageableExecutionUtils.getPage(toList(it), parameters.getPageable(), it::getTotalCount);
-					}
-				};
+			if (method.isPageQuery()) {
+				return (parameters, type) -> ReindexerQueryExecutions.toPage(() -> toIterator(parameters, type), parameters);
 			}
-			if (queryMethod.isStreamQuery()) {
-				return this::toStream;
+			if (method.isStreamQuery()) {
+				return (parameters, type) -> ReindexerQueryExecutions.toStream(toIterator(parameters, type));
 			}
-			if (queryMethod.isIteratorQuery()) {
+			if (method.isIteratorQuery()) {
 				return this::toIterator;
 			}
-			if (this.queryMethod.isModifyingQuery()) {
-				return (parameters, returnedType) -> {
+			if (this.method.isModifyingQuery()) {
+				return (parameters, type) -> {
 					this.namespace.updateSql(prepareQuery(parameters));
 					return null;
 				};
 			}
-			return (parameters, returnedType) -> {
-				Object entity = toEntity(parameters, returnedType);
-				if (queryMethod.isOptionalQuery()) {
-					return Optional.ofNullable(entity);
-				}
-				Assert.state(entity != null, "Exactly one item expected, but there is zero");
-				return entity;
-			};
+			return (parameters, type) -> ReindexerQueryExecutions.toEntity(() -> toIterator(parameters, type), method);
 		});
 	}
 
@@ -136,51 +118,18 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		}
 	}
 
-	private QueryExpressionEvaluator createQueryExpressionEvaluator(QueryMethodValueEvaluationContextAccessor accessor) {
+	private QueryExpressionEvaluator createQueryExpressionEvaluator(ReindexerQueryMethod method, QueryMethodValueEvaluationContextAccessor accessor) {
 		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter
 				.of(ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_PREFIX + index, String::concat);
-		return queryRewriter.withEvaluationContextAccessor(accessor).parse(queryMethod.getQuery(), queryMethod.getParameters());
+		return queryRewriter.withEvaluationContextAccessor(accessor).parse(method.getQuery(), method.getParameters());
 	}
 
 	@Override
 	public Object execute(Object[] parameters) {
-		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.queryMethod.getParameters(), parameters);
-		ResultProcessor resultProcessor = this.queryMethod.getResultProcessor().withDynamicProjection(parameterAccessor);
-		Object result = this.queryExecution.get().execute(parameterAccessor, resultProcessor.getReturnedType());
+		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(), parameters);
+		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
+		Object result = this.queryExecution.get().apply(parameterAccessor, resultProcessor.getReturnedType());
 		return resultProcessor.processResult(result);
-	}
-
-	private Stream<Object> toStream(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
-		ProjectingResultIterator iterator = toIterator(parameters, returnedType);
-		Spliterator<Object> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
-		return StreamSupport.stream(spliterator, false);
-	}
-
-	private List<Object> toList(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
-		try (ProjectingResultIterator it = toIterator(parameters, returnedType)) {
-			return toList(it);
-		}
-	}
-
-	private List<Object> toList(ProjectingResultIterator iterator) {
-		List<Object> result = new ArrayList<>();
-		while (iterator.hasNext()) {
-			result.add(iterator.next());
-		}
-		return result;
-	}
-
-	private Object toEntity(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
-		Object item = null;
-		try (ProjectingResultIterator it = toIterator(parameters, returnedType)) {
-			if (it.hasNext()) {
-				item = it.next();
-			}
-			if (it.hasNext()) {
-				throw new IllegalStateException("Exactly one item expected, but there are more");
-			}
-		}
-		return item;
 	}
 
 	private ProjectingResultIterator toIterator(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
@@ -297,11 +246,6 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	@Override
 	public QueryMethod getQueryMethod() {
-		return this.queryMethod;
-	}
-
-	@FunctionalInterface
-	private interface QueryExecution {
-		Object execute(ReindexerParameterAccessor parameters, ReturnedType returnedType);
+		return this.method;
 	}
 }

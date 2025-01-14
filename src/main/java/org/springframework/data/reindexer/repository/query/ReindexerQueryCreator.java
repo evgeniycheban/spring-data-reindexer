@@ -53,8 +53,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final ReindexerEntityInformation<?, ?> entityInformation;
 
-	private final ReindexerQueryMethod queryMethod;
-
 	private final ParameterAccessor parameters;
 
 	private final ReturnedType returnedType;
@@ -63,13 +61,12 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	ReindexerQueryCreator(PartTree tree, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation,
-			ReindexerQueryMethod queryMethod, Map<String, ReindexerIndex> indexes,
+			Map<String, ReindexerIndex> indexes,
 			ParameterAccessor parameters, ReturnedType returnedType) {
 		super(tree, parameters);
 		this.tree = tree;
 		this.namespace = namespace;
 		this.entityInformation = entityInformation;
-		this.queryMethod = queryMethod;
 		this.parameters = parameters;
 		this.returnedType = returnedType;
 		this.indexes = indexes;
@@ -77,10 +74,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	ParameterAccessor getParameters() {
 		return this.parameters;
-	}
-
-	ReindexerQueryMethod getQueryMethod() {
-		return this.queryMethod;
 	}
 
 	ReturnedType getReturnedType() {
@@ -121,7 +114,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 					case CONTAINING, NOT_CONTAINING -> "%" + value + "%";
 					default -> (String) value;
 				};
-				yield part.getType() == Type.NOT_LIKE || part.getType() == Type.NOT_CONTAINING 
+				yield part.getType() == Type.NOT_LIKE || part.getType() == Type.NOT_CONTAINING
 						? base.not().like(indexName, expression) : base.like(indexName, expression);
 			}
 			default -> throw new IllegalArgumentException("Unsupported keyword!");
