@@ -28,6 +28,7 @@ import org.springframework.data.reindexer.repository.support.TransactionalNamesp
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.parser.PartTree;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.util.Lazy;
 
 /**
@@ -66,7 +67,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		this.tree = new PartTree(method.getName(), entityInformation.getJavaType());
 		this.queryExecution = Lazy.of(() -> {
 			if (method.isCollectionQuery()) {
-				return (creator) -> ReindexerQueryExecutions.toList(() -> toIterator(creator));
+				return (creator) -> ReindexerQueryExecutions.toList(toIterator(creator));
 			}
 			if (method.isStreamQuery()) {
 				return (creator) -> ReindexerQueryExecutions.toStream(toIterator(creator));
@@ -75,23 +76,24 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				return this::toIterator;
 			}
 			if (method.isPageQuery()) {
-				return (creator) -> ReindexerQueryExecutions.toPage(
-						() -> new ProjectingResultIterator(creator.createQuery().reqTotal(), creator.getReturnedType()),
-						creator.getParameters());
+				return (creator) -> {
+					ProjectingResultIterator iterator = new ProjectingResultIterator(creator.createQuery().reqTotal(), creator.getReturnedType());
+					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator), creator.getParameters().getPageable(), iterator::getTotalCount);
+				};
 			}
-			if (tree.isCountProjection()) {
+			if (this.tree.isCountProjection()) {
 				return (creator) -> creator.createQuery().count();
 			}
-			if (tree.isExistsProjection()) {
+			if (this.tree.isExistsProjection()) {
 				return (creator) -> creator.createQuery().exists();
 			}
-			if (tree.isDelete()) {
+			if (this.tree.isDelete()) {
 				return (creator) -> {
 					creator.createQuery().delete();
 					return null;
 				};
 			}
-			return (creator) -> ReindexerQueryExecutions.toEntity(() -> toIterator(creator), method);
+			return (creator) -> ReindexerQueryExecutions.toEntity(toIterator(creator), method);
 		});
 	}
 

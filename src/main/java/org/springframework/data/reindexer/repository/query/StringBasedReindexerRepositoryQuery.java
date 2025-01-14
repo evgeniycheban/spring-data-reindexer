@@ -41,6 +41,7 @@ import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 
@@ -88,10 +89,13 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		}
 		this.queryExecution = Lazy.of(() -> {
 			if (method.isCollectionQuery()) {
-				return (parameters, type) -> ReindexerQueryExecutions.toList(() -> toIterator(parameters, type));
+				return (parameters, type) -> ReindexerQueryExecutions.toList(toIterator(parameters, type));
 			}
 			if (method.isPageQuery()) {
-				return (parameters, type) -> ReindexerQueryExecutions.toPage(() -> toIterator(parameters, type), parameters);
+				return (parameters, type) -> {
+					ProjectingResultIterator iterator = toIterator(parameters, type);
+					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator), parameters.getPageable(), iterator::getTotalCount);
+				};
 			}
 			if (method.isStreamQuery()) {
 				return (parameters, type) -> ReindexerQueryExecutions.toStream(toIterator(parameters, type));
@@ -105,7 +109,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					return null;
 				};
 			}
-			return (parameters, type) -> ReindexerQueryExecutions.toEntity(() -> toIterator(parameters, type), method);
+			return (parameters, type) -> ReindexerQueryExecutions.toEntity(toIterator(parameters, type), method);
 		});
 	}
 

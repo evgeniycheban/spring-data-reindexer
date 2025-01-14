@@ -20,15 +20,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import ru.rt.restream.reindexer.ResultIterator;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.repository.query.ParameterAccessor;
-import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.Assert;
 
 /**
@@ -41,9 +37,9 @@ final class ReindexerQueryExecutions {
 	private ReindexerQueryExecutions() {
 	}
 
-	static Object toEntity(Supplier<ResultIterator<?>> iteratorSupplier, ReindexerQueryMethod method) {
+	static Object toEntity(ResultIterator<?> iterator, ReindexerQueryMethod method) {
 		Object entity = null;
-		try (ResultIterator<?> iterator = iteratorSupplier.get()) {
+		try (iterator) {
 			if (iterator.hasNext()) {
 				entity = iterator.next();
 			}
@@ -63,24 +59,14 @@ final class ReindexerQueryExecutions {
 		return StreamSupport.stream(spliterator, false).onClose(iterator::close);
 	}
 
-	static Page<Object> toPage(Supplier<ResultIterator<?>> iteratorSupplier, ParameterAccessor parameters) {
-		try (ResultIterator<?> iterator = iteratorSupplier.get()) {
-			return PageableExecutionUtils.getPage(toList(iterator), parameters.getPageable(), iterator::getTotalCount);
-		}
-	}
-
-	static List<Object> toList(Supplier<ResultIterator<?>> iteratorSupplier) {
-		try (ResultIterator<?> iterator = iteratorSupplier.get()) {
-			return toList(iterator);
-		}
-	}
-
-	private static List<Object> toList(ResultIterator<?> iterator) {
+	static List<Object> toList(ResultIterator<?> iterator) {
 		List<Object> result = new ArrayList<>();
-		while (iterator.hasNext()) {
-			Object next = iterator.next();
-			if (next != null) {
-				result.add(next);
+		try (iterator) {
+			while (iterator.hasNext()) {
+				Object next = iterator.next();
+				if (next != null) {
+					result.add(next);
+				}
 			}
 		}
 		return result;
