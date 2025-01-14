@@ -89,9 +89,9 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 	protected Query<?> and(Part part, Query<?> base, Iterator<Object> parameters) {
 		String indexName = part.getProperty().toDotPath();
 		return switch (part.getType()) {
-			case GREATER_THAN -> where(base, indexName, Condition.GT, parameters);
+			case GREATER_THAN, AFTER -> where(base, indexName, Condition.GT, parameters);
 			case GREATER_THAN_EQUAL -> where(base, indexName, Condition.GE, parameters);
-			case LESS_THAN -> where(base, indexName, Condition.LT, parameters);
+			case LESS_THAN, BEFORE -> where(base, indexName, Condition.LT, parameters);
 			case LESS_THAN_EQUAL -> where(base, indexName, Condition.LE, parameters);
 			case IN -> where(base, indexName, Condition.SET, parameters);
 			case NOT_IN -> where(base.not(), indexName, Condition.SET, parameters);
