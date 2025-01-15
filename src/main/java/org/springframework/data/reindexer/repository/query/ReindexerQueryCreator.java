@@ -107,7 +107,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 					yield where(part.getType() == Type.NOT_CONTAINING ? base.not() : base, indexName, Condition.SET, parameters);
 				}
 				Object value = parameters.next();
-				Assert.isInstanceOf(String.class, value, "Value of '" + part.getType() + "' expression must be String");
+				Assert.isInstanceOf(String.class, value, () -> "Value of '" + part.getType() + "' expression must be String");
 				String expression = switch (part.getType()) {
 					case STARTING_WITH -> value + "%";
 					case ENDING_WITH -> "%" + value;
