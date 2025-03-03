@@ -17,12 +17,12 @@ package org.springframework.data.reindexer.core.mapping;
 
 import ru.rt.restream.reindexer.NamespaceOptions;
 
+import org.springframework.data.expression.ValueExpression;
+import org.springframework.data.expression.ValueExpressionParser;
 import org.springframework.data.mapping.model.BasicPersistentEntity;
 import org.springframework.data.util.TypeInformation;
-import org.springframework.expression.Expression;
-import org.springframework.expression.ParserContext;
-import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -35,13 +35,13 @@ import org.springframework.util.StringUtils;
 public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, ReindexerPersistentProperty>
 		implements ReindexerPersistentEntity<T> {
 
-	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
+	private static final ValueExpressionParser PARSER = ValueExpressionParser.create(SpelExpressionParser::new);
 
 	private final String namespace;
 
 	private final NamespaceOptions namespaceOptions;
 
-	private final Expression expression;
+	private final ValueExpression expression;
 
 	/**
 	 * Creates an instance.
@@ -69,7 +69,7 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 
 	@Override
 	public String getNamespace() {
-		return this.expression != null ? this.expression.getValue(getEvaluationContext(null), String.class) : this.namespace;
+		return this.expression != null ? ObjectUtils.nullSafeToString(this.expression.evaluate(getValueEvaluationContext(null))) : this.namespace;
 	}
 
 	@Override
@@ -81,12 +81,12 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 		return StringUtils.uncapitalize(entityClass.getSimpleName());
 	}
 
-	private static Expression detectExpression(String potentialExpression) {
+	private static ValueExpression detectExpression(String potentialExpression) {
 		if (!StringUtils.hasText(potentialExpression)) {
 			return null;
 		}
-		Expression expression = PARSER.parseExpression(potentialExpression, ParserContext.TEMPLATE_EXPRESSION);
-		return expression instanceof LiteralExpression ? null : expression;
+		ValueExpression expression = PARSER.parse(potentialExpression);
+		return expression.isLiteral() ? null : expression;
 	}
 
 }
