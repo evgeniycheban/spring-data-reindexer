@@ -190,10 +190,9 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 				if (source != null) {
 					Supplier<Object> callback = () -> {
 						Namespace<?> namespace = this.reindexer.openNamespace(namespaceName, NamespaceOptions.defaultOptions(), referenceEntity.getType());
-						if (property.isCollectionLike()) {
-							return namespace.query().where(referenceEntity.getRequiredIdProperty().getName(), Condition.SET, (Collection<?>) source).toList();
-						}
-						return namespace.query().where(referenceEntity.getRequiredIdProperty().getName(), Condition.EQ, source).getOne();
+						String indexName = referenceEntity.getRequiredIdProperty().getName();
+						return property.isCollectionLike() ? namespace.query().where(indexName, Condition.SET, (Collection<?>) source).toList()
+								: namespace.query().where(indexName, Condition.EQ, source).getOne();
 					};
 					return this.lazyLoadingProxyFactory.createLazyLoadingProxy(property, callback, new NamespaceReferenceSource(namespaceName, source));
 				}

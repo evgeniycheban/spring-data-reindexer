@@ -28,10 +28,11 @@ import ru.rt.restream.reindexer.ReindexerConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
+import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
 
 @Configuration
 @EnableReindexerRepositories
-public class ReindexerConfig {
+public class ReindexerConfig extends ReindexerConfigurationSupport {
 
 	@Bean
 	public Reindexer reindexer() {
@@ -128,12 +129,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
+import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
 @EnableReindexerRepositories
 @EnableTransactionManagement
-public class TransactionalReindexerConfig {
+public class TransactionalReindexerConfig extends ReindexerConfigurationSupport {
 
 	@Bean
 	public Reindexer reindexer() {
