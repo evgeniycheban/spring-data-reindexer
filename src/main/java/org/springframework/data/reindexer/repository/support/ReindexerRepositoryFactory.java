@@ -23,6 +23,8 @@ import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 import org.springframework.data.reindexer.repository.query.ReindexerQueryMethod;
@@ -49,22 +51,28 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final Reindexer reindexer;
 
+	private final ReindexerMappingContext mappingContext;
+
 	private final ApplicationContext ctx;
 
 	/**
 	 * Creates an instance.
 	 *
 	 * @param reindexer the {@link Reindexer} to use
+	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param ctx the {@link ApplicationContext} to use
 	 */
-	public ReindexerRepositoryFactory(Reindexer reindexer, ApplicationContext ctx) {
+	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext, ApplicationContext ctx) {
 		this.reindexer = reindexer;
+		this.mappingContext = mappingContext;
 		this.ctx = ctx;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T, ID> ReindexerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
-		return MappingReindexerEntityInformation.getInstance(domainClass);
+		ReindexerPersistentEntity<T> persistentEntity = (ReindexerPersistentEntity<T>) this.mappingContext.getRequiredPersistentEntity(domainClass);
+		return new MappingReindexerEntityInformation<>(persistentEntity);
 	}
 
 	@Override
@@ -96,11 +104,11 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory, NamedQueries namedQueries) {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
 			if (queryMethod.hasQueryAnnotation()) {
-				return new StringBasedReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
+				return new StringBasedReindexerRepositoryQuery(queryMethod, ReindexerRepositoryFactory.this.mappingContext, getEntityInformation(metadata.getDomainType()),
 						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer);
 			}
 			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-					ReindexerRepositoryFactory.this.reindexer);
+					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer);
 		}
 
 	}

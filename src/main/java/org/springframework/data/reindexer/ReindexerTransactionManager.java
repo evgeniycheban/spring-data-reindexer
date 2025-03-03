@@ -19,8 +19,8 @@ import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.Transaction;
 
-import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
-import org.springframework.data.reindexer.repository.support.MappingReindexerEntityInformation;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
@@ -40,6 +40,8 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 
 	private final Reindexer reindexer;
 
+	private final ReindexerMappingContext mappingContext;
+
 	private final ReindexerNamespace<T> namespace;
 
 	/**
@@ -48,17 +50,20 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 	 * @param reindexer the {@link Reindexer} instance to use
 	 * @param domainClass the domain class to use
 	 */
-	public ReindexerTransactionManager(Reindexer reindexer, Class<T> domainClass) {
+	public ReindexerTransactionManager(Reindexer reindexer, ReindexerMappingContext mappingContext, Class<T> domainClass) {
 		Assert.notNull(reindexer, "reindexer cannot be null");
+		Assert.notNull(mappingContext, "mappingContext cannot be null");
 		Assert.notNull(domainClass, "domainClass cannot be null");
 		this.reindexer = reindexer;
+		this.mappingContext = mappingContext;
 		this.namespace = openNamespace(domainClass);
 	}
 
+	@SuppressWarnings("unchecked")
 	private ReindexerNamespace<T> openNamespace(Class<T> domainClass) {
-		ReindexerEntityInformation<T, ?> entityInformation = MappingReindexerEntityInformation.getInstance(domainClass);
-		return (ReindexerNamespace<T>) this.reindexer.openNamespace(entityInformation.getNamespaceName(),
-				entityInformation.getNamespaceOptions(), domainClass);
+		ReindexerPersistentEntity<?> persistentEntity = this.mappingContext.getRequiredPersistentEntity(domainClass);
+		return (ReindexerNamespace<T>) this.reindexer.openNamespace(persistentEntity.getNamespace(),
+				persistentEntity.getNamespaceOptions(), persistentEntity.getType());
 	}
 
 	@Override

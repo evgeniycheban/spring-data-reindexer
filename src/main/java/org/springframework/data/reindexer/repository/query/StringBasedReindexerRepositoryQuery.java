@@ -33,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.expression.ValueExpressionParser;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethod;
@@ -59,6 +60,10 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final ReindexerQueryMethod method;
 
+	private final ReindexerMappingContext mappingContext;
+
+	private final Reindexer reindexer;
+
 	private final Namespace<?> namespace;
 
 	private final QueryExpressionEvaluator queryEvaluator;
@@ -70,13 +75,15 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	/**
 	 * Creates an instance.
 	 *
-	 * @param method the {@link QueryMethod} to use
+	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param accessor the {@link QueryMethodValueEvaluationContextAccessor} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 */
-	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
+	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerMappingContext mappingContext, ReindexerEntityInformation<?, ?> entityInformation,
 			QueryMethodValueEvaluationContextAccessor accessor, Reindexer reindexer) {
+		this.mappingContext = mappingContext;
+		this.reindexer = reindexer;
 		validate(method);
 		this.method = method;
 		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
@@ -139,7 +146,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private ProjectingResultIterator toIterator(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
 		String preparedQuery = prepareQuery(parameters);
-		return new ProjectingResultIterator(this.namespace.execSql(preparedQuery), returnedType);
+		return new ProjectingResultIterator(this.reindexer, this.mappingContext, this.namespace.execSql(preparedQuery), returnedType);
 	}
 
 	private String prepareQuery(ReindexerParameterAccessor parameters) {

@@ -17,6 +17,8 @@ package org.springframework.data.reindexer.repository.query;
 
 import ru.rt.restream.reindexer.NamespaceOptions;
 
+import org.springframework.data.reindexer.core.mapping.NamespaceReference;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.repository.core.EntityInformation;
 
 /**
@@ -46,5 +48,12 @@ public interface ReindexerEntityInformation<T, ID> extends EntityInformation<T, 
 	 * @return the field that the id will be persisted to
 	 */
 	String getIdFieldName();
+
+	/**
+	 * Returns an iterable of {@link NamespaceReference}.
+	 *
+	 * @return the iterable of {@link NamespaceReference} to use
+	 */
+	Iterable<ReindexerPersistentProperty> getNamespaceReferences();
 
 }

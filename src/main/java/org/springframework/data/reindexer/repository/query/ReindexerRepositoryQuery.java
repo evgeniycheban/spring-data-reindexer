@@ -24,6 +24,7 @@ import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
@@ -42,6 +43,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final ReindexerEntityInformation<?, ?> entityInformation;
 
+	private final ReindexerMappingContext mappingContext;
+
+	private final Reindexer reindexer;
+
 	private final Namespace<?> namespace;
 
 	private final PartTree tree;
@@ -57,9 +62,11 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param reindexer the {@link Reindexer} to use                         
 	 */
-	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation, Reindexer reindexer) {
+	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext, Reindexer reindexer) {
 		this.method = method;
 		this.entityInformation = entityInformation;
+		this.mappingContext = mappingContext;
+		this.reindexer = reindexer;
 		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.indexes = namespace.getIndexes().stream().collect(Collectors.toUnmodifiableMap(ReindexerIndex::getName, Function.identity()));
@@ -77,7 +84,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			}
 			if (method.isPageQuery()) {
 				return (creator) -> {
-					ProjectingResultIterator iterator = new ProjectingResultIterator(creator.createQuery().reqTotal(), creator.getReturnedType());
+					ProjectingResultIterator iterator = new ProjectingResultIterator(this.reindexer, this.mappingContext, creator.createQuery().reqTotal(), creator.getReturnedType());
 					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator), creator.getParameters().getPageable(), iterator::getTotalCount);
 				};
 			}
@@ -98,15 +105,15 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private ProjectingResultIterator toIterator(ReindexerQueryCreator queryCreator) {
-		return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType());
+		return new ProjectingResultIterator(this.reindexer, this.mappingContext, queryCreator.createQuery(), queryCreator.getReturnedType());
 	}
 
 	@Override
 	public Object execute(Object[] parameters) {
 		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(), parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
-		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.namespace, this.entityInformation,
-				this.indexes, parameterAccessor, resultProcessor.getReturnedType());
+		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace, this.entityInformation,
+				this.mappingContext, this.indexes, parameterAccessor, resultProcessor.getReturnedType());
 		Object result = this.queryExecution.get().apply(queryCreator);
 		return resultProcessor.processResult(result);
 	}

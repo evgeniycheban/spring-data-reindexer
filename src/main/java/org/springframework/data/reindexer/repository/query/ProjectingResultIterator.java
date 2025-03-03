@@ -17,16 +17,22 @@ package org.springframework.data.reindexer.repository.query;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import ru.rt.restream.reindexer.AggregationResult;
 import ru.rt.restream.reindexer.AggregationResult.Facet;
+import ru.rt.restream.reindexer.Namespace;
+import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.Query;
+import ru.rt.restream.reindexer.Query.Condition;
+import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
@@ -34,9 +40,16 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.data.mapping.PreferredConstructor;
 import org.springframework.data.mapping.model.PreferredConstructorDiscoverer;
+import org.springframework.data.reindexer.core.convert.LazyLoadingProxyFactory;
+import org.springframework.data.reindexer.core.convert.NamespaceReferenceSource;
+import org.springframework.data.reindexer.core.mapping.NamespaceReference;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.util.ReflectionUtils;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -46,6 +59,10 @@ import org.springframework.util.Assert;
 final class ProjectingResultIterator implements ResultIterator<Object> {
 
 	private static final Map<Class<?>, Constructor<?>> cache = new ConcurrentHashMap<>();
+
+	private final Reindexer reindexer;
+
+	private final ReindexerMappingContext mappingContext;
 
 	private final ResultIterator<?> delegate;
 
@@ -57,13 +74,17 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 
 	private final ConversionService conversionService = DefaultConversionService.getSharedInstance();
 
+	private final LazyLoadingProxyFactory lazyLoadingProxyFactory = new LazyLoadingProxyFactory();
+
 	private int aggregationPosition;
 
-	ProjectingResultIterator(Query<?> query, ReturnedType projectionType) {
-		this(query.execute(), projectionType);
+	ProjectingResultIterator(Reindexer reindexer, ReindexerMappingContext mappingContext, Query<?> query, ReturnedType projectionType) {
+		this(reindexer, mappingContext, query.execute(), projectionType);
 	}
 
-	ProjectingResultIterator(ResultIterator<?> delegate, ReturnedType projectionType) {
+	ProjectingResultIterator(Reindexer reindexer, ReindexerMappingContext mappingContext, ResultIterator<?> delegate, ReturnedType projectionType) {
+		this.reindexer = reindexer;
+		this.mappingContext = mappingContext;
 		this.delegate = delegate;
 		this.projectionType = projectionType;
 		this.aggregationFacet = getAggregationFacet();
@@ -137,15 +158,48 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 			return constructTargetObject(arguments);
 		}
 		Object item = this.delegate.next();
+		ReindexerPersistentEntity<?> persistentEntity = this.mappingContext.getRequiredPersistentEntity(this.projectionType.getDomainType());
 		if (this.projectionType.needsCustomConstruction() && !this.projectionType.getReturnedType().isInterface()) {
 			List<String> properties = this.projectionType.getInputProperties();
 			Object[] values = new Object[properties.size()];
 			for (int i = 0; i < properties.size(); i++) {
-				values[i] = BeanPropertyUtils.getProperty(item, properties.get(i));
+				String property = properties.get(i);
+				ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(property);
+				Object proxy = createProxyIfNeeded(persistentProperty, item);
+				values[i] = proxy != null ? proxy : BeanPropertyUtils.getProperty(item, property);
 			}
 			return constructTargetObject(values);
 		}
+		for (ReindexerPersistentProperty property : persistentEntity.getPersistentProperties(NamespaceReference.class)) {
+			Object proxy = createProxyIfNeeded(property, item);
+			if (proxy != null) {
+				BeanPropertyUtils.setProperty(item, property.getName(), proxy);
+			}
+		}
 		return item;
+	}
+
+	private Object createProxyIfNeeded(ReindexerPersistentProperty property, Object entity) {
+		if (property.isNamespaceReference()) {
+			NamespaceReference namespaceReference = property.getNamespaceReference();
+			if (namespaceReference.lazy()) {
+				ReindexerPersistentEntity<?> referenceEntity = this.mappingContext.getRequiredPersistentEntity(property);
+				String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
+						: referenceEntity.getNamespace();
+				Object source = BeanPropertyUtils.getProperty(entity, namespaceReference.indexName());
+				if (source != null) {
+					Supplier<Object> callback = () -> {
+						Namespace<?> namespace = this.reindexer.openNamespace(namespaceName, NamespaceOptions.defaultOptions(), referenceEntity.getType());
+						if (property.isCollectionLike()) {
+							return namespace.query().where(referenceEntity.getRequiredIdProperty().getName(), Condition.SET, (Collection<?>) source).toList();
+						}
+						return namespace.query().where(referenceEntity.getRequiredIdProperty().getName(), Condition.EQ, source).getOne();
+					};
+					return this.lazyLoadingProxyFactory.createLazyLoadingProxy(property, callback, new NamespaceReferenceSource(namespaceName, source));
+				}
+			}
+		}
+		return null;
 	}
 
 	private Object constructTargetObject(Object[] values) {
