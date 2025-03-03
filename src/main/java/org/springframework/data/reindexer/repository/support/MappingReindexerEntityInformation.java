@@ -15,17 +15,12 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
-import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import ru.rt.restream.reindexer.NamespaceOptions;
-import ru.rt.restream.reindexer.annotations.Reindex;
 
-import org.springframework.data.reindexer.core.mapping.Namespace;
+import org.springframework.data.reindexer.core.mapping.NamespaceReference;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
-import org.springframework.data.util.ReflectionUtils;
-import org.springframework.util.Assert;
 
 /**
  * {@link ReindexerEntityInformation} implementation using a domain class to lookup the necessary
@@ -35,102 +30,56 @@ import org.springframework.util.Assert;
  */
 public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntityInformation<T, ID> {
 
-	private static final Map<Class<?>, MappingReindexerEntityInformation<?, ?>> CACHE = new ConcurrentHashMap<>();
-
-	private final Class<T> domainClass;
-
-	private final Field idField;
-
-	private final String namespaceName;
-
-	private final NamespaceOptions namespaceOptions;
-
-	/**
-	 * Creates and caches an instance of {@link MappingReindexerEntityInformation} for the given domain class.
-	 *
-	 * @param domainClass the domain class to use
-	 * @return the {@link MappingReindexerEntityInformation} to use
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T, ID> MappingReindexerEntityInformation<T, ID> getInstance(Class<T> domainClass) {
-		return (MappingReindexerEntityInformation<T, ID>) CACHE.computeIfAbsent(domainClass, MappingReindexerEntityInformation::new);
-	}
+	private final ReindexerPersistentEntity<T> metadata;
 
 	/**
 	 * Creates an instance.
 	 *
-	 * @param domainClass the domain class to use
 	 */
-	public MappingReindexerEntityInformation(Class<T> domainClass) {
-		this.domainClass = domainClass;
-		this.idField = getIdField(domainClass);
-		Namespace namespaceAnnotation = domainClass.getAnnotation(Namespace.class);
-		Assert.state(namespaceAnnotation != null, () -> "@Namespace annotation is not found on " + domainClass);
-		this.namespaceName = namespaceAnnotation.name();
-		this.namespaceOptions = new NamespaceOptions(namespaceAnnotation.enableStorage(),
-				namespaceAnnotation.createStorageIfMissing(), namespaceAnnotation.dropOnIndexesConflict(),
-				namespaceAnnotation.dropOnFileFormatError(), namespaceAnnotation.disableObjCache(),
-				namespaceAnnotation.objCacheItemsCount());
-	}
-
-	private Field getIdField(Class<T> domainClass) {
-		Field idField = ReflectionUtils.findField(domainClass, new ReflectionUtils.DescribedFieldFilter() {
-			@Override
-			public String getDescription() {
-				return "Found more than one field with @Reindex(isPrimaryKey = true) in " + domainClass;
-			}
-
-			@Override
-			public boolean matches(Field field) {
-				Reindex reindexAnnotation = field.getAnnotation(Reindex.class);
-				return reindexAnnotation != null && reindexAnnotation.isPrimaryKey();
-			}
-		}, true);
-		Assert.state(idField != null, () -> "ID is not found consider adding @Reindex(isPrimaryKey = true) field to " + domainClass);
-		org.springframework.util.ReflectionUtils.makeAccessible(idField);
-		return idField;
+	public MappingReindexerEntityInformation(ReindexerPersistentEntity<T> metadata) {
+		this.metadata = metadata;
 	}
 
 	@Override
 	public String getNamespaceName() {
-		return this.namespaceName;
+		return this.metadata.getNamespace();
 	}
 
 	@Override
 	public NamespaceOptions getNamespaceOptions() {
-		return this.namespaceOptions;
+		return this.metadata.getNamespaceOptions();
 	}
 
 	@Override
 	public String getIdFieldName() {
-		return this.idField.getName();
+		return this.metadata.getRequiredIdProperty().getName();
 	}
 
 	@Override
 	public boolean isNew(T entity) {
-		return getIdValue(entity) == null;
-	}
-
-	@Override
-	public ID getId(T entity) {
-		return getIdValue(entity);
+		return this.metadata.isNew(entity);
 	}
 
 	@SuppressWarnings("unchecked")
-	private ID getIdValue(T entity) {
-		return (ID) org.springframework.util.ReflectionUtils.getField(this.idField, entity);
+	@Override
+	public ID getId(T entity) {
+		return (ID) this.metadata.getIdentifierAccessor(entity).getIdentifier();
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public Class<ID> getIdType() {
-		return (Class<ID>) this.idField.getType();
+		return (Class<ID>) this.metadata.getRequiredIdProperty().getType();
 	}
 
 	@Override
 	public Class<T> getJavaType() {
-		return this.domainClass;
+		return this.metadata.getType();
+	}
+
+	@Override
+	public Iterable<ReindexerPersistentProperty> getNamespaceReferences() {
+		return this.metadata.getPersistentProperties(NamespaceReference.class);
 	}
 
 }

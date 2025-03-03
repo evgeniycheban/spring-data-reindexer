@@ -64,6 +64,7 @@ public class ReindexerRepositoryConfigurationExtension extends RepositoryConfigu
 	public void postProcess(BeanDefinitionBuilder builder, AnnotationRepositoryConfigurationSource config) {
 		AnnotationAttributes attributes = config.getAttributes();
 		builder.addPropertyReference("reindexer", attributes.getString("reindexerRef"));
+		builder.addPropertyReference("mappingContext", "reindexerMappingContext");
 	}
 
 }

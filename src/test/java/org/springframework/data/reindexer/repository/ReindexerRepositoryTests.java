@@ -53,6 +53,7 @@ import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.annotations.Enumerated;
 import ru.rt.restream.reindexer.annotations.Reindex;
+import ru.rt.restream.reindexer.annotations.Transient;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -68,9 +69,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
+import org.springframework.data.reindexer.core.mapping.NamespaceReference;
+import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
+import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
@@ -111,6 +115,9 @@ class ReindexerRepositoryTests {
 
 	@Autowired
 	TestItemReindexerRepository repository;
+
+	@Autowired
+	TestJoinedItemRepository joinedItemRepository;
 
 	@Autowired
 	TestItemTransactionalService service;
@@ -1393,11 +1400,33 @@ class ReindexerRepositoryTests {
 		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsOnly(1L, 2L);
 	}
 
+	@Test
+	public void findByNameWithJoinedItems() {
+		TestJoinedItem joinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
+		Set<TestJoinedItem> expectedJoinedItems = new HashSet<>();
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName2")));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(3L, "TestName3")));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(4L, "TestName4")));
+		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
+		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItem.getId(), joinedItemIds, "TestName", "TestValue"));
+		TestItem foundItem = this.repository.findByName("TestName").orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getName()).isEqualTo(expectedItem.getName());
+		assertThat(foundItem.getValue()).isEqualTo(expectedItem.getValue());
+ 		assertThat(foundItem.getJoinedItem()).isEqualTo(joinedItem);
+		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
+		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItems()) {
+			assertThat(expectedJoinedItems.remove(foundJoinedItem)).isTrue();
+		}
+		assertThat(expectedJoinedItems).hasSize(0);
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
 	@ComponentScan(basePackageClasses = TestItemTransactionalService.class)
-	static class TestConfig {
+	static class TestConfig extends ReindexerConfigurationSupport {
 
 		@Bean
 		Reindexer reindexer() {
@@ -1407,8 +1436,8 @@ class ReindexerRepositoryTests {
 		}
 
 		@Bean
-		ReindexerTransactionManager<TestItem> txManager(Reindexer reindexer) {
-			return new ReindexerTransactionManager<>(reindexer, TestItem.class);
+		ReindexerTransactionManager<TestItem> txManager(Reindexer reindexer) throws ClassNotFoundException {
+			return new ReindexerTransactionManager<>(reindexer, reindexerMappingContext(), TestItem.class);
 		}
 
 	}
@@ -1626,6 +1655,11 @@ class ReindexerRepositoryTests {
 		List<TestItem> findAllByNameEndingWith(String text);
 	}
 
+	@Repository
+	interface TestJoinedItemRepository extends ReindexerRepository<TestJoinedItem, Long> {
+
+	}
+
 	@Namespace(name = NAMESPACE_NAME)
 	public static class TestItem {
 
@@ -1651,6 +1685,18 @@ class ReindexerRepositoryTests {
 
 		@Reindex(name = "active")
 		private boolean active;
+
+		private Long joinedItemId;
+
+		private List<Long> joinedItemIds = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemId", joinType = JoinType.LEFT, lazy = true)
+		private TestJoinedItem joinedItem;
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT)
+		private List<TestJoinedItem> joinedItems = new ArrayList<>();
 
 		public TestItem() {
 		}
@@ -1679,6 +1725,14 @@ class ReindexerRepositoryTests {
 			this.value = value;
 			this.testEnumString = testEnumString;
 			this.testEnumOrdinal = testEnumOrdinal;
+		}
+
+		public TestItem(Long id, Long joinedItemId, List<Long> joinedItemIds, String name, String value) {
+			this.id = id;
+			this.joinedItemId = joinedItemId;
+			this.joinedItemIds = joinedItemIds;
+			this.name = name;
+			this.value = value;
 		}
 
 		public Long getId() {
@@ -1737,20 +1791,54 @@ class ReindexerRepositoryTests {
 			this.active = active;
 		}
 
+		public Long getJoinedItemId() {
+			return this.joinedItemId;
+		}
+
+		public void setJoinedItemId(Long joinedItemId) {
+			this.joinedItemId = joinedItemId;
+		}
+
+		public List<Long> getJoinedItemIds() {
+			return this.joinedItemIds;
+		}
+
+		public void setJoinedItemIds(List<Long> joinedItemIds) {
+			this.joinedItemIds = joinedItemIds;
+		}
+
+		public TestJoinedItem getJoinedItem() {
+			return this.joinedItem;
+		}
+
+		public void setJoinedItem(TestJoinedItem joinedItem) {
+			this.joinedItem = joinedItem;
+		}
+
+		public List<TestJoinedItem> getJoinedItems() {
+			return this.joinedItems;
+		}
+
+		public void setJoinedItems(List<TestJoinedItem> joinedItems) {
+			this.joinedItems = joinedItems;
+		}
+
 		@Override
 		public boolean equals(Object o) {
 			if (o == null || getClass() != o.getClass()) {
 				return false;
 			}
-			TestItem testItem = (TestItem) o;
-			return Objects.equals(id, testItem.id) && Objects.equals(name, testItem.name) && Objects.equals(value, testItem.value)
-					&& testEnumString == testItem.testEnumString && testEnumOrdinal == testItem.testEnumOrdinal && Objects.equals(cities, testItem.cities)
-					&& active == testItem.active;
+			TestItem item = (TestItem) o;
+			return active == item.active && Objects.equals(id, item.id) && Objects.equals(name, item.name)
+					&& Objects.equals(value, item.value) && testEnumString == item.testEnumString
+					&& testEnumOrdinal == item.testEnumOrdinal && Objects.equals(cities, item.cities)
+					&& Objects.equals(joinedItemId, item.joinedItemId) && Objects.equals(joinedItemIds, item.joinedItemIds);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities, active);
+			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities,
+					active, joinedItemId, joinedItemIds);
 		}
 
 		@Override
@@ -1763,6 +1851,63 @@ class ReindexerRepositoryTests {
 					", testEnumOrdinal=" + this.testEnumOrdinal +
 					", cities=" + this.cities +
 					", active=" + this.active +
+					'}';
+		}
+
+	}
+
+	@Namespace(name = "test_joined_items")
+	public static class TestJoinedItem {
+
+		@Reindex(name = "id", isPrimaryKey = true)
+		private Long id;
+
+		@Reindex(name = "name")
+		private String name;
+
+		public TestJoinedItem() {
+		}
+
+		public TestJoinedItem(Long id, String name) {
+			this.id = id;
+			this.name = name;
+		}
+
+		public Long getId() {
+			return this.id;
+		}
+
+		public void setId(Long id) {
+			this.id = id;
+		}
+
+		public String getName() {
+			return this.name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
+			TestJoinedItem that = (TestJoinedItem) o;
+			return Objects.equals(this.id, that.id) && Objects.equals(this.name, that.name);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(this.id, this.name);
+		}
+
+		@Override
+		public String toString() {
+			return "TestJoinedItem{" +
+					"id=" + this.id +
+					", name='" + this.name + '\'' +
 					'}';
 		}
 
