@@ -18,7 +18,6 @@ package org.springframework.data.reindexer.core.mapping;
 import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.annotations.Transient;
 
-import org.springframework.data.annotation.Reference;
 import org.springframework.data.mapping.Association;
 import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.mapping.model.AnnotationBasedPersistentProperty;
@@ -37,9 +36,6 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 	private final Lazy<NamespaceReference> getReference = Lazy.of(() -> findAnnotation(NamespaceReference.class));
 
-	private final Lazy<Boolean> isReference = Lazy.of(() -> !super.isTransient()
-			&& (isAnnotationPresent(Reference.class) || super.isAssociation()));
-
 	private final Lazy<Boolean> isIdProperty = Lazy.of(() -> {
 		if (super.isIdProperty()) {
 			return true;
@@ -48,12 +44,8 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 		return reindex != null && reindex.isPrimaryKey();
 	});
 
-	private final Lazy<Boolean> isTransient = Lazy.of(() -> {
-		if (super.isTransient()) {
-			return true;
-		}
-		return isAnnotationPresent(Transient.class) && !this.isReference.get();
-	});
+	private final Lazy<Boolean> isTransient = Lazy.of(() -> !isNamespaceReference()
+			&& (super.isTransient() || isAnnotationPresent(Transient.class)));
 
 	/**
 	 * Creates a new {@link BasicReindexerPersistentProperty}.
@@ -69,11 +61,6 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	@Override
 	protected Association<ReindexerPersistentProperty> createAssociation() {
 		return new Association<>(this, null);
-	}
-
-	@Override
-	public boolean isAssociation() {
-		return this.isReference.get();
 	}
 
 	@Override
