@@ -17,15 +17,12 @@ package org.springframework.data.reindexer.repository.query;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import ru.rt.restream.reindexer.ResultIterator;
-
-import org.springframework.util.Assert;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -37,7 +34,7 @@ final class ReindexerQueryExecutions {
 	private ReindexerQueryExecutions() {
 	}
 
-	static Object toEntity(ResultIterator<?> iterator, ReindexerQueryMethod method) {
+	static Object toEntity(ResultIterator<?> iterator) {
 		Object entity = null;
 		try (iterator) {
 			if (iterator.hasNext()) {
@@ -47,10 +44,6 @@ final class ReindexerQueryExecutions {
 				throw new IllegalStateException("Exactly row expected, but there are more");
 			}
 		}
-		if (method.isOptionalQuery()) {
-			return Optional.ofNullable(entity);
-		}
-		Assert.state(entity != null, "Exactly one item expected, but there is zero");
 		return entity;
 	}
 

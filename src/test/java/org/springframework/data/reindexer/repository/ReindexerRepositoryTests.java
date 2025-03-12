@@ -17,6 +17,7 @@ package org.springframework.data.reindexer.repository;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -358,12 +359,6 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
-	}
-
-	@Test
-	public void getByNameWhenNotExistsThenException() {
-		assertThrows(IllegalStateException.class, () -> this.repository.getByName("notExists"),
-				"Exactly one item expected, but there is zero");
 	}
 
 	@Test
@@ -1422,6 +1417,34 @@ class ReindexerRepositoryTests {
 		assertThat(expectedJoinedItems).hasSize(0);
 	}
 
+	@Test
+	public void findProjectionByNameWithJoinedItems() {
+		TestJoinedItem nestedJoinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
+		TestJoinedItem joinedItem = this.joinedItemRepository.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
+		Map<Long, TestJoinedItem> expectedJoinedItems = new HashMap<>();
+		expectedJoinedItems.put(3L, this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
+		expectedJoinedItems.put(4L, this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
+		expectedJoinedItems.put(5L, this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
+		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
+		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItem.getId(), joinedItemIds, "TestName", "TestValue"));
+		TestItemProjectionWithJoinedItems foundItem = this.repository.findProjectionByName("TestName");
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getJoinedItem().getId()).isEqualTo(joinedItem.getId());
+		assertThat(foundItem.getJoinedItem().getName()).isEqualTo(joinedItem.getName());
+		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
+		for (TestJoinedItemProjection foundJoinedItem : foundItem.getJoinedItems()) {
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.remove(foundJoinedItem.getId());
+			assertThat(expectedJoinedItem).isNotNull();
+			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
+			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		}
+		assertThat(expectedJoinedItems).hasSize(0);
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1472,6 +1495,8 @@ class ReindexerRepositoryTests {
 	interface TestItemReindexerRepository extends ReindexerRepository<TestItem, Long> {
 
 		Optional<TestItem> findByName(String name);
+
+		TestItemProjectionWithJoinedItems findProjectionByName(String name);
 
 		Optional<TestItem> findByNameAndValue(String name, String value);
 
@@ -1865,11 +1890,23 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "name")
 		private String name;
 
+		private Long nestedJoinedItemId;
+
+		@Transient
+		@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT, lazy = true)
+		private TestJoinedItem nestedJoinedItem;
+
 		public TestJoinedItem() {
 		}
 
 		public TestJoinedItem(Long id, String name) {
 			this.id = id;
+			this.name = name;
+		}
+
+		public TestJoinedItem(Long id, Long nestedJoinedItemId, String name) {
+			this.id = id;
+			this.nestedJoinedItemId = nestedJoinedItemId;
 			this.name = name;
 		}
 
@@ -1887,6 +1924,22 @@ class ReindexerRepositoryTests {
 
 		public void setName(String name) {
 			this.name = name;
+		}
+
+		public Long getNestedJoinedItemId() {
+			return this.nestedJoinedItemId;
+		}
+
+		public void setNestedJoinedItemId(Long nestedJoinedItemId) {
+			this.nestedJoinedItemId = nestedJoinedItemId;
+		}
+
+		public TestJoinedItem getNestedJoinedItem() {
+			return this.nestedJoinedItem;
+		}
+
+		public void setNestedJoinedItem(TestJoinedItem nestedJoinedItem) {
+			this.nestedJoinedItem = nestedJoinedItem;
 		}
 
 		@Override
@@ -2019,6 +2072,62 @@ class ReindexerRepositoryTests {
 		@PersistenceCreator
 		TestItemPreferredConstructorRecord(String name) {
 			this(null, name);
+		}
+
+	}
+
+	public static class TestItemProjectionWithJoinedItems {
+
+		private final Long id;
+
+		private final TestJoinedItemProjection joinedItem;
+
+		private final Collection<TestJoinedItemProjection> joinedItems;
+
+		public TestItemProjectionWithJoinedItems(Long id, TestJoinedItemProjection joinedItem, Collection<TestJoinedItemProjection> joinedItems) {
+			this.id = id;
+			this.joinedItem = joinedItem;
+			this.joinedItems = joinedItems;
+		}
+
+		public Long getId() {
+			return this.id;
+		}
+
+		public TestJoinedItemProjection getJoinedItem() {
+			return this.joinedItem;
+		}
+
+		public Collection<TestJoinedItemProjection> getJoinedItems() {
+			return this.joinedItems;
+		}
+
+	}
+
+	public static class TestJoinedItemProjection {
+
+		private final Long id;
+
+		private final String name;
+
+		private final TestJoinedItemProjection nestedJoinedItem;
+
+		public TestJoinedItemProjection(Long id, String name, TestJoinedItemProjection nestedJoinedItem) {
+			this.id = id;
+			this.name = name;
+			this.nestedJoinedItem = nestedJoinedItem;
+		}
+
+		public Long getId() {
+			return this.id;
+		}
+
+		public String getName() {
+			return this.name;
+		}
+
+		public TestJoinedItemProjection getNestedJoinedItem() {
+			return this.nestedJoinedItem;
 		}
 
 	}

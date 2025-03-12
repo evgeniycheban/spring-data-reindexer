@@ -23,6 +23,8 @@ import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
+import org.springframework.data.reindexer.core.convert.MappingReindexerConverter;
+import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
@@ -40,6 +42,7 @@ import org.springframework.data.repository.query.QueryLookupStrategy;
 import org.springframework.data.repository.query.QueryMethodEvaluationContextProvider;
 import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
+import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 
 /**
@@ -55,6 +58,8 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final ApplicationContext ctx;
 
+	private final Lazy<ReindexerConverter> reindexerConverter;
+
 	/**
 	 * Creates an instance.
 	 *
@@ -66,6 +71,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
 		this.ctx = ctx;
+		this.reindexerConverter = Lazy.of(() -> new MappingReindexerConverter(reindexer, mappingContext, getProjectionFactory()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -104,11 +110,11 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory, NamedQueries namedQueries) {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
 			if (queryMethod.hasQueryAnnotation()) {
-				return new StringBasedReindexerRepositoryQuery(queryMethod, ReindexerRepositoryFactory.this.mappingContext, getEntityInformation(metadata.getDomainType()),
-						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer);
+				return new StringBasedReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
+						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter.get());
 			}
 			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer);
+					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter.get());
 		}
 
 	}

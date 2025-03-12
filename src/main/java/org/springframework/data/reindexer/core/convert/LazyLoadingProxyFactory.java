@@ -36,6 +36,7 @@ import org.springframework.cglib.proxy.Callback;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.Factory;
 import org.springframework.cglib.proxy.MethodProxy;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.reindexer.LazyLoadingException;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.util.Lock;
@@ -59,20 +60,21 @@ public final class LazyLoadingProxyFactory {
 	/**
 	 * Creates a lazy loading proxy that uses {@literal callback} to fetch an association.
 	 *
+	 * @param type the target type of the proxy being created to use
 	 * @param property the {@link ReindexerPersistentProperty} to use
 	 * @param callback the callback to fetch an association
 	 * @param source the source of an association to use
+	 * @param valueConverter the value converter to use
 	 */
-	public Object createLazyLoadingProxy(ReindexerPersistentProperty property, Supplier<Object> callback,
-			Object source) {
-		Class<?> propertyType = property.getType();
-		LazyLoadingInterceptor interceptor = new LazyLoadingInterceptor(property, callback, source);
-		if (!propertyType.isInterface()) {
-			Factory factory = (Factory) this.objenesis.newInstance(getEnhancedTypeFor(propertyType));
+	public Object createLazyLoadingProxy(Class<?> type, ReindexerPersistentProperty property, Supplier<Object> callback,
+			Object source, Converter<Object, ?> valueConverter) {
+		LazyLoadingInterceptor interceptor = new LazyLoadingInterceptor(property, callback, source, valueConverter);
+		if (!type.isInterface()) {
+			Factory factory = (Factory) this.objenesis.newInstance(getEnhancedTypeFor(type));
 			factory.setCallbacks(new Callback[] { interceptor });
 			return factory;
 		}
-		ProxyFactory proxyFactory = prepareFactory(propertyType);
+		ProxyFactory proxyFactory = prepareFactory(type);
 		proxyFactory.addAdvice(interceptor);
 		return proxyFactory.getProxy(LazyLoadingProxy.class.getClassLoader());
 	}
@@ -128,14 +130,17 @@ public final class LazyLoadingProxyFactory {
 
 		private final Object source;
 
+		private final Converter<Object, ?> valueConverter;
+
 		private volatile boolean resolved;
 
 		private Object result;
 
-		private LazyLoadingInterceptor(ReindexerPersistentProperty property, Supplier<Object> callback, Object source) {
+		private LazyLoadingInterceptor(ReindexerPersistentProperty property, Supplier<Object> callback, Object source, Converter<Object, ?> valueConverter) {
 			this.property = property;
 			this.callback = callback;
 			this.source = source;
+			this.valueConverter = valueConverter;
 		}
 
 		@Override
@@ -239,7 +244,7 @@ public final class LazyLoadingProxyFactory {
 			}
 			try (AcquiredLock l = this.writeLock.lock()) {
 				if (!this.resolved) {
-					this.result = this.callback.get();
+					this.result = this.valueConverter.convert(this.callback.get());
 					this.resolved = true;
 				}
 				return this.result;
