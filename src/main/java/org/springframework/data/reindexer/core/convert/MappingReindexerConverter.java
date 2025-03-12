@@ -118,10 +118,9 @@ public class MappingReindexerConverter implements ReindexerConverter {
 			ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(propertyName);
 			if (persistentProperty.isNamespaceReference()) {
 				NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
-				Class<?> referenceType = propertyProjection.getMappedType().isCollectionLike() ? propertyProjection.getActualMappedType().getType()
-						: propertyProjection.getMappedType().getType();
+				Class<?> referenceType = propertyProjection.getMappedType().getRequiredActualType().getType();
 				EntityProjection<Object, Object> referenceProjection = (EntityProjection<Object, Object>) this.projectionIntrospector
-						.introspect(referenceType, persistentProperty.getActualType());
+						.introspect(referenceType, propertyProjection.getDomainType().getRequiredActualType().getType());
 				if (namespaceReference.lazy()) {
 					Object proxy = createProxyIfNeeded(namespaceReference, referenceType, persistentProperty, entity,
 							referenceValue -> {
