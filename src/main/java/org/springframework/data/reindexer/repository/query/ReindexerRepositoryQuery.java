@@ -24,6 +24,7 @@ import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 
+import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.repository.query.RepositoryQuery;
@@ -53,6 +54,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final Map<String, ReindexerIndex> indexes;
 
+	private final ReindexerConverter reindexerConverter;
+
 	private final Lazy<Function<ReindexerQueryCreator, Object>> queryExecution;
 
 	/**
@@ -60,13 +63,16 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	 *
 	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
-	 * @param reindexer the {@link Reindexer} to use                         
+	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param reindexer the {@link Reindexer} to use
+	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
-	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext, Reindexer reindexer) {
+	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext, Reindexer reindexer, ReindexerConverter reindexerConverter) {
 		this.method = method;
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
 		this.reindexer = reindexer;
+		this.reindexerConverter = reindexerConverter;
 		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.indexes = namespace.getIndexes().stream().collect(Collectors.toUnmodifiableMap(ReindexerIndex::getName, Function.identity()));
@@ -84,7 +90,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			}
 			if (method.isPageQuery()) {
 				return (creator) -> {
-					ProjectingResultIterator iterator = new ProjectingResultIterator(this.reindexer, this.mappingContext, creator.createQuery().reqTotal(), creator.getReturnedType());
+					ProjectingResultIterator iterator = new ProjectingResultIterator(creator.createQuery().reqTotal(), creator.getReturnedType(), reindexerConverter);
 					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator), creator.getParameters().getPageable(), iterator::getTotalCount);
 				};
 			}
@@ -100,12 +106,12 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 					return null;
 				};
 			}
-			return (creator) -> ReindexerQueryExecutions.toEntity(toIterator(creator), method);
+			return (creator) -> ReindexerQueryExecutions.toEntity(toIterator(creator));
 		});
 	}
 
 	private ProjectingResultIterator toIterator(ReindexerQueryCreator queryCreator) {
-		return new ProjectingResultIterator(this.reindexer, this.mappingContext, queryCreator.createQuery(), queryCreator.getReturnedType());
+		return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType(), this.reindexerConverter);
 	}
 
 	@Override

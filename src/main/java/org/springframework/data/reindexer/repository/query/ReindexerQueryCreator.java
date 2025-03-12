@@ -18,9 +18,11 @@ package org.springframework.data.reindexer.repository.query;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import ru.rt.restream.reindexer.FieldType;
 import ru.rt.restream.reindexer.Namespace;
@@ -188,7 +190,14 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria = this.namespace.query();
 		}
 		if (this.returnedType.needsCustomConstruction()) {
-			String[] fields = this.returnedType.getInputProperties().toArray(String[]::new);
+			Set<String> inputProperties = new HashSet<>(this.returnedType.getInputProperties());
+			for (ReindexerPersistentProperty referenceProperty : this.entityInformation.getNamespaceReferences()) {
+				if (inputProperties.contains(referenceProperty.getName())) {
+					NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
+					inputProperties.add(namespaceReference.indexName());
+				}
+			}
+			String[] fields = inputProperties.toArray(String[]::new);
 			if (this.tree.isDistinct()) {
 				for (String field : fields) {
 					criteria.aggregateDistinct(field);
