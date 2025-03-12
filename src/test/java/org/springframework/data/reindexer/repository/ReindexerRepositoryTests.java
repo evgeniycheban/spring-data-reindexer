@@ -1397,22 +1397,31 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findByNameWithJoinedItems() {
-		TestJoinedItem joinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
-		Set<TestJoinedItem> expectedJoinedItems = new HashSet<>();
-		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName2")));
-		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(3L, "TestName3")));
-		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(4L, "TestName4")));
-		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
+		TestJoinedItem nestedJoinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
+		TestJoinedItem joinedItem = this.joinedItemRepository.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
+		Map<Long, TestJoinedItem> expectedJoinedItems = new HashMap<>();
+		expectedJoinedItems.put(3L, this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
+		expectedJoinedItems.put(4L, this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
+		expectedJoinedItems.put(5L, this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
+		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
 		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItem.getId(), joinedItemIds, "TestName", "TestValue"));
 		TestItem foundItem = this.repository.findByName("TestName").orElse(null);
 		assertThat(foundItem).isNotNull();
 		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
-		assertThat(foundItem.getName()).isEqualTo(expectedItem.getName());
-		assertThat(foundItem.getValue()).isEqualTo(expectedItem.getValue());
- 		assertThat(foundItem.getJoinedItem()).isEqualTo(joinedItem);
+		assertThat(foundItem.getJoinedItem().getId()).isEqualTo(joinedItem.getId());
+		assertThat(foundItem.getJoinedItem().getName()).isEqualTo(joinedItem.getName());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItem()).isNotNull();
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
 		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItems()) {
-			assertThat(expectedJoinedItems.remove(foundJoinedItem)).isTrue();
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.remove(foundJoinedItem.getId());
+			assertThat(expectedJoinedItem).isNotNull();
+			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
+			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
 		assertThat(expectedJoinedItems).hasSize(0);
 	}
@@ -1432,6 +1441,9 @@ class ReindexerRepositoryTests {
 		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
 		assertThat(foundItem.getJoinedItem().getId()).isEqualTo(joinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getName()).isEqualTo(joinedItem.getName());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItem()).isNotNull();
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
 		for (TestJoinedItemProjection foundJoinedItem : foundItem.getJoinedItems()) {
 			TestJoinedItem expectedJoinedItem = expectedJoinedItems.remove(foundJoinedItem.getId());

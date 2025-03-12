@@ -115,46 +115,22 @@ public class MappingReindexerConverter implements ReindexerConverter {
 			if (!constructorWrapper.hasParameter(propertyName)) {
 				continue;
 			}
+			Object referenceValue = BeanPropertyUtils.getProperty(entity, propertyName);
 			ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(propertyName);
 			if (persistentProperty.isNamespaceReference()) {
-				NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
-				Class<?> referenceType = propertyProjection.getMappedType().getRequiredActualType().getType();
-				EntityProjection<Object, Object> referenceProjection = (EntityProjection<Object, Object>) this.projectionIntrospector
-						.introspect(referenceType, propertyProjection.getDomainType().getRequiredActualType().getType());
-				if (namespaceReference.lazy()) {
-					Object proxy = createProxyIfNeeded(namespaceReference, referenceType, persistentProperty, entity,
-							referenceValue -> {
-								if (referenceValue instanceof Iterable<?> referenceEntities) {
-									List<Object> projectionEntities = new ArrayList<>();
-									for (Object projectionEntity : referenceEntities) {
-										projectionEntities.add(project(referenceProjection, projectionEntity));
-									}
-									return projectionEntities;
-								}
-								return project(referenceProjection, referenceValue);
-							});
-					values[i++] = proxy;
+				if (referenceValue != null) {
+					referenceValue = projectResolvedValue(propertyProjection, referenceValue);
 				}
 				else {
-					Object referenceValue = BeanPropertyUtils.getProperty(entity, propertyName);
-					if (referenceValue != null) {
-						if (referenceValue instanceof Iterable<?> referenceEntities) {
-							List<Object> projectionEntities = new ArrayList<>();
-							for (Object referenceEntity : referenceEntities) {
-								projectionEntities.add(project(referenceProjection, referenceEntity));
-							}
-							referenceValue = projectionEntities;
-						}
-						else {
-							referenceValue = project(referenceProjection, referenceValue);
-						}
+					NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
+					if (namespaceReference.lazy()) {
+						Class<?> referenceType = propertyProjection.getMappedType().getRequiredActualType().getType();
+						referenceValue = createProxyIfNeeded(namespaceReference, referenceType, persistentProperty, entity,
+								resolvedValue -> projectResolvedValue(propertyProjection, resolvedValue));
 					}
-					values[i++] = referenceValue;
 				}
 			}
-			else {
-				values[i++] = BeanPropertyUtils.getProperty(entity, propertyName);
-			}
+			values[i++] = referenceValue;
 		}
 		try {
 			return (R) constructorWrapper.preferredConstructor.getConstructor().newInstance(values);
@@ -162,6 +138,20 @@ public class MappingReindexerConverter implements ReindexerConverter {
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private Object projectResolvedValue(PropertyProjection<?, ?> propertyProjection, Object resolvedValue) {
+		EntityProjection<Object, Object> referenceProjection = (EntityProjection<Object, Object>) this.projectionIntrospector
+				.introspect(propertyProjection.getMappedType().getRequiredActualType().getType(), propertyProjection.getDomainType().getRequiredActualType().getType());
+		if (resolvedValue instanceof Iterable<?> referenceEntities) {
+			List<Object> projectionEntities = new ArrayList<>();
+			for (Object projectionEntity : referenceEntities) {
+				projectionEntities.add(project(referenceProjection, projectionEntity));
+			}
+			return projectionEntities;
+		}
+		return project(referenceProjection, resolvedValue);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -174,37 +164,34 @@ public class MappingReindexerConverter implements ReindexerConverter {
 	private void readProperties(Class<?> type, Object source) {
 		ReindexerPersistentEntity<?> persistentEntity = this.mappingContext.getRequiredPersistentEntity(type);
 		for (ReindexerPersistentProperty property : persistentEntity.getPersistentProperties(NamespaceReference.class)) {
-			NamespaceReference namespaceReference = property.getNamespaceReference();
-			if (namespaceReference.lazy()) {
-				Object proxy = createProxyIfNeeded(namespaceReference, property.getType(), property, source,
-						referenceValue -> {
-							if (referenceValue instanceof Iterable<?> referenceEntities) {
-								for (Object referenceEntity : referenceEntities) {
-									readProperties(property.getActualType(), referenceEntity);
-								}
-							}
-							else {
-								readProperties(property.getType(), referenceValue);
-							}
-							return referenceValue;
-						});
-				if (proxy != null) {
-					BeanPropertyUtils.setProperty(source, property.getName(), proxy);
-				}
+			Object referenceEntity = BeanPropertyUtils.getProperty(source, property.getName());
+			if (referenceEntity != null) {
+				readResolvedValue(property, referenceEntity);
 			}
 			else {
-				Object referenceEntity = BeanPropertyUtils.getProperty(source, property.getName());
-				if (referenceEntity != null) {
-					if (referenceEntity instanceof Iterable<?> values) {
-						for (Object value : values) {
-							readProperties(property.getActualType(), value);
-						}
-					}
-					else {
-						readProperties(property.getActualType(), referenceEntity);
+				NamespaceReference namespaceReference = property.getNamespaceReference();
+				if (namespaceReference.lazy()) {
+					Object proxy = createProxyIfNeeded(namespaceReference, property.getType(), property, source,
+							resolvedValue -> {
+								readResolvedValue(property, resolvedValue);
+								return resolvedValue;
+							});
+					if (proxy != null) {
+						BeanPropertyUtils.setProperty(source, property.getName(), proxy);
 					}
 				}
 			}
+		}
+	}
+
+	private void readResolvedValue(ReindexerPersistentProperty property, Object referenceValue) {
+		if (referenceValue instanceof Iterable<?> referenceEntities) {
+			for (Object referenceEntity : referenceEntities) {
+				readProperties(property.getActualType(), referenceEntity);
+			}
+		}
+		else {
+			readProperties(property.getType(), referenceValue);
 		}
 	}
 
