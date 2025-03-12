@@ -219,8 +219,10 @@ public class MappingReindexerConverter implements ReindexerConverter {
 		Supplier<Object> callback = () -> {
 			Namespace<?> namespace = this.reindexer.openNamespace(namespaceName, NamespaceOptions.defaultOptions(), referenceEntity.getType());
 			String indexName = referenceEntity.getRequiredIdProperty().getName();
-			return property.isCollectionLike() ? namespace.query().where(indexName, Condition.SET, (Collection<?>) source).toList()
-					: namespace.query().where(indexName, Condition.EQ, source).getOne();
+			if (source instanceof Collection<?> values) {
+				return namespace.query().where(indexName, Condition.SET, values).toList();
+			}
+			return namespace.query().where(indexName, Condition.EQ, source).getOne();
 		};
 		return this.lazyLoadingProxyFactory.createLazyLoadingProxy(type, property, callback, new NamespaceReferenceSource(namespaceName, source), valueConverter);
 	}

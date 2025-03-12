@@ -194,7 +194,9 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			for (ReindexerPersistentProperty referenceProperty : this.entityInformation.getNamespaceReferences()) {
 				if (inputProperties.contains(referenceProperty.getName())) {
 					NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
-					inputProperties.add(namespaceReference.indexName());
+					if (namespaceReference.lazy()) {
+						inputProperties.add(namespaceReference.indexName());
+					}
 				}
 			}
 			String[] fields = inputProperties.toArray(String[]::new);
