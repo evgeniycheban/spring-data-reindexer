@@ -55,8 +55,16 @@ public @interface NamespaceReference {
 	/**
 	 * Controls whether the referenced entity should be loaded lazily. This defaults to {@literal false}.
 	 *
-	 * @return {@literal false} by default.
+	 * @return {@literal false} by default
 	 */
 	boolean lazy() default false;
+
+	/**
+	 * Controls whether the referenced entity should be fetched if it is a nested relationship of the top level entity.
+	 * This defaults to {@literal false}.
+	 *
+	 * @return {@literal false} by default
+	 */
+	boolean fetch() default false;
 
 }

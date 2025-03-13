@@ -72,6 +72,13 @@ public class MappingReindexerConverter implements ReindexerConverter {
 
 	private final EntityProjectionIntrospector projectionIntrospector;
 
+	/**
+	 * Creates an instance.
+	 *
+	 * @param reindexer the {@link Reindexer} to use
+	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param projectionFactory the {@link ProjectionFactory} to use
+	 */
 	public MappingReindexerConverter(Reindexer reindexer, ReindexerMappingContext mappingContext, ProjectionFactory projectionFactory) {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
@@ -123,7 +130,7 @@ public class MappingReindexerConverter implements ReindexerConverter {
 				}
 				else {
 					NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
-					if (namespaceReference.lazy()) {
+					if (namespaceReference.lazy() || namespaceReference.fetch()) {
 						Class<?> referenceType = propertyProjection.getMappedType().getRequiredActualType().getType();
 						referenceValue = createProxyIfNeeded(namespaceReference, referenceType, persistentProperty, entity,
 								resolvedValue -> projectResolvedValue(propertyProjection, resolvedValue));
@@ -170,7 +177,7 @@ public class MappingReindexerConverter implements ReindexerConverter {
 			}
 			else {
 				NamespaceReference namespaceReference = property.getNamespaceReference();
-				if (namespaceReference.lazy()) {
+				if (namespaceReference.lazy() || namespaceReference.fetch()) {
 					Object proxy = createProxyIfNeeded(namespaceReference, property.getType(), property, source,
 							resolvedValue -> {
 								readResolvedValue(property, resolvedValue);

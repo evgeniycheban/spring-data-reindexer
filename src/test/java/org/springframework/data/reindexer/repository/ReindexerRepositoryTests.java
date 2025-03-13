@@ -1905,7 +1905,7 @@ class ReindexerRepositoryTests {
 		private Long nestedJoinedItemId;
 
 		@Transient
-		@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT, lazy = true)
+		@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT, fetch = true)
 		private TestJoinedItem nestedJoinedItem;
 
 		public TestJoinedItem() {
