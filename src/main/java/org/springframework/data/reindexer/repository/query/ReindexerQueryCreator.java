@@ -34,12 +34,11 @@ import ru.rt.restream.reindexer.ReindexerIndex;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
-import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
-import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
+import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.AbstractQueryCreator;
@@ -47,7 +46,6 @@ import org.springframework.data.repository.query.parser.Part;
 import org.springframework.data.repository.query.parser.Part.Type;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -240,24 +238,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		if (this.tree.isExistsProjection()) {
 			criteria.limit(1);
 		}
-		for (ReindexerPersistentProperty property : this.entityInformation.getNamespaceReferences()) {
-			NamespaceReference namespaceReference = property.getNamespaceReference();
-			if (namespaceReference.lazy()) {
-				continue;
-			}
-			ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(property.getActualType());
-			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
-					: entity.getNamespace();
-			Namespace<?> namespace = this.reindexer.openNamespace(namespaceName, entity.getNamespaceOptions(), entity.getType());
-			Query<?> on = namespace.query().on(namespaceReference.indexName(), property.isCollectionLike()
-					? Condition.SET : Condition.EQ, entity.getRequiredIdProperty().getName());
-			if (namespaceReference.joinType() == JoinType.LEFT) {
-				criteria.leftJoin(on, property.getName());
-			}
-			else {
-				criteria.innerJoin(on, property.getName());
-			}
-		}
-		return criteria;
+		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
 	}
 }

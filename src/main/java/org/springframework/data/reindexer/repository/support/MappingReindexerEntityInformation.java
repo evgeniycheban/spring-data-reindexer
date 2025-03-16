@@ -35,6 +35,7 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 	/**
 	 * Creates an instance.
 	 *
+	 * @param metadata the {@link ReindexerPersistentEntity} to use
 	 */
 	public MappingReindexerEntityInformation(ReindexerPersistentEntity<T> metadata) {
 		this.metadata = metadata;

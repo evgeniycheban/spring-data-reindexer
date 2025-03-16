@@ -17,7 +17,6 @@ package org.springframework.data.reindexer.repository.query;
 
 import java.lang.reflect.Method;
 import java.util.Iterator;
-import java.util.Optional;
 
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.reindexer.core.mapping.Query;
@@ -34,8 +33,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	private final Lazy<Boolean> isIteratorQuery;
 
-	private final Lazy<Boolean> isOptionalQuery;
-
 	private final Lazy<Query> queryAnnotationExtractor;
 
 	/**
@@ -49,7 +46,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	public ReindexerQueryMethod(Method method, RepositoryMetadata metadata, ProjectionFactory factory) {
 		super(method, metadata, factory);
 		this.isIteratorQuery = Lazy.of(() -> Iterator.class.isAssignableFrom(method.getReturnType()));
-		this.isOptionalQuery = Lazy.of(() -> Optional.class.isAssignableFrom(method.getReturnType()));
 		this.queryAnnotationExtractor = Lazy.of(() -> method.getAnnotation(Query.class));
 	}
 
@@ -60,16 +56,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	 */
 	public boolean isIteratorQuery() {
 		return this.isIteratorQuery.get();
-	}
-
-	/**
-	 * Returns true if the method returns {@link Optional}.
-	 *
-	 * @return true if the method returns {@link Optional}
-	 * @since 1.1
-	 */
-	public boolean isOptionalQuery() {
-		return this.isOptionalQuery.get();
 	}
 
 	/**

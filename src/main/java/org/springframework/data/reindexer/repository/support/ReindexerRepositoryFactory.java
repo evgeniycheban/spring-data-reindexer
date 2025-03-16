@@ -91,7 +91,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	@Override
 	protected Object getTargetRepository(RepositoryInformation metadata) {
 		EntityInformation<?, Serializable> entityInformation = getEntityInformation(metadata.getDomainType());
-		return getTargetRepositoryViaReflection(metadata, entityInformation, this.reindexer);
+		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.reindexer, this.reindexerConverter.get());
 	}
 
 	@Override
