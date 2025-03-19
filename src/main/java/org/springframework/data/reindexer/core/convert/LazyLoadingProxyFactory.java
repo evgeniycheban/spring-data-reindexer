@@ -55,7 +55,7 @@ public final class LazyLoadingProxyFactory {
 
 	private static final Log LOGGER = LogFactory.getLog(LazyLoadingProxyFactory.class);
 
-	private final SpringObjenesis objenesis = new SpringObjenesis(null);
+	private final SpringObjenesis objenesis = new SpringObjenesis();
 
 	/**
 	 * Creates a lazy loading proxy that uses {@literal callback} to fetch an association.

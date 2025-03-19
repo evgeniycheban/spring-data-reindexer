@@ -55,12 +55,12 @@ public final class QueryUtils {
 			if (namespaceReference.lazy()) {
 				continue;
 			}
-			ReindexerPersistentEntity<?> entity = mappingContext.getRequiredPersistentEntity(persistentProperty.getActualType());
+			ReindexerPersistentEntity<?> referencedEntity = mappingContext.getRequiredPersistentEntity(persistentProperty.getActualType());
 			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
-					: entity.getNamespace();
-			Namespace<?> namespace = reindexer.openNamespace(namespaceName, entity.getNamespaceOptions(), entity.getType());
+					: referencedEntity.getNamespace();
+			Namespace<?> namespace = reindexer.openNamespace(namespaceName, referencedEntity.getNamespaceOptions(), referencedEntity.getType());
 			Query<?> on = namespace.query().on(namespaceReference.indexName(), persistentProperty.isCollectionLike()
-					? Condition.SET : Condition.EQ, entity.getRequiredIdProperty().getName());
+					? Condition.SET : Condition.EQ, referencedEntity.getRequiredIdProperty().getName());
 			if (namespaceReference.joinType() == JoinType.LEFT) {
 				criteria.leftJoin(on, persistentProperty.getName());
 			}

@@ -89,7 +89,7 @@ public class MappingReindexerConverter implements ReindexerConverter {
 	}
 
 	@Override
-	public MappingContext<? extends ReindexerPersistentEntity<?>, ReindexerPersistentProperty> getMappingContext() {
+	public ReindexerMappingContext getMappingContext() {
 		return this.mappingContext;
 	}
 

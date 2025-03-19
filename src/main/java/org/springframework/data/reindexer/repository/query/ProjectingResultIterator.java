@@ -15,14 +15,11 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import ru.rt.restream.reindexer.AggregationResult;
 import ru.rt.restream.reindexer.AggregationResult.Facet;
@@ -31,13 +28,12 @@ import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
 import org.springframework.core.convert.ConversionService;
-import org.springframework.data.mapping.PreferredConstructor;
-import org.springframework.data.mapping.model.PreferredConstructorDiscoverer;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
+import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.repository.query.ReturnedType;
-import org.springframework.data.util.ReflectionUtils;
-import org.springframework.util.Assert;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -45,8 +41,6 @@ import org.springframework.util.Assert;
  * @author Evgeniy Cheban
  */
 final class ProjectingResultIterator implements ResultIterator<Object> {
-
-	private static final Map<Class<?>, Constructor<?>> cache = new ConcurrentHashMap<>();
 
 	private final ResultIterator<?> delegate;
 
@@ -59,6 +53,8 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 	private final ReindexerConverter reindexerConverter;
 
 	private final ConversionService conversionService;
+
+	private final boolean distinct;
 
 	private int aggregationPosition;
 
@@ -73,6 +69,7 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 		this.conversionService = reindexerConverter.getConversionService();
 		this.aggregationFacet = getAggregationFacet();
 		this.distinctAggregationResults = getDistinctAggregationResults();
+		this.distinct = this.aggregationFacet != null && !this.distinctAggregationResults.isEmpty();
 	}
 
 	@Override
@@ -103,64 +100,43 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Object next() {
-		if (this.aggregationFacet != null && !this.distinctAggregationResults.isEmpty()) {
-			Object item = null;
-			Object[] arguments = null;
-			List<String> fields = this.aggregationFacet.getFields();
-			if (this.projectionType.needsCustomConstruction() && !this.projectionType.getReturnedType().isInterface()) {
-				arguments = new Object[fields.size()];
-			}
-			else {
-				try {
-					item = this.projectionType.getDomainType().getDeclaredConstructor().newInstance();
-				}
-				catch (NoSuchMethodException | InvocationTargetException |
-					   InstantiationException | IllegalAccessException e) {
-					throw new RuntimeException(e);
-				}
-			}
-			for (int i = 0; i < fields.size(); i++) {
-				String field = fields.get(i);
-				Facet facet = this.aggregationFacet.getFacets().get(this.aggregationPosition);
-				if (i < facet.getValues().size() && this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
-					Object value = this.conversionService.convert(facet.getValues().get(i), ReflectionUtils.findRequiredField(this.projectionType.getDomainType(), field).getType());
-					if (arguments != null) {
-						arguments[i] = value;
-					}
-					else {
-						BeanPropertyUtils.setProperty(item, field, value);
-					}
-				}
-				else {
-					this.aggregationPosition++;
-					return null;
-				}
-			}
-			this.aggregationPosition++;
-			if (item != null) {
-				return item;
-			}
-			return constructTargetObject(arguments);
+		Object entity = nextEntity();
+		if (entity == null) {
+			return null;
 		}
-		Object item = this.delegate.next();
 		EntityProjection<Object, Object> descriptor = (EntityProjection<Object, Object>) this.reindexerConverter.getProjectionIntrospector()
 				.introspect(this.projectionType.getReturnedType(), this.projectionType.getDomainType());
-		return this.reindexerConverter.project(descriptor, item);
+		return this.reindexerConverter.project(descriptor, entity);
 	}
 
-	private Object constructTargetObject(Object[] values) {
-		Constructor<?> constructor = cache.computeIfAbsent(this.projectionType.getReturnedType(), (type) -> {
-			PreferredConstructor<?, ?> preferredConstructor = PreferredConstructorDiscoverer.discover(type);
-			Assert.state(preferredConstructor != null, () -> "No preferred constructor found for " + type);
-			return preferredConstructor.getConstructor();
-		});
-		try {
-			return constructor.newInstance(values);
+	private Object nextEntity() {
+		if (!this.distinct) {
+			return this.delegate.next();
 		}
-		catch (InvocationTargetException | InstantiationException |
-			   IllegalAccessException e) {
+		Object entity;
+		try {
+			entity = this.projectionType.getDomainType().getDeclaredConstructor().newInstance();
+		}
+		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+		ReindexerMappingContext mappingContext = this.reindexerConverter.getMappingContext();
+		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(this.projectionType.getDomainType());
+		int aggregationPosition = this.aggregationPosition++;
+		List<String> fields = this.aggregationFacet.getFields();
+		for (int i = 0; i < fields.size(); i++) {
+			String field = fields.get(i);
+			Facet facet = this.aggregationFacet.getFacets().get(aggregationPosition);
+			if (i < facet.getValues().size() && this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
+				ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(field);
+				Object value = this.conversionService.convert(facet.getValues().get(i), persistentProperty.getType());
+				BeanPropertyUtils.setProperty(entity, field, value);
+			}
+			else {
+				return null;
+			}
+		}
+		return entity;
 	}
 
 	private Map<String, Set<String>> getDistinctAggregationResults() {

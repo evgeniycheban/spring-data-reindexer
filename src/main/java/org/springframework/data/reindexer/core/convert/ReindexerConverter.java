@@ -20,6 +20,7 @@ import org.springframework.data.convert.EntityReader;
 import org.springframework.data.convert.EntityWriter;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.projection.EntityProjectionIntrospector;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 
@@ -50,5 +51,11 @@ public interface ReindexerConverter extends EntityConverter<ReindexerPersistentE
 	 * @return the {@link EntityProjectionIntrospector} to introspect the returned type
 	 */
 	EntityProjectionIntrospector getProjectionIntrospector();
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	ReindexerMappingContext getMappingContext();
 
 }

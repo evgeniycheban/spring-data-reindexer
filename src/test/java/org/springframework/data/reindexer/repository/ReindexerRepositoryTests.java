@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1116,12 +1117,15 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findDistinctNameValueProjectionByIdIn() {
-		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
-		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
-		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
-		List<TestItemNameValueProjection> foundItems = this.repository.findDistinctNameValueProjectionByIdIn(List.of(1L, 2L, 3L));
-		assertThat(foundItems.stream().map(TestItemNameValueProjection::getName).toList()).containsOnly("TestName1", "TestName2");
-		assertThat(foundItems.stream().map(TestItemNameValueProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+		TestJoinedItem joinedItem1 = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
+		TestJoinedItem joinedItem2 = this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName2"));
+		this.repository.save(new TestItem(1L, joinedItem1.getId(), Collections.emptyList(), "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, joinedItem2.getId(), Collections.emptyList(), "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, joinedItem2.getId(), Collections.emptyList(), "TestName3", "TestValue3"));
+		List<TestItemNameValueJoinedItemProjection> foundItems = this.repository.findDistinctNameValueJoinedItemProjectionByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getName).toList()).containsOnly("TestName1", "TestName3");
+		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getJoinedItem).map(TestJoinedItem::getId).toList()).containsOnly(1L, 2L);
 	}
 
 	@Test
@@ -1641,6 +1645,8 @@ class ReindexerRepositoryTests {
 
 		List<TestItemNameValueProjection> findDistinctNameValueProjectionByIdIn(List<Long> ids);
 
+		List<TestItemNameValueJoinedItemProjection> findDistinctNameValueJoinedItemProjectionByIdIn(List<Long> ids);
+
 		List<TestItemNameValueDto> findDistinctNameValueDtoByIdIn(List<Long> ids);
 
 		<T> List<T> findDistinctByIdIn(List<Long> ids, Class<T> type);
@@ -1991,6 +1997,16 @@ class ReindexerRepositoryTests {
 		String getName();
 
 		String getValue();
+
+	}
+
+	interface TestItemNameValueJoinedItemProjection {
+
+		String getName();
+
+		String getValue();
+
+		TestJoinedItem getJoinedItem();
 
 	}
 
