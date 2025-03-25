@@ -19,11 +19,15 @@ import java.util.List;
 
 import ru.rt.restream.reindexer.Query;
 
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.QueryByExampleExecutor;
 
 /**
  * Reindexer-specific {@link Repository} interface.
@@ -31,7 +35,7 @@ import org.springframework.data.repository.Repository;
  * @author Evgeniy Cheban
  */
 @NoRepositoryBean
-public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
+public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID>, PagingAndSortingRepository<T, ID>, QueryByExampleExecutor<T> {
 
 	@Override
 	<S extends T> List<S> saveAll(Iterable<S> entities);
@@ -44,6 +48,15 @@ public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID>, Pagin
 
 	@Override
 	List<T> findAll(Sort sort);
+
+	@Override
+	<S extends T> List<S> findAll(Example<S> example);
+
+	@Override
+	<S extends T> List<S> findAll(Example<S> example, Sort sort);
+
+	@Override
+	<S extends T> Page<S> findAll(Example<S> example, Pageable pageable);
 
 	/**
 	 * Returns a new {@link Query} instance for further customizations.
