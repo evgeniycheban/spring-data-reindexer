@@ -62,6 +62,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -1461,6 +1462,31 @@ class ReindexerRepositoryTests {
 		assertThat(expectedJoinedItems).hasSize(0);
 	}
 
+	@Test
+	public void findOneByExample() {
+		TestJoinedItem nestedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
+		TestItem expectedItem = this.repository.save(new TestItem(1L, nestedItem, "TestName", "TestValue"));
+		TestItem foundItem = this.repository.findOne(Example.of(expectedItem)).orElse(null);
+		assertNotNull(foundItem);
+		assertEquals(expectedItem.getId(), foundItem.getId());
+		assertEquals(expectedItem.getName(), foundItem.getName());
+		assertEquals(expectedItem.getValue(), foundItem.getValue());
+		assertNotNull(foundItem.getNestedItem());
+		assertEquals(nestedItem.getId(), foundItem.getNestedItem().getId());
+		assertEquals(nestedItem.getName(), foundItem.getNestedItem().getName());
+	}
+
+	@Test
+	public void findByFluentQueryExampleRecordProjection() {
+		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemRecord foundItem = this.repository.findBy(Example.of(expectedItem),
+						query -> query.project(List.of("id", "name")).as(TestItemRecord.class).one())
+				.orElse(null);
+		assertNotNull(foundItem);
+		assertEquals(expectedItem.getId(), foundItem.id());
+		assertEquals(expectedItem.getName(), foundItem.name());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -1733,6 +1759,9 @@ class ReindexerRepositoryTests {
 
 		private List<Long> joinedItemIds = new ArrayList<>();
 
+		@Reindex(name = "nested")
+		private TestJoinedItem nestedItem;
+
 		@Transient
 		@NamespaceReference(indexName = "joinedItemId", joinType = JoinType.LEFT, lazy = true)
 		private TestJoinedItem joinedItem;
@@ -1774,6 +1803,13 @@ class ReindexerRepositoryTests {
 			this.id = id;
 			this.joinedItemId = joinedItemId;
 			this.joinedItemIds = joinedItemIds;
+			this.name = name;
+			this.value = value;
+		}
+
+		public TestItem(Long id, TestJoinedItem nestedItem, String name, String value) {
+			this.id = id;
+			this.nestedItem = nestedItem;
 			this.name = name;
 			this.value = value;
 		}
@@ -1850,6 +1886,14 @@ class ReindexerRepositoryTests {
 			this.joinedItemIds = joinedItemIds;
 		}
 
+		public TestJoinedItem getNestedItem() {
+			return this.nestedItem;
+		}
+
+		public void setNestedItem(TestJoinedItem nestedItem) {
+			this.nestedItem = nestedItem;
+		}
+
 		public TestJoinedItem getJoinedItem() {
 			return this.joinedItem;
 		}
@@ -1875,13 +1919,14 @@ class ReindexerRepositoryTests {
 			return active == item.active && Objects.equals(id, item.id) && Objects.equals(name, item.name)
 					&& Objects.equals(value, item.value) && testEnumString == item.testEnumString
 					&& testEnumOrdinal == item.testEnumOrdinal && Objects.equals(cities, item.cities)
+					&& Objects.equals(nestedItem, item.nestedItem)
 					&& Objects.equals(joinedItemId, item.joinedItemId) && Objects.equals(joinedItemIds, item.joinedItemIds);
 		}
 
 		@Override
 		public int hashCode() {
 			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities,
-					active, joinedItemId, joinedItemIds);
+					active, nestedItem, joinedItemId, joinedItemIds);
 		}
 
 		@Override
