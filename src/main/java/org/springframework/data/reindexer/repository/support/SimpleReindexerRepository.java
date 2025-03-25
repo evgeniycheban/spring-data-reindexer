@@ -336,10 +336,9 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 			}
 			if (property.isEntity()) {
 				Object value = BeanPropertyUtils.getProperty(probe, property.getName());
-				if (value == null) {
-					continue;
+				if (value != null) {
+					result.addAll(getPropertyPaths(value, property.getType(), path + property.getName() + "."));
 				}
-				result.addAll(getPropertyPaths(value, property.getType(), path + property.getName() + "."));
 			}
 			else {
 				result.add(path + property.getName());
