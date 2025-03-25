@@ -307,8 +307,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 					}
 					switch (stringMatcher) {
 						case DEFAULT, EXACT -> criteria.where(propertyPath, Condition.EQ, s);
-						case STARTING -> criteria.like(propertyPath, "%" + s);
-						case ENDING -> criteria.like(propertyPath, s + "%");
+						case STARTING -> criteria.like(propertyPath, s + "%");
+						case ENDING -> criteria.like(propertyPath, "%" + s);
 						case CONTAINING -> criteria.like(propertyPath, "%" + s + "%");
 						default -> throw new InvalidDataAccessApiUsageException("Unsupported StringMatcher: " + stringMatcher);
 					}
