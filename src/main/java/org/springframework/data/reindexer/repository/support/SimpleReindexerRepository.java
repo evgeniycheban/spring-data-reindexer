@@ -397,7 +397,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		@Override
 		public R firstValue() {
-			return findOne(byExample(joinedQuery()).limit(1), this.resultType).orElse(null);
+			return findOne(sorted().limit(1), this.resultType).orElse(null);
 		}
 
 		@Override
@@ -407,7 +407,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		@Override
 		public Page<R> page(Pageable pageable) {
-			return findAll(withSort(byExample(joinedQuery()), this.sort), this.resultType, pageable);
+			return findAll(sorted(), this.resultType, pageable);
 		}
 
 		@Override
@@ -423,6 +423,10 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		@Override
 		public boolean exists() {
 			return byExample(query()).exists();
+		}
+
+		private Query<T> sorted() {
+			return withSort(byExample(joinedQuery()), this.sort);
 		}
 
 		private Query<T> byExample(Query<T> query) {
