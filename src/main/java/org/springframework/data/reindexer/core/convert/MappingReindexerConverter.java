@@ -70,6 +70,8 @@ public class MappingReindexerConverter implements ReindexerConverter {
 
 	private final ReindexerMappingContext mappingContext;
 
+	private final ProjectionFactory projectionFactory;
+
 	private final EntityProjectionIntrospector projectionIntrospector;
 
 	/**
@@ -82,6 +84,7 @@ public class MappingReindexerConverter implements ReindexerConverter {
 	public MappingReindexerConverter(Reindexer reindexer, ReindexerMappingContext mappingContext, ProjectionFactory projectionFactory) {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
+		this.projectionFactory = projectionFactory;
 		this.projectionIntrospector = EntityProjectionIntrospector.create(projectionFactory,
 				EntityProjectionIntrospector.ProjectionPredicate.typeHierarchy()
 						.and(((target, underlyingType) -> !conversions.isSimpleType(target))),
@@ -106,8 +109,11 @@ public class MappingReindexerConverter implements ReindexerConverter {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <R, E> R project(EntityProjection<R, E> entityProjection, E entity) {
-		if (!entityProjection.isProjection() || entityProjection.getMappedType().getType().isInterface()) {
+		if (!entityProjection.isProjection()) {
 			return (R) read(entityProjection.getDomainType().getType(), entity);
+		}
+		if (entityProjection.getMappedType().getType().isInterface()) {
+			return this.projectionFactory.createProjection(entityProjection.getMappedType().getType(), read(entityProjection.getDomainType().getType(), entity));
 		}
 		ReindexerPersistentEntity<?> persistentEntity = this.mappingContext.getRequiredPersistentEntity(entityProjection.getDomainType());
 		PreferredConstructorWrapper constructorWrapper = cache.computeIfAbsent(entityProjection.getMappedType().getType(), (type) -> {

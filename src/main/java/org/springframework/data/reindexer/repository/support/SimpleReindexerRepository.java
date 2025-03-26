@@ -135,7 +135,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> Optional<S> findOne(Example<S> example) {
-		return withExample(example, joinedQuery()).findOne()
+		return withExample(joinedQuery(), example).findOne()
 				.map(e -> (S) readEntity(e));
 	}
 
@@ -152,7 +152,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	@Override
 	public <S extends T> boolean exists(Example<S> example) {
-		return withExample(example, query()).exists();
+		return withExample(query(), example).exists();
 	}
 
 	@Override
@@ -186,13 +186,13 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> List<S> findAll(Example<S> example, Sort sort) {
-		return (List<S>) findAllSorted(withExample(example, joinedQuery()), sort);
+		return (List<S>) findAllSorted(withExample(joinedQuery(), example), sort);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> Page<S> findAll(Example<S> example, Pageable pageable) {
-		return (Page<S>) findAllPageable(withExample(example, joinedQuery()), pageable);
+		return (Page<S>) findAllPageable(withExample(joinedQuery(), example), pageable);
 	}
 
 	private Page<T> findAllPageable(Query<T> query, Pageable pageable) {
@@ -244,7 +244,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	@Override
 	public <S extends T> long count(Example<S> example) {
-		return withExample(example, query()).count();
+		return withExample(query(), example).count();
 	}
 
 	@Override
@@ -282,7 +282,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		return (Query<T>) QueryUtils.withJoins(query, this.entityInformation.getJavaType(), this.mappingContext, this.reindexer);
 	}
 
-	private Query<T> withExample(Example<?> example, Query<T> criteria) {
+	private Query<T> withExample(Query<T> criteria, Example<?> example) {
 		Object probe = example.getProbe();
 		ExampleMatcher matcher = example.getMatcher();
 		PropertySpecifiers propertySpecifiers = matcher.getPropertySpecifiers();
@@ -438,7 +438,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 			if (!this.fieldsToInclude.isEmpty()) {
 				query.select(this.fieldsToInclude.toArray(String[]::new));
 			}
-			return withExample(this.example, withSort(query, this.sort));
+			return withExample(withSort(query, this.sort), this.example);
 		}
 
 		private R project(T entity) {

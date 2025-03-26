@@ -1487,6 +1487,17 @@ class ReindexerRepositoryTests {
 		assertEquals(expectedItem.getName(), foundItem.name());
 	}
 
+	@Test
+	public void findByFluentQueryExampleInterfaceProjection() {
+		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemProjection foundItem = this.repository.findBy(Example.of(expectedItem),
+						query -> query.project(List.of("id", "name")).as(TestItemProjection.class).one())
+				.orElse(null);
+		assertNotNull(foundItem);
+		assertEquals(expectedItem.getId(), foundItem.getId());
+		assertEquals(expectedItem.getName(), foundItem.getName());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
 	@EnableTransactionManagement
