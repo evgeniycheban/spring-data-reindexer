@@ -128,15 +128,18 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public Optional<T> findById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		return joinedQuery().where(this.entityInformation.getIdFieldName(), Query.Condition.EQ, id).findOne()
-				.map(e -> projectEntity(e, this.entityInformation.getJavaType()));
+		Query<T> query = joinedQuery().where(this.entityInformation.getIdFieldName(), Condition.EQ, id);
+		return findOne(query, this.entityInformation.getJavaType());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> Optional<S> findOne(Example<S> example) {
-		return withExample(joinedQuery(), example).findOne()
-				.map(e -> (S) projectEntity(e, this.entityInformation.getJavaType()));
+		return (Optional<S>) findOne(withExample(joinedQuery(), example), this.entityInformation.getJavaType());
+	}
+
+	private <R> Optional<R> findOne(Query<T> query, Class<R> resultType) {
+		return query.findOne().map(e -> projectEntity(e, resultType));
 	}
 
 	@Override
@@ -162,20 +165,19 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	@Override
 	public List<T> findAll(Sort sort) {
-		return findAllSorted(joinedQuery(), this.entityInformation.getJavaType(), sort);
+		return findAll(joinedQuery(), this.entityInformation.getJavaType(), sort);
 	}
 
 	@Override
 	public Page<T> findAll(Pageable pageable) {
-		return findAllPageable(joinedQuery(), this.entityInformation.getJavaType(), pageable);
+		return findAll(joinedQuery(), this.entityInformation.getJavaType(), pageable);
 	}
 
 	@Override
 	public List<T> findAllById(Iterable<ID> ids) {
 		Assert.notNull(ids, "The given Ids of entities not be null!");
-		return joinedQuery().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, toSet(ids)).stream()
-				.map(e -> projectEntity(e, this.entityInformation.getJavaType()))
-				.collect(Collectors.toList());
+		Query<T> query = joinedQuery().where(this.entityInformation.getIdFieldName(), Condition.SET, toSet(ids));
+		return findAll(query, this.entityInformation.getJavaType(), Sort.unsorted());
 	}
 
 	@Override
@@ -186,18 +188,18 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> List<S> findAll(Example<S> example, Sort sort) {
-		return (List<S>) findAllSorted(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), sort);
+		return (List<S>) findAll(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), sort);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> Page<S> findAll(Example<S> example, Pageable pageable) {
-		return (Page<S>) findAllPageable(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), pageable);
+		return (Page<S>) findAll(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), pageable);
 	}
 
-	private <R> Page<R> findAllPageable(Query<T> query, Class<R> resultType, Pageable pageable) {
+	private <R> Page<R> findAll(Query<T> query, Class<R> resultType, Pageable pageable) {
 		if (pageable.isUnpaged()) {
-			return new PageImpl<>(findAllSorted(query, resultType, pageable.getSort()));
+			return new PageImpl<>(findAll(query, resultType, pageable.getSort()));
 		}
 		query.limit(pageable.getPageSize()).offset(PageableUtils.getOffsetAsInteger(pageable)).reqTotal();
 		try (ResultIterator<T> iterator = withSort(query, pageable.getSort()).execute()) {
@@ -209,15 +211,19 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		}
 	}
 
-	private <R> List<R> findAllSorted(Query<T> query, Class<R> resultType, Sort sort) {
-		return withSort(query, sort).stream()
-				.map(e -> projectEntity(e, resultType))
-				.collect(Collectors.toList());
+	private <R> List<R> findAll(Query<T> query, Class<R> resultType, Sort sort) {
+		return streamAll(query, resultType, sort).collect(Collectors.toList());
+	}
+
+	private <R> Stream<R> streamAll(Query<T> query, Class<R> resultType, Sort sort) {
+		return withSort(query, sort).stream().map(e -> projectEntity(e, resultType));
 	}
 
 	private Query<T> withSort(Query<T> query, Sort sort) {
-		for (Order order : sort) {
-			query.sort(order.getProperty(), order.isDescending());
+		if (sort.isSorted()) {
+			for (Order order : sort) {
+				query.sort(order.getProperty(), order.isDescending());
+			}
 		}
 		return query;
 	}
@@ -386,40 +392,40 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		@Override
 		public R oneValue() {
-			return fluent(joinedQuery()).findOne().map(e -> projectEntity(e, this.resultType)).orElse(null);
+			return findOne(byExample(joinedQuery()), this.resultType).orElse(null);
 		}
 
 		@Override
 		public R firstValue() {
-			return fluent(joinedQuery()).stream().map(e -> projectEntity(e, this.resultType)).findFirst().orElse(null);
+			return findOne(byExample(joinedQuery()).limit(1), this.resultType).orElse(null);
 		}
 
 		@Override
 		public List<R> all() {
-			return findAllSorted(fluent(joinedQuery()), this.resultType, this.sort);
+			return findAll(byExample(joinedQuery()), this.resultType, this.sort);
 		}
 
 		@Override
 		public Page<R> page(Pageable pageable) {
-			return findAllPageable(fluent(joinedQuery()), this.resultType, pageable);
+			return findAll(withSort(byExample(joinedQuery()), this.sort), this.resultType, pageable);
 		}
 
 		@Override
 		public Stream<R> stream() {
-			return fluent(joinedQuery()).stream().map(e -> projectEntity(e, this.resultType));
+			return streamAll(byExample(joinedQuery()), this.resultType, this.sort);
 		}
 
 		@Override
 		public long count() {
-			return fluent(query()).count();
+			return byExample(query()).count();
 		}
 
 		@Override
 		public boolean exists() {
-			return fluent(query()).exists();
+			return byExample(query()).exists();
 		}
 
-		private Query<T> fluent(Query<T> query) {
+		private Query<T> byExample(Query<T> query) {
 			if (this.limit != null) {
 				query.limit(this.limit);
 			}
