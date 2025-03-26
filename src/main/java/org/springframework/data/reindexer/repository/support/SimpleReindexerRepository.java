@@ -129,14 +129,14 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	public Optional<T> findById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
 		return joinedQuery().where(this.entityInformation.getIdFieldName(), Query.Condition.EQ, id).findOne()
-				.map(this::readEntity);
+				.map(e -> projectEntity(e, this.entityInformation.getJavaType()));
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> Optional<S> findOne(Example<S> example) {
 		return withExample(joinedQuery(), example).findOne()
-				.map(e -> (S) readEntity(e));
+				.map(e -> (S) projectEntity(e, this.entityInformation.getJavaType()));
 	}
 
 	@Override
@@ -162,19 +162,19 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	@Override
 	public List<T> findAll(Sort sort) {
-		return findAllSorted(joinedQuery(), sort);
+		return findAllSorted(joinedQuery(), this.entityInformation.getJavaType(), sort);
 	}
 
 	@Override
 	public Page<T> findAll(Pageable pageable) {
-		return findAllPageable(joinedQuery(), pageable);
+		return findAllPageable(joinedQuery(), this.entityInformation.getJavaType(), pageable);
 	}
 
 	@Override
 	public List<T> findAllById(Iterable<ID> ids) {
 		Assert.notNull(ids, "The given Ids of entities not be null!");
 		return joinedQuery().where(this.entityInformation.getIdFieldName(), Query.Condition.SET, toSet(ids)).stream()
-				.map(this::readEntity)
+				.map(e -> projectEntity(e, this.entityInformation.getJavaType()))
 				.collect(Collectors.toList());
 	}
 
@@ -186,32 +186,32 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> List<S> findAll(Example<S> example, Sort sort) {
-		return (List<S>) findAllSorted(withExample(joinedQuery(), example), sort);
+		return (List<S>) findAllSorted(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), sort);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> Page<S> findAll(Example<S> example, Pageable pageable) {
-		return (Page<S>) findAllPageable(withExample(joinedQuery(), example), pageable);
+		return (Page<S>) findAllPageable(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), pageable);
 	}
 
-	private Page<T> findAllPageable(Query<T> query, Pageable pageable) {
+	private <R> Page<R> findAllPageable(Query<T> query, Class<R> resultType, Pageable pageable) {
 		if (pageable.isUnpaged()) {
-			return new PageImpl<>(findAll());
+			return new PageImpl<>(findAllSorted(query, resultType, pageable.getSort()));
 		}
 		query.limit(pageable.getPageSize()).offset(PageableUtils.getOffsetAsInteger(pageable)).reqTotal();
 		try (ResultIterator<T> iterator = withSort(query, pageable.getSort()).execute()) {
-			List<T> content = new ArrayList<>();
+			List<R> content = new ArrayList<>();
 			while (iterator.hasNext()) {
-				content.add(readEntity(iterator.next()));
+				content.add(projectEntity(iterator.next(), resultType));
 			}
 			return PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount);
 		}
 	}
 
-	private List<T> findAllSorted(Query<T> query, Sort sort) {
+	private <R> List<R> findAllSorted(Query<T> query, Class<R> resultType, Sort sort) {
 		return withSort(query, sort).stream()
-				.map(this::readEntity)
+				.map(e -> projectEntity(e, resultType))
 				.collect(Collectors.toList());
 	}
 
@@ -222,8 +222,10 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		return query;
 	}
 
-	private T readEntity(T e) {
-		return this.reindexerConverter.read(this.entityInformation.getJavaType(), e);
+	private <R> R projectEntity(T e, Class<R> resultType) {
+		EntityProjection<R, T> descriptor = SimpleReindexerRepository.this.reindexerConverter.getProjectionIntrospector()
+				.introspect(resultType, SimpleReindexerRepository.this.entityInformation.getJavaType());
+		return this.reindexerConverter.project(descriptor, e);
 	}
 
 	private Set<ID> toSet(Iterable<? extends ID> ids) {
@@ -384,41 +386,27 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		@Override
 		public R oneValue() {
-			return fluent(joinedQuery()).findOne()
-					.map(this::project).orElse(null);
+			return fluent(joinedQuery()).findOne().map(e -> projectEntity(e, this.resultType)).orElse(null);
 		}
 
 		@Override
 		public R firstValue() {
-			return fluent(joinedQuery()).stream()
-					.map(this::project).findFirst().orElse(null);
+			return fluent(joinedQuery()).stream().map(e -> projectEntity(e, this.resultType)).findFirst().orElse(null);
 		}
 
 		@Override
 		public List<R> all() {
-			return fluent(joinedQuery()).stream()
-					.map(this::project).collect(Collectors.toList());
+			return findAllSorted(fluent(joinedQuery()), this.resultType, this.sort);
 		}
 
 		@Override
 		public Page<R> page(Pageable pageable) {
-			Query<T> query = fluent(joinedQuery());
-			if (pageable.isUnpaged()) {
-				return new PageImpl<>(all());
-			}
-			query.limit(pageable.getPageSize()).offset(PageableUtils.getOffsetAsInteger(pageable)).reqTotal();
-			try (ResultIterator<T> iterator = withSort(query, pageable.getSort()).execute()) {
-				List<R> content = new ArrayList<>();
-				while (iterator.hasNext()) {
-					content.add(project(iterator.next()));
-				}
-				return PageableExecutionUtils.getPage(content, pageable, iterator::getTotalCount);
-			}
+			return findAllPageable(fluent(joinedQuery()), this.resultType, pageable);
 		}
 
 		@Override
 		public Stream<R> stream() {
-			return fluent(joinedQuery()).stream().map(this::project);
+			return fluent(joinedQuery()).stream().map(e -> projectEntity(e, this.resultType));
 		}
 
 		@Override
@@ -438,13 +426,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 			if (!this.fieldsToInclude.isEmpty()) {
 				query.select(this.fieldsToInclude.toArray(String[]::new));
 			}
-			return withExample(withSort(query, this.sort), this.example);
-		}
-
-		private R project(T entity) {
-			EntityProjection<R, T> descriptor = SimpleReindexerRepository.this.reindexerConverter.getProjectionIntrospector()
-					.introspect(this.resultType, SimpleReindexerRepository.this.entityInformation.getJavaType());
-			return SimpleReindexerRepository.this.reindexerConverter.project(descriptor, entity);
+			return withExample(query, this.example);
 		}
 
 	}
