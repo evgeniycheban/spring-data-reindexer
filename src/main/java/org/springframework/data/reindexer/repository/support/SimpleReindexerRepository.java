@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
@@ -212,11 +211,13 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	}
 
 	private <R> List<R> findAll(Query<T> query, Class<R> resultType, Sort sort) {
-		return streamAll(query, resultType, sort).collect(Collectors.toList());
-	}
-
-	private <R> Stream<R> streamAll(Query<T> query, Class<R> resultType, Sort sort) {
-		return withSort(query, sort).stream().map(e -> projectEntity(e, resultType));
+		try (ResultIterator<T> iterator = withSort(query, sort).execute()) {
+			List<R> content = new ArrayList<>();
+			while (iterator.hasNext()) {
+				content.add(projectEntity(iterator.next(), resultType));
+			}
+			return content;
+		}
 	}
 
 	private Query<T> withSort(Query<T> query, Sort sort) {
@@ -412,7 +413,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		@Override
 		public Stream<R> stream() {
-			return streamAll(byExample(joinedQuery()), this.resultType, this.sort);
+			return sorted().stream().map(e -> projectEntity(e, this.resultType));
 		}
 
 		@Override
