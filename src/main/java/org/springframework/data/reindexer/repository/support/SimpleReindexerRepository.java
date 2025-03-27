@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
@@ -318,7 +317,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 					switch (stringMatcher) {
 						case DEFAULT, EXACT -> {
 							if (matcher.isIgnoreCaseEnabled()) {
-								criteria.like(propertyPath, Pattern.compile(s, Pattern.CASE_INSENSITIVE).pattern());
+								criteria.like(propertyPath, s);
 							} else {
 								criteria.where(propertyPath, Condition.EQ, s);
 							}

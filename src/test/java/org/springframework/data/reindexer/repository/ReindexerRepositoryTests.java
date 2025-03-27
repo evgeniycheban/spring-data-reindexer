@@ -1527,8 +1527,8 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findByFluentQueryExampleClassProjection() {
 		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		TestItem foundItem = this.repository.findBy(Example.of(expectedItem),
-						query -> query.project(List.of("id", "name")).as(TestItem.class).one())
+		TestItemDto foundItem = this.repository.findBy(Example.of(expectedItem),
+						query -> query.project(List.of("id", "name")).as(TestItemDto.class).one())
 				.orElse(null);
 		assertNotNull(foundItem);
 		assertEquals(expectedItem.getId(), foundItem.getId());
@@ -1666,7 +1666,7 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findOneByExampleMatcherContaining() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "Test"),
+		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "est"),
 				ExampleMatcher.matching()
 						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertNotNull(foundItem);
@@ -1679,7 +1679,7 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
-		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "Test"),
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "est"),
 				ExampleMatcher.matching()
 						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertNotNull(foundItems);
@@ -1692,7 +1692,7 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
-		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, "Test", "Test"),
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, "est", "est"),
 				ExampleMatcher.matchingAll()
 						.withIgnorePaths("id")
 						.withMatcher("name", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))
@@ -1704,7 +1704,7 @@ class ReindexerRepositoryTests {
 	@Test
 	public void existsByExampleMatcherContaining() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Test"),
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "est"),
 				ExampleMatcher.matching()
 						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertTrue(exists);
@@ -1716,7 +1716,7 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
-		long count = this.repository.count(Example.of(new TestItem(null, null, "Test"),
+		long count = this.repository.count(Example.of(new TestItem(null, null, "est"),
 				ExampleMatcher.matching()
 						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertEquals(3, count);
