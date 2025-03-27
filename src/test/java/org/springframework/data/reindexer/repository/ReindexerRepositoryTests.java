@@ -44,6 +44,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.*;
+import org.springframework.data.repository.query.FluentQuery;
+import org.springframework.data.repository.query.QueryByExampleExecutor;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -62,13 +65,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.PersistenceCreator;
-import org.springframework.data.domain.Example;
-import org.springframework.data.domain.Limit;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
@@ -1477,6 +1473,175 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllByExample() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue2"));
+		List<TestItem> items = this.repository.findAll(Example.of(new TestItem(null, null, "TestValue1")));
+		assertNotNull(items);
+		assertEquals(2, items.size());
+	}
+
+	@Test
+	public void findAllPageableByExample() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue2"));
+		Page<TestItem> items = this.repository.findAll(Example.of(new TestItem(null, null, "TestValue1")),
+				PageRequest.of(0, 1));
+		assertNotNull(items);
+		assertEquals(1, items.getSize());
+	}
+
+	@Test
+	public void findAllSortByExample() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue2"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "TestValue1")),
+				Sort.by(Direction.DESC, "id"));
+		assertNotNull(foundItems);
+		List<Long> ids = foundItems.stream()
+						.map(TestItem::getId)
+						.toList();
+		assertThat(ids).containsExactly(3L, 2L, 1L);
+	}
+
+	@Test
+	public void existsByExample() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "TestValue")));
+		assertTrue(exists);
+	}
+
+	@Test
+	public void countByExample() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue2"));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "TestValue1")));
+		assertEquals(2, count);
+	}
+
+	@Test
+	public void findByFluentQueryExampleClassProjection() {
+		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem foundItem = this.repository.findBy(Example.of(expectedItem),
+						query -> query.project(List.of("id", "name")).as(TestItem.class).one())
+				.orElse(null);
+		assertNotNull(foundItem);
+		assertEquals(expectedItem.getId(), foundItem.getId());
+		assertEquals(expectedItem.getName(), foundItem.getName());
+	}
+
+	@Test
+	public void findByFluentQueryExampleSort() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue2"));
+		List<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+				query -> query.project("id", "name").as(TestItemDto.class))
+				.sortBy(Sort.by(Direction.DESC, "id"))
+				.all();
+		assertNotNull(foundItems);
+		List<Long> ids = foundItems.stream()
+				.map(TestItemDto::getId)
+				.toList();
+		assertThat(ids).containsExactly(3L, 2L, 1L);
+	}
+
+	@Test
+	public void findByFluentQueryExampleSortFirst() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
+		TestItemDto foundItem = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+						query -> query.project("id", "name").as(TestItemDto.class))
+				.sortBy(Sort.by(Direction.DESC, "id"))
+				.firstValue();
+		assertNotNull(foundItem);
+		assertEquals(3L, foundItem.getId());
+	}
+
+	@Test
+	public void findByFluentQueryExampleSortPage() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
+		Page<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+						query -> query.project("id", "name").as(TestItemDto.class))
+				.sortBy(Sort.by(Direction.DESC, "id"))
+				.page(PageRequest.of(0, 2));
+		assertNotNull(foundItems);
+		List<Long> ids = foundItems.stream()
+				.map(TestItemDto::getId)
+				.toList();
+		assertThat(ids).containsExactly(3L, 2L);
+	}
+
+	@Test
+	public void findByFluentQueryExamplePageSort() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
+		Page<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+						query -> query.project("id", "name").as(TestItemDto.class))
+				.page(PageRequest.of(0, 2, Sort.by(Direction.DESC, "id")));
+		assertNotNull(foundItems);
+		List<Long> ids = foundItems.stream()
+				.map(TestItemDto::getId)
+				.toList();
+		assertThat(ids).containsExactly(3L, 2L);
+	}
+
+	@Test
+	public void findByFluentQueryExampleSortPageSort() {
+		this.repository.save(new TestItem(1L, "A", "TestValue1", true));
+		this.repository.save(new TestItem(2L, "B", "TestValue1", true));
+		this.repository.save(new TestItem(3L, "C", "TestValue2", true));
+		this.repository.save(new TestItem(4L, "C", "TestValue2", false));
+		Page<TestItem> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, null, true)),
+						query -> query.sortBy(Sort.by(Direction.DESC, "value"))
+								.page(PageRequest.of(0, 3,
+								Sort.by(Direction.ASC, "name"))));
+		assertNotNull(foundItems);
+		List<Long> ids = foundItems.stream()
+				.map(TestItem::getId)
+				.toList();
+		assertThat(ids).containsExactly(3L, 1L, 2L);
+	}
+
+	@Test
+	public void findByFluentQueryExampleCount() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue2"));
+		long count = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+                FluentQuery.FetchableFluentQuery::count);
+		assertEquals(2, count);
+	}
+
+	@Test
+	public void findByFluentQueryExampleLimit() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue2"));
+		long count = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+				query -> query.limit(1).count());
+		assertEquals(1, count);
+	}
+
+	@Test
+	public void findByFluentQueryExampleExists() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue")),
+                FluentQuery.FetchableFluentQuery::exists);
+		assertTrue(exists);
+	}
+
+	@Test
 	public void findByFluentQueryExampleRecordProjection() {
 		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		TestItemRecord foundItem = this.repository.findBy(Example.of(expectedItem),
@@ -1496,6 +1661,244 @@ class ReindexerRepositoryTests {
 		assertNotNull(foundItem);
 		assertEquals(expectedItem.getId(), foundItem.getId());
 		assertEquals(expectedItem.getName(), foundItem.getName());
+	}
+
+	@Test
+	public void findOneByExampleMatcherContaining() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		assertNotNull(foundItem);
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
+	public void findAllByExampleMatcherContaining() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "Value"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.size());
+	}
+
+	@Test
+	public void findAllByExampleMatcherIgnorePathsContaining() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "Value"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, "Test", "Test"),
+				ExampleMatcher.matchingAll()
+						.withIgnorePaths("id")
+						.withMatcher("name", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.size());
+	}
+
+	@Test
+	public void existsByExampleMatcherContaining() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		assertTrue(exists);
+	}
+
+	@Test
+	public void countByExampleMatcherContaining() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "Value"));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		assertEquals(3, count);
+	}
+
+	@Test
+	public void findOneByExampleMatcherStarting() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+		assertNotNull(foundItem);
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
+	public void findAllByExampleMatcherStarting() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "Value"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.size());
+	}
+
+	@Test
+	public void existsByExampleMatcherStarting() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+		assertTrue(exists);
+	}
+
+	@Test
+	public void countByExampleMatcherStarting() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "Value"));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "Test"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+		assertEquals(3, count);
+	}
+
+	@Test
+	public void findOneByExampleMatcherEnding() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "Value"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		assertNotNull(foundItem);
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
+	public void findAllByExampleMatcherEnding() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "Value"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.size());
+	}
+
+	@Test
+	public void existsByExampleMatcherEnding() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Value"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		assertTrue(exists);
+	}
+
+	@Test
+	public void countByExampleMatcherEnding() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "Value"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		assertEquals(3, count);
+	}
+
+	@Test
+	public void findOneByExampleMatcherExact() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "TestValue"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertNotNull(foundItem);
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
+	public void findAllByExampleMatcherExact() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "TestValue"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.size());
+	}
+
+	@Test
+	public void existsByExampleMatcherExact() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "TestValue"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertTrue(exists);
+	}
+
+	@Test
+	public void countByExampleMatcherExact() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "TestValue"),
+				ExampleMatcher.matching()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertEquals(3, count);
+	}
+
+	@Test
+	public void findOneByExampleMatcherExactIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestItem", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "testvalue"),
+				ExampleMatcher.matching()
+						.withIgnoreCase()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
+	public void findAllByExampleMatcherExactIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "testvalue"),
+				ExampleMatcher.matching()
+						.withIgnoreCase()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.size());
+	}
+
+	@Test
+	public void existsByExampleMatcherExactIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "testvalue"),
+				ExampleMatcher.matching()
+						.withIgnoreCase()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertTrue(exists);
+	}
+
+	@Test
+	public void countByExampleMatcherExactIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
+		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "testvalue"),
+				ExampleMatcher.matching()
+						.withIgnoreCase()
+						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		assertEquals(3, count);
 	}
 
 	@Configuration
@@ -1788,6 +2191,13 @@ class ReindexerRepositoryTests {
 			this.id = id;
 			this.name = name;
 			this.value = value;
+		}
+
+		public TestItem(Long id, String name, String value, boolean active) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
+			this.active = active;
 		}
 
 		public TestItem(Long id, boolean active) {
