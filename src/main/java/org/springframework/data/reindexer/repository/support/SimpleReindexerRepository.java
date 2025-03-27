@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
@@ -315,7 +316,13 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 						stringMatcher = StringMatcher.DEFAULT;
 					}
 					switch (stringMatcher) {
-						case DEFAULT, EXACT -> criteria.where(propertyPath, Condition.EQ, s);
+						case DEFAULT, EXACT -> {
+							if (matcher.isIgnoreCaseEnabled()) {
+								criteria.like(propertyPath, Pattern.compile(s, Pattern.CASE_INSENSITIVE).pattern());
+							} else {
+								criteria.where(propertyPath, Condition.EQ, s);
+							}
+						}
 						case STARTING -> criteria.like(propertyPath, s + "%");
 						case ENDING -> criteria.like(propertyPath, "%" + s);
 						case CONTAINING -> criteria.like(propertyPath, "%" + s + "%");
@@ -368,17 +375,23 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		private final List<String> fieldsToInclude;
 
-		private FluentQueryByExample(Example<E> example, Sort sort, Integer limit, Class<R> resultType, List<String> fieldsToInclude) {
+		@SuppressWarnings("unchecked")
+        private FluentQueryByExample(Example<E> example, Sort sort, Integer limit, Class<R> resultType, List<String> fieldsToInclude) {
 			this.example = example;
 			this.sort = sort != null ? sort : Sort.unsorted();
 			this.limit = limit;
-			this.resultType = resultType;
+			this.resultType = resultType != null ? resultType : (Class<R>) SimpleReindexerRepository.this.entityInformation.getJavaType();
 			this.fieldsToInclude = fieldsToInclude;
 		}
 
 		@Override
 		public FetchableFluentQuery<R> sortBy(Sort sort) {
 			return new FluentQueryByExample<>(this.example, sort, this.limit, this.resultType, this.fieldsToInclude);
+		}
+
+		@Override
+		public FetchableFluentQuery<R> limit(int limit) {
+			return new FluentQueryByExample<>(this.example, this.sort, limit, this.resultType, this.fieldsToInclude);
 		}
 
 		@Override
