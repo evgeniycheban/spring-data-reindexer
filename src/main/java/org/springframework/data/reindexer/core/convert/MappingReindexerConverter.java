@@ -47,6 +47,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -131,13 +132,13 @@ public class MappingReindexerConverter implements ReindexerConverter {
 			Object referenceValue = BeanPropertyUtils.getProperty(entity, propertyName);
 			ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(propertyName);
 			if (persistentProperty.isNamespaceReference()) {
-				if (referenceValue != null) {
+				if (!ObjectUtils.isEmpty(referenceValue)) {
 					referenceValue = projectResolvedValue(propertyProjection, referenceValue);
 				}
 				else {
 					NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
 					if (namespaceReference.lazy() || namespaceReference.fetch()) {
-						Class<?> referenceType = propertyProjection.getMappedType().getRequiredActualType().getType();
+						Class<?> referenceType = propertyProjection.getMappedType().getType();
 						referenceValue = createProxyIfNeeded(namespaceReference, referenceType, persistentProperty, entity,
 								resolvedValue -> projectResolvedValue(propertyProjection, resolvedValue));
 					}
@@ -178,7 +179,7 @@ public class MappingReindexerConverter implements ReindexerConverter {
 		ReindexerPersistentEntity<?> persistentEntity = this.mappingContext.getRequiredPersistentEntity(type);
 		for (ReindexerPersistentProperty property : persistentEntity.getPersistentProperties(NamespaceReference.class)) {
 			Object referenceEntity = BeanPropertyUtils.getProperty(source, property.getName());
-			if (referenceEntity != null) {
+			if (!ObjectUtils.isEmpty(referenceEntity)) {
 				readResolvedValue(property, referenceEntity);
 			}
 			else {
