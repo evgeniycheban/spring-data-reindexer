@@ -107,7 +107,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		this.mappingContext = mappingContext;
 		this.projectionIntrospector = EntityProjectionIntrospector.create(this.projectionFactory,
 				EntityProjectionIntrospector.ProjectionPredicate.typeHierarchy()
-						.and(((target, underlyingType) -> !conversions.isSimpleType(target))),
+						.and(((target, underlyingType) -> !this.conversions.isSimpleType(target))),
 				mappingContext);
 	}
 
@@ -159,8 +159,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 				this.conversionService);
 		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext.getRequiredPersistentEntity(entityProjection.getMappedType());
 		EntityInstantiator instantiator = this.instantiators.getInstantiatorFor(mappedEntity);
-		ValueExpressionEvaluator evaluator = this.expressionEvaluatorFactory.create(domainAccessor.getBean());
-		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, domainAccessor, evaluator);
+		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, domainAccessor);
 		Object instance = instantiator.createInstance(mappedEntity, getParameterProvider(mappedEntity, valueProvider));
 		PersistentPropertyAccessor<?> mappedAccessor = new ConvertingPropertyAccessor<>(mappedEntity.getPropertyAccessor(instance),
 				this.conversionService);
@@ -183,8 +182,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 	public <R> R read(Class<R> type, Object source) {
 		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(type);
 		PersistentPropertyAccessor<?> accessor = new ConvertingPropertyAccessor<>(entity.getPropertyAccessor(source), this.conversionService);
-		ValueExpressionEvaluator evaluator = this.expressionEvaluatorFactory.create(source);
-		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor, evaluator);
+		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor);
 		readProperties(entity, accessor, valueProvider);
 		return (R) source;
 	}
@@ -227,10 +225,10 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 
 		private final ValueExpressionEvaluator evaluator;
 
-		private ReindexerPropertyValueProvider(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor, ValueExpressionEvaluator evaluator) {
+		private ReindexerPropertyValueProvider(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor) {
 			this.entity = entity;
 			this.accessor = accessor;
-			this.evaluator = evaluator;
+			this.evaluator = MappingReindexerConverter.this.expressionEvaluatorFactory.create(accessor.getBean());
 		}
 
 		@Override
