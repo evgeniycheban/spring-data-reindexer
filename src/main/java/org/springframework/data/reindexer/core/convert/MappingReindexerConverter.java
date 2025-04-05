@@ -136,6 +136,15 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		this.conversions = conversions;
 	}
 
+	/**
+	 * Registers {@link EntityInstantiators} to customize entity instantiation.
+	 *
+	 * @param instantiators can be {@literal null}. Uses default {@link EntityInstantiators} if so.
+	 */
+	public void setInstantiators(EntityInstantiators instantiators) {
+		this.instantiators = instantiators == null ? new EntityInstantiators() : instantiators;
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public <R, E> R project(EntityProjection<R, E> entityProjection, E entity) {
