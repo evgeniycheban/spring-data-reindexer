@@ -41,26 +41,31 @@ public final class QueryUtils {
 
 	/**
 	 * Adds {@link NamespaceReference} join declarations to the provided {@link Query}.
-	 *
 	 * @param criteria the {@link Query} to use
 	 * @param domainType the entity domain class to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 * @return the {@link Query} for further customizations
 	 */
-	public static Query<?> withJoins(Query<?> criteria, Class<?> domainType, ReindexerMappingContext mappingContext, Reindexer reindexer) {
+	public static Query<?> withJoins(Query<?> criteria, Class<?> domainType, ReindexerMappingContext mappingContext,
+			Reindexer reindexer) {
 		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(domainType);
-		for (ReindexerPersistentProperty persistentProperty : persistentEntity.getPersistentProperties(NamespaceReference.class)) {
+		for (ReindexerPersistentProperty persistentProperty : persistentEntity
+			.getPersistentProperties(NamespaceReference.class)) {
 			NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
 			if (namespaceReference.lazy()) {
 				continue;
 			}
-			ReindexerPersistentEntity<?> referencedEntity = mappingContext.getRequiredPersistentEntity(persistentProperty.getActualType());
+			ReindexerPersistentEntity<?> referencedEntity = mappingContext
+				.getRequiredPersistentEntity(persistentProperty.getActualType());
 			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
 					: referencedEntity.getNamespace();
-			Namespace<?> namespace = reindexer.openNamespace(namespaceName, referencedEntity.getNamespaceOptions(), referencedEntity.getType());
-			Query<?> on = namespace.query().on(namespaceReference.indexName(), persistentProperty.isCollectionLike()
-					? Condition.SET : Condition.EQ, referencedEntity.getRequiredIdProperty().getName());
+			Namespace<?> namespace = reindexer.openNamespace(namespaceName, referencedEntity.getNamespaceOptions(),
+					referencedEntity.getType());
+			Query<?> on = namespace.query()
+				.on(namespaceReference.indexName(),
+						persistentProperty.isCollectionLike() ? Condition.SET : Condition.EQ,
+						referencedEntity.getRequiredIdProperty().getName());
 			if (namespaceReference.joinType() == JoinType.LEFT) {
 				criteria.leftJoin(on, persistentProperty.getName());
 			}

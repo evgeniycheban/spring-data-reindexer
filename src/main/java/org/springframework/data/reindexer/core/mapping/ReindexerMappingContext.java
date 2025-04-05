@@ -22,13 +22,15 @@ import org.springframework.data.mapping.model.SimpleTypeHolder;
 import org.springframework.data.util.TypeInformation;
 
 /**
- * Default implementation of a {@link MappingContext} for Reindexer using {@link BasicReindexerPersistentEntity} and
- * {@link BasicReindexerPersistentProperty} as primary abstractions.
+ * Default implementation of a {@link MappingContext} for Reindexer using
+ * {@link BasicReindexerPersistentEntity} and {@link BasicReindexerPersistentProperty} as
+ * primary abstractions.
  *
  * @author Evgeniy Cheban
  * @since 1.4
  */
-public class ReindexerMappingContext extends AbstractMappingContext<ReindexerPersistentEntity<?>, ReindexerPersistentProperty> {
+public class ReindexerMappingContext
+		extends AbstractMappingContext<ReindexerPersistentEntity<?>, ReindexerPersistentProperty> {
 
 	@Override
 	protected <T> ReindexerPersistentEntity<?> createPersistentEntity(TypeInformation<T> typeInformation) {
@@ -36,7 +38,8 @@ public class ReindexerMappingContext extends AbstractMappingContext<ReindexerPer
 	}
 
 	@Override
-	protected ReindexerPersistentProperty createPersistentProperty(Property property, ReindexerPersistentEntity<?> owner, SimpleTypeHolder simpleTypeHolder) {
+	protected ReindexerPersistentProperty createPersistentProperty(Property property,
+			ReindexerPersistentEntity<?> owner, SimpleTypeHolder simpleTypeHolder) {
 		return new BasicReindexerPersistentProperty(property, owner, simpleTypeHolder);
 	}
 

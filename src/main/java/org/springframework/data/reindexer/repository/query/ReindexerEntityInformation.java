@@ -30,28 +30,24 @@ public interface ReindexerEntityInformation<T, ID> extends EntityInformation<T, 
 
 	/**
 	 * Returns the name of the namespace the entity shall be persisted to.
-	 *
 	 * @return the name of the namespace the entity shall be persisted to
 	 */
 	String getNamespaceName();
 
 	/**
 	 * Returns a {@link NamespaceOptions}.
-	 *
 	 * @return the {@link NamespaceOptions} to use
 	 */
 	NamespaceOptions getNamespaceOptions();
 
 	/**
 	 * Returns the field that the id will be persisted to.
-	 *
 	 * @return the field that the id will be persisted to
 	 */
 	String getIdFieldName();
 
 	/**
 	 * Returns an iterable of {@link NamespaceReference}.
-	 *
 	 * @return the iterable of {@link NamespaceReference} to use
 	 */
 	Iterable<ReindexerPersistentProperty> getNamespaceReferences();

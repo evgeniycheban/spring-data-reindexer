@@ -26,7 +26,8 @@ import org.springframework.data.mapping.model.SimpleTypeHolder;
 import org.springframework.data.util.Lazy;
 
 /**
- * Reindexer specific {@link org.springframework.data.mapping.PersistentProperty} implementation.
+ * Reindexer specific {@link org.springframework.data.mapping.PersistentProperty}
+ * implementation.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -44,17 +45,17 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 		return reindex != null && reindex.isPrimaryKey();
 	});
 
-	private final Lazy<Boolean> isTransient = Lazy.of(() -> !isNamespaceReference()
-			&& (super.isTransient() || isAnnotationPresent(Transient.class)));
+	private final Lazy<Boolean> isTransient = Lazy
+		.of(() -> !isNamespaceReference() && (super.isTransient() || isAnnotationPresent(Transient.class)));
 
 	/**
 	 * Creates a new {@link BasicReindexerPersistentProperty}.
-	 *
 	 * @param property must not be {@literal null}
 	 * @param owner must not be {@literal null}
 	 * @param simpleTypeHolder must not be {@literal null}
 	 */
-	public BasicReindexerPersistentProperty(Property property, PersistentEntity<?, ReindexerPersistentProperty> owner, SimpleTypeHolder simpleTypeHolder) {
+	public BasicReindexerPersistentProperty(Property property, PersistentEntity<?, ReindexerPersistentProperty> owner,
+			SimpleTypeHolder simpleTypeHolder) {
 		super(property, owner, simpleTypeHolder);
 	}
 

@@ -21,8 +21,8 @@ import java.lang.annotation.RetentionPolicy;
 import org.springframework.data.annotation.Reference;
 
 /**
- * Specifies a Namespace to join using index name and join type.
- * Supports both One-to-many and One-to-one relationships.
+ * Specifies a Namespace to join using index name and join type. Supports both One-to-many
+ * and One-to-one relationships.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -33,36 +33,32 @@ public @interface NamespaceReference {
 
 	/**
 	 * Represents a namespace name.
-	 *
 	 * @return the namespace name to use
 	 */
 	String namespace() default "";
 
 	/**
 	 * Represents an index name to join.
-	 *
 	 * @return the index name to join
 	 */
 	String indexName();
 
 	/**
 	 * Represents a join type, defaults to {@link JoinType#LEFT}.
-	 *
 	 * @return the join type to use
 	 */
 	JoinType joinType() default JoinType.LEFT;
 
 	/**
-	 * Controls whether the referenced entity should be loaded lazily. This defaults to {@literal false}.
-	 *
+	 * Controls whether the referenced entity should be loaded lazily. This defaults to
+	 * {@literal false}.
 	 * @return {@literal false} by default
 	 */
 	boolean lazy() default false;
 
 	/**
-	 * Controls whether the referenced entity should be fetched if it is a nested relationship of the top level entity.
-	 * This defaults to {@literal false}.
-	 *
+	 * Controls whether the referenced entity should be fetched if it is a nested
+	 * relationship of the top level entity. This defaults to {@literal false}.
 	 * @return {@literal false} by default
 	 */
 	boolean fetch() default false;

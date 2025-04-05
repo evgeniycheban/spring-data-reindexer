@@ -63,13 +63,14 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link ReindexerConverter} that uses a {@link MappingContext} to do sophisticated mapping of domain objects to
- * target types resolving {@link NamespaceReference}s.
+ * {@link ReindexerConverter} that uses a {@link MappingContext} to do sophisticated
+ * mapping of domain objects to target types resolving {@link NamespaceReference}s.
  *
  * @author Evgeniy Cheban
  * @since 1.4
  */
-public class MappingReindexerConverter implements ReindexerConverter, ApplicationContextAware, InitializingBean, EnvironmentCapable {
+public class MappingReindexerConverter
+		implements ReindexerConverter, ApplicationContextAware, InitializingBean, EnvironmentCapable {
 
 	private final LazyLoadingProxyFactory lazyLoadingProxyFactory = new LazyLoadingProxyFactory();
 
@@ -82,7 +83,8 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 	private final CachingValueExpressionEvaluatorFactory expressionEvaluatorFactory = new CachingValueExpressionEvaluatorFactory(
 			this.expressionParser, this, this.spELContext::getEvaluationContext);
 
-	private final SpelAwareProxyProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory(this.expressionParser);
+	private final SpelAwareProxyProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory(
+			this.expressionParser);
 
 	private final Reindexer reindexer;
 
@@ -98,7 +100,6 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 */
@@ -107,7 +108,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		this.mappingContext = mappingContext;
 		this.projectionIntrospector = EntityProjectionIntrospector.create(this.projectionFactory,
 				EntityProjectionIntrospector.ProjectionPredicate.typeHierarchy()
-						.and(((target, underlyingType) -> !this.conversions.isSimpleType(target))),
+					.and(((target, underlyingType) -> !this.conversions.isSimpleType(target))),
 				mappingContext);
 	}
 
@@ -128,7 +129,6 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 
 	/**
 	 * Sets a {@link CustomConversions} to use.
-	 *
 	 * @param conversions the {@link CustomConversions} to use
 	 */
 	public void setConversions(CustomConversions conversions) {
@@ -138,8 +138,8 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 
 	/**
 	 * Registers {@link EntityInstantiators} to customize entity instantiation.
-	 *
-	 * @param instantiators can be {@literal null}. Uses default {@link EntityInstantiators} if so.
+	 * @param instantiators can be {@literal null}. Uses default
+	 * {@link EntityInstantiators} if so.
 	 */
 	public void setInstantiators(EntityInstantiators instantiators) {
 		this.instantiators = instantiators == null ? new EntityInstantiators() : instantiators;
@@ -152,25 +152,28 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 			return (R) read(entityProjection.getDomainType().getType(), entity);
 		}
 		if (entityProjection.getMappedType().getType().isInterface()) {
-			return this.projectionFactory.createProjection(entityProjection.getMappedType().getType(), read(entityProjection.getDomainType().getType(), entity));
+			return this.projectionFactory.createProjection(entityProjection.getMappedType().getType(),
+					read(entityProjection.getDomainType().getType(), entity));
 		}
-		ReindexerPersistentEntity<?> domainEntity = this.mappingContext.getRequiredPersistentEntity(entityProjection.getDomainType());
-		PersistentPropertyAccessor<E> domainAccessor = new ConvertingPropertyAccessor<>(domainEntity.getPropertyAccessor(entity),
-				this.conversionService);
-		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext.getRequiredPersistentEntity(entityProjection.getMappedType());
+		ReindexerPersistentEntity<?> domainEntity = this.mappingContext
+			.getRequiredPersistentEntity(entityProjection.getDomainType());
+		PersistentPropertyAccessor<E> domainAccessor = new ConvertingPropertyAccessor<>(
+				domainEntity.getPropertyAccessor(entity), this.conversionService);
+		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext
+			.getRequiredPersistentEntity(entityProjection.getMappedType());
 		EntityInstantiator instantiator = this.instantiators.getInstantiatorFor(mappedEntity);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, domainAccessor);
 		Object instance = instantiator.createInstance(mappedEntity, getParameterProvider(mappedEntity, valueProvider));
-		PersistentPropertyAccessor<?> mappedAccessor = new ConvertingPropertyAccessor<>(mappedEntity.getPropertyAccessor(instance),
-				this.conversionService);
+		PersistentPropertyAccessor<?> mappedAccessor = new ConvertingPropertyAccessor<>(
+				mappedEntity.getPropertyAccessor(instance), this.conversionService);
 		if (mappedEntity.requiresPropertyPopulation()) {
 			populateProperties(mappedEntity, mappedAccessor, valueProvider);
 		}
 		return (R) mappedAccessor.getBean();
 	}
 
-	private ParameterValueProvider<ReindexerPersistentProperty> getParameterProvider(ReindexerPersistentEntity<?> entity,
-			ReindexerPropertyValueProvider valueProvider) {
+	private ParameterValueProvider<ReindexerPersistentProperty> getParameterProvider(
+			ReindexerPersistentEntity<?> entity, ReindexerPropertyValueProvider valueProvider) {
 		ValueExpressionEvaluator evaluator = this.expressionEvaluatorFactory.create(valueProvider.accessor.getBean());
 		PersistentEntityParameterValueProvider<ReindexerPersistentProperty> parameterProvider = new PersistentEntityParameterValueProvider<>(
 				entity, valueProvider, null);
@@ -181,13 +184,15 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 	@Override
 	public <R> R read(Class<R> type, Object source) {
 		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(type);
-		PersistentPropertyAccessor<?> accessor = new ConvertingPropertyAccessor<>(entity.getPropertyAccessor(source), this.conversionService);
+		PersistentPropertyAccessor<?> accessor = new ConvertingPropertyAccessor<>(entity.getPropertyAccessor(source),
+				this.conversionService);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor);
 		populateProperties(entity, accessor, valueProvider);
 		return (R) accessor.getBean();
 	}
 
-	private void populateProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor, ReindexerPropertyValueProvider valueProvider) {
+	private void populateProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor,
+			ReindexerPropertyValueProvider valueProvider) {
 		for (ReindexerPersistentProperty property : entity) {
 			if (!entity.isCreatorArgument(property) && property.isReadable()) {
 				accessor.setProperty(property, valueProvider.getPropertyValue(property));
@@ -225,7 +230,8 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 
 		private final ValueExpressionEvaluator evaluator;
 
-		private ReindexerPropertyValueProvider(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor) {
+		private ReindexerPropertyValueProvider(ReindexerPersistentEntity<?> entity,
+				PersistentPropertyAccessor<?> accessor) {
 			this.entity = entity;
 			this.accessor = accessor;
 			this.evaluator = MappingReindexerConverter.this.expressionEvaluatorFactory.create(accessor.getBean());
@@ -233,22 +239,26 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 
 		@Override
 		public <T> T getPropertyValue(ReindexerPersistentProperty targetProperty) {
-			ReindexerPersistentProperty sourceProperty = this.entity.getRequiredPersistentProperty(targetProperty.getName());
+			ReindexerPersistentProperty sourceProperty = this.entity
+				.getRequiredPersistentProperty(targetProperty.getName());
 			if (sourceProperty.isNamespaceReference()) {
 				return readNamespaceReference(sourceProperty, targetProperty);
 			}
 			String expression = targetProperty.getSpelExpression();
-			Object value = expression != null ? this.evaluator.evaluate(expression) : this.accessor.getProperty(sourceProperty);
+			Object value = expression != null ? this.evaluator.evaluate(expression)
+					: this.accessor.getProperty(sourceProperty);
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
 
 		@SuppressWarnings("unchecked")
-		private <T> T readNamespaceReference(ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty) {
+		private <T> T readNamespaceReference(ReindexerPersistentProperty sourceProperty,
+				ReindexerPersistentProperty targetProperty) {
 			Object value = this.accessor.getProperty(sourceProperty);
 			if (ObjectUtils.isEmpty(value)) {
 				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
 				if (namespaceReference.lazy() || namespaceReference.fetch()) {
-					Object source = this.accessor.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+					Object source = this.accessor
+						.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
 					if (ObjectUtils.isEmpty(source)) {
 						return (T) value;
 					}
@@ -262,29 +272,37 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		private Object createProxyIfNeeded(NamespaceReference namespaceReference, Object source,
 				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty,
 				Converter<Object, ?> valueConverter) {
-			ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext.getRequiredPersistentEntity(sourceProperty);
+			ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
+				.getRequiredPersistentEntity(sourceProperty);
 			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
 					: referenceEntity.getNamespace();
 			Supplier<Object> callback = () -> {
-				Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(namespaceName, NamespaceOptions.defaultOptions(), referenceEntity.getType());
+				Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(namespaceName,
+						NamespaceOptions.defaultOptions(), referenceEntity.getType());
 				String indexName = referenceEntity.getRequiredIdProperty().getName();
 				if (source instanceof Collection<?> values) {
 					return namespace.query().where(indexName, Condition.SET, values).toList();
 				}
 				return namespace.query().where(indexName, Condition.EQ, source).findOne().orElse(null);
 			};
-			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(targetProperty.getType(), sourceProperty, callback, new NamespaceReferenceSource(namespaceName, source), valueConverter);
+			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
+					targetProperty.getType(), sourceProperty, callback,
+					new NamespaceReferenceSource(namespaceName, source), valueConverter);
 		}
 
 		@SuppressWarnings("unchecked")
-		private <T> T readPropertyValue(ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty, Object value) {
-			ReindexerConversionContext conversionContext = new ReindexerConversionContext(MappingReindexerConverter.this,
-					sourceProperty, MappingReindexerConverter.this.conversionService, MappingReindexerConverter.this.conversions);
-			PropertyValueConversions valueConversions = MappingReindexerConverter.this.conversions.getPropertyValueConversions();
+		private <T> T readPropertyValue(ReindexerPersistentProperty sourceProperty,
+				ReindexerPersistentProperty targetProperty, Object value) {
+			ReindexerConversionContext conversionContext = new ReindexerConversionContext(
+					MappingReindexerConverter.this, sourceProperty, MappingReindexerConverter.this.conversionService,
+					MappingReindexerConverter.this.conversions);
+			PropertyValueConversions valueConversions = MappingReindexerConverter.this.conversions
+				.getPropertyValueConversions();
 			if (valueConversions != null && valueConversions.hasValueConverter(targetProperty)) {
 				PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = valueConversions
-						.getValueConverter(targetProperty);
-				return (T) (value != null ? valueConverter.read(value, conversionContext) : valueConverter.readNull(conversionContext));
+					.getValueConverter(targetProperty);
+				return (T) (value != null ? valueConverter.read(value, conversionContext)
+						: valueConverter.readNull(conversionContext));
 			}
 			return (T) conversionContext.read(value, targetProperty.getTypeInformation());
 		}

@@ -62,8 +62,9 @@ public abstract class ReindexerConfigurationSupport {
 	}
 
 	/**
-	 * Scans the mapping base package for classes annotated with {@link Namespace}. By default, it scans for entities in
-	 * all packages returned by {@link #getMappingBasePackages()}.
+	 * Scans the mapping base package for classes annotated with {@link Namespace}. By
+	 * default, it scans for entities in all packages returned by
+	 * {@link #getMappingBasePackages()}.
 	 *
 	 * @see #getMappingBasePackages()
 	 * @return a set of entities
@@ -78,13 +79,13 @@ public abstract class ReindexerConfigurationSupport {
 	}
 
 	/**
-	 * Returns the base packages to scan for Reindexer mapped entities at startup. Will return the package name of the
-	 * configuration class' (the concrete class, not this one here) by default. So if you have a
-	 * {@code com.acme.AppConfig} extending {@link ReindexerConfigurationSupport} the base package will be considered
+	 * Returns the base packages to scan for Reindexer mapped entities at startup. Will
+	 * return the package name of the configuration class' (the concrete class, not this
+	 * one here) by default. So if you have a {@code com.acme.AppConfig} extending
+	 * {@link ReindexerConfigurationSupport} the base package will be considered
 	 * {@code com.acme} unless the method is overridden to implement alternate behavior.
-	 *
-	 * @return the base packages to scan for mapped {@link Namespace} classes or an empty collection to not enable scanning
-	 *         for entities
+	 * @return the base packages to scan for mapped {@link Namespace} classes or an empty
+	 * collection to not enable scanning for entities
 	 */
 	protected Collection<String> getMappingBasePackages() {
 		Package mappingBasePackage = getClass().getPackage();
@@ -92,8 +93,8 @@ public abstract class ReindexerConfigurationSupport {
 	}
 
 	/**
-	 * Scans the given base package for entities, i.e. Reindexer specific types annotated with {@link Namespace}.
-	 *
+	 * Scans the given base package for entities, i.e. Reindexer specific types annotated
+	 * with {@link Namespace}.
 	 * @param basePackage must not be {@literal null}
 	 * @return a set of entities
 	 * @throws ClassNotFoundException if the class could not be loaded
@@ -108,8 +109,8 @@ public abstract class ReindexerConfigurationSupport {
 					false);
 			componentProvider.addIncludeFilter(new AnnotationTypeFilter(Namespace.class));
 			for (BeanDefinition candidate : componentProvider.findCandidateComponents(basePackage)) {
-				initialEntitySet
-						.add(ClassUtils.forName(candidate.getBeanClassName(), ReindexerConfigurationSupport.class.getClassLoader()));
+				initialEntitySet.add(ClassUtils.forName(candidate.getBeanClassName(),
+						ReindexerConfigurationSupport.class.getClassLoader()));
 			}
 		}
 		return initialEntitySet;

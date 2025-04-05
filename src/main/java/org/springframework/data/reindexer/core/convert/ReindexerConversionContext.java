@@ -27,7 +27,8 @@ import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProper
 import org.springframework.data.util.TypeInformation;
 
 /**
- * {@link ValueConversionContext} that allows to delegate read/write to an underlying {@link ReindexerConverter}.
+ * {@link ValueConversionContext} that allows to delegate read/write to an underlying
+ * {@link ReindexerConverter}.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -42,8 +43,8 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 
 	private final CustomConversions conversions;
 
-	public ReindexerConversionContext(ReindexerConverter reindexerConverter,
-			ReindexerPersistentProperty property, ConversionService conversionService, CustomConversions conversions) {
+	public ReindexerConversionContext(ReindexerConverter reindexerConverter, ReindexerPersistentProperty property,
+			ConversionService conversionService, CustomConversions conversions) {
 		this.reindexerConverter = reindexerConverter;
 		this.property = property;
 		this.conversionService = conversionService;
@@ -61,7 +62,8 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 		if (value == null) {
 			return null;
 		}
-		if (this.conversions.hasCustomReadTarget(this.property.getActualType(), target.getRequiredActualType().getType())) {
+		if (this.conversions.hasCustomReadTarget(this.property.getActualType(),
+				target.getRequiredActualType().getType())) {
 			TypeDescriptor targetType = getTypeDescriptor(target);
 			if (this.conversionService.canConvert(getTypeDescriptor(this.property.getTypeInformation()), targetType)) {
 				return (T) this.conversionService.convert(value, targetType);
@@ -78,15 +80,17 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 
 	private TypeDescriptor getTypeDescriptor(TypeInformation<?> typeInformation) {
 		if (typeInformation.isCollectionLike()) {
-			return TypeDescriptor.collection(typeInformation.getType(), TypeDescriptor.valueOf(typeInformation.getRequiredActualType().getType()));
+			return TypeDescriptor.collection(typeInformation.getType(),
+					TypeDescriptor.valueOf(typeInformation.getRequiredActualType().getType()));
 		}
 		return TypeDescriptor.valueOf(typeInformation.getType());
 	}
 
 	@SuppressWarnings("unchecked")
 	private Object readEntity(Object value, TypeInformation<?> target) {
-		EntityProjection<Object, Object> projection = (EntityProjection<Object, Object>) this.reindexerConverter.getProjectionIntrospector()
-				.introspect(target.getRequiredActualType().getType(), this.property.getActualType());
+		EntityProjection<Object, Object> projection = (EntityProjection<Object, Object>) this.reindexerConverter
+			.getProjectionIntrospector()
+			.introspect(target.getRequiredActualType().getType(), this.property.getActualType());
 		if (value instanceof Iterable<?> referenceEntities) {
 			List<Object> projectionEntities = new ArrayList<>();
 			for (Object projectionEntity : referenceEntities) {

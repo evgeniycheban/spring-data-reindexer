@@ -72,20 +72,20 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param accessor the {@link QueryMethodValueEvaluationContextAccessor} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
-	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
-			QueryMethodValueEvaluationContextAccessor accessor, Reindexer reindexer, ReindexerConverter reindexerConverter) {
+	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod method,
+			ReindexerEntityInformation<?, ?> entityInformation, QueryMethodValueEvaluationContextAccessor accessor,
+			Reindexer reindexer, ReindexerConverter reindexerConverter) {
 		validate(method);
 		this.method = method;
 		this.reindexerConverter = reindexerConverter;
-		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
-				entityInformation.getJavaType());
+		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(),
+				entityInformation.getNamespaceOptions(), entityInformation.getJavaType());
 		this.queryEvaluator = createQueryExpressionEvaluator(method, accessor);
 		this.namedParameters = new HashMap<>();
 		for (Parameter parameter : method.getParameters()) {
@@ -100,7 +100,8 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 			if (method.isPageQuery()) {
 				return (parameters, type) -> {
 					ProjectingResultIterator iterator = toIterator(parameters, type);
-					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator), parameters.getPageable(), iterator::getTotalCount);
+					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
+							parameters.getPageable(), iterator::getTotalCount);
 				};
 			}
 			if (method.isStreamQuery()) {
@@ -123,20 +124,23 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		if (queryMethod.isPageQuery()) {
 			String query = queryMethod.getQuery().toLowerCase();
 			if (!query.contains("count(*)") && !query.contains("count_cached(*)")) {
-				throw new InvalidDataAccessApiUsageException("Page query must contain COUNT or COUNT_CACHED expression for method: " + queryMethod);
+				throw new InvalidDataAccessApiUsageException(
+						"Page query must contain COUNT or COUNT_CACHED expression for method: " + queryMethod);
 			}
 		}
 	}
 
-	private QueryExpressionEvaluator createQueryExpressionEvaluator(ReindexerQueryMethod method, QueryMethodValueEvaluationContextAccessor accessor) {
-		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter
-				.of(ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_PREFIX + index, String::concat);
+	private QueryExpressionEvaluator createQueryExpressionEvaluator(ReindexerQueryMethod method,
+			QueryMethodValueEvaluationContextAccessor accessor) {
+		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter.of(ValueExpressionParser.create(),
+				(index, expression) -> EXPRESSION_PARAMETER_PREFIX + index, String::concat);
 		return queryRewriter.withEvaluationContextAccessor(accessor).parse(method.getQuery(), method.getParameters());
 	}
 
 	@Override
 	public Object execute(Object[] parameters) {
-		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(), parameters);
+		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(),
+				parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
 		Object result = this.queryExecution.get().apply(parameterAccessor, resultProcessor.getReturnedType());
 		return resultProcessor.processResult(result);
@@ -144,7 +148,8 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private ProjectingResultIterator toIterator(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
 		String preparedQuery = prepareQuery(parameters);
-		return new ProjectingResultIterator(this.namespace.execSql(preparedQuery), returnedType, this.reindexerConverter);
+		return new ProjectingResultIterator(this.namespace.execSql(preparedQuery), returnedType,
+				this.reindexerConverter);
 	}
 
 	private String prepareQuery(ReindexerParameterAccessor parameters) {
@@ -177,7 +182,8 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 								index = Integer.parseInt(parameterReference);
 							}
 							catch (NumberFormatException e) {
-								throw new IllegalStateException("Invalid parameter reference: " + parameterReference + " at index: " + i);
+								throw new IllegalStateException(
+										"Invalid parameter reference: " + parameterReference + " at index: " + i);
 							}
 							value = parameters.getBindableValue(index - 1);
 						}
@@ -193,7 +199,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 			Sort sort = parameters.getSort();
 			if (sort.isSorted()) {
 				result.append(" order by ");
-				for (Iterator<Order> orderIterator = sort.iterator(); orderIterator.hasNext(); ) {
+				for (Iterator<Order> orderIterator = sort.iterator(); orderIterator.hasNext();) {
 					Order order = orderIterator.next();
 					result.append(order.getProperty()).append(" ").append(order.getDirection());
 					if (orderIterator.hasNext()) {
@@ -217,10 +223,11 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				int firstResult = PageableUtils.getOffsetAsInteger(pageable);
 				if (firstResult > 0) {
 					/*
-					 * In order to return the correct results, we have to adjust the first result offset to be returned if:
-					 * - a Pageable parameter is present
-					 * - AND the requested page number > 0
-					 * - AND the requested page size was bigger than the derived result limitation via the First/Top keyword.
+					 * In order to return the correct results, we have to adjust the first
+					 * result offset to be returned if: - a Pageable parameter is present
+					 * - AND the requested page number > 0 - AND the requested page size
+					 * was bigger than the derived result limitation via the First/Top
+					 * keyword.
 					 */
 					if (pageable.getPageSize() > maxResults) {
 						firstResult = firstResult - (pageable.getPageSize() - maxResults);
@@ -258,4 +265,5 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	public QueryMethod getQueryMethod() {
 		return this.method;
 	}
+
 }

@@ -31,8 +31,8 @@ import org.springframework.util.Assert;
 /**
  * A {@link org.springframework.transaction.PlatformTransactionManager} that manages
  * {@link Transaction}s for a single {@link ru.rt.restream.reindexer.Namespace}.
- * @see org.springframework.transaction.annotation.Transactional
  *
+ * @see org.springframework.transaction.annotation.Transactional
  * @author Evgeniy Cheban
  * @since 1.1
  */
@@ -46,11 +46,11 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param reindexer the {@link Reindexer} instance to use
 	 * @param domainClass the domain class to use
 	 */
-	public ReindexerTransactionManager(Reindexer reindexer, ReindexerMappingContext mappingContext, Class<T> domainClass) {
+	public ReindexerTransactionManager(Reindexer reindexer, ReindexerMappingContext mappingContext,
+			Class<T> domainClass) {
 		Assert.notNull(reindexer, "reindexer cannot be null");
 		Assert.notNull(mappingContext, "mappingContext cannot be null");
 		Assert.notNull(domainClass, "domainClass cannot be null");
@@ -90,9 +90,8 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 
 	@SuppressWarnings("unchecked")
 	private Transaction<T> extractReindexerTransaction(Object transaction) {
-		Assert.isInstanceOf(Transaction.class, transaction,
-				() -> String.format("Expected to find a %s but it turned out to be %s.", Transaction.class,
-						transaction.getClass()));
+		Assert.isInstanceOf(Transaction.class, transaction, () -> String
+			.format("Expected to find a %s but it turned out to be %s.", Transaction.class, transaction.getClass()));
 		return (Transaction<T>) transaction;
 	}
 

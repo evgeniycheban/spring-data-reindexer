@@ -36,9 +36,8 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	private final Lazy<Query> queryAnnotationExtractor;
 
 	/**
-	 * Creates a new {@link QueryMethod} from the given parameters. Looks up the correct query to use for following
-	 * invocations of the method given.
-	 *
+	 * Creates a new {@link QueryMethod} from the given parameters. Looks up the correct
+	 * query to use for following invocations of the method given.
 	 * @param method must not be {@literal null}.
 	 * @param metadata must not be {@literal null}.
 	 * @param factory must not be {@literal null}.
@@ -51,7 +50,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	/**
 	 * Returns true if the method's return type is {@link Iterator}.
-	 *
 	 * @return true if the method's return type is {@link Iterator}
 	 */
 	public boolean isIteratorQuery() {
@@ -60,7 +58,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	/**
 	 * Returns true if the method has {@link Query} annotation.
-	 *
 	 * @return true if the method has {@link Query} annotation
 	 */
 	public boolean hasQueryAnnotation() {
@@ -69,7 +66,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	/**
 	 * Returns the query from the {@link Query} annotation.
-	 *
 	 * @return the query from the {@link Query} annotation to use
 	 */
 	public String getQuery() {
@@ -79,7 +75,6 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	/**
 	 * Returns true, if the query is for UPDATE.
-	 *
 	 * @return true, if the query is for UPDATE
 	 */
 	@Override

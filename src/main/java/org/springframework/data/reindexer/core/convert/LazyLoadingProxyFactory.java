@@ -45,7 +45,8 @@ import org.springframework.objenesis.SpringObjenesis;
 import org.springframework.util.ReflectionUtils;
 
 /**
- * {@link ProxyFactory} to create a proxy for {@link ReindexerPersistentProperty#getType()} to resolve a reference lazily.
+ * {@link ProxyFactory} to create a proxy for
+ * {@link ReindexerPersistentProperty#getType()} to resolve a reference lazily.
  * <strong>NOTE:</strong> This class is intended for internal usage only.
  *
  * @author Evgeniy Cheban
@@ -59,7 +60,6 @@ public final class LazyLoadingProxyFactory {
 
 	/**
 	 * Creates a lazy loading proxy that uses {@literal callback} to fetch an association.
-	 *
 	 * @param type the target type of the proxy being created to use
 	 * @param property the {@link ReindexerPersistentProperty} to use
 	 * @param callback the callback to fetch an association
@@ -113,7 +113,8 @@ public final class LazyLoadingProxyFactory {
 				GET_TARGET_METHOD = LazyLoadingProxy.class.getMethod("getTarget");
 				GET_SOURCE_METHOD = LazyLoadingProxy.class.getMethod("getSource");
 				FINALIZE_METHOD = Object.class.getDeclaredMethod("finalize");
-			} catch (Exception e) {
+			}
+			catch (Exception e) {
 				throw new RuntimeException(e);
 			}
 		}
@@ -136,7 +137,8 @@ public final class LazyLoadingProxyFactory {
 
 		private Object result;
 
-		private LazyLoadingInterceptor(ReindexerPersistentProperty property, Supplier<Object> callback, Object source, Converter<Object, ?> valueConverter) {
+		private LazyLoadingInterceptor(ReindexerPersistentProperty property, Supplier<Object> callback, Object source,
+				Converter<Object, ?> valueConverter) {
 			this.property = property;
 			this.callback = callback;
 			this.source = source;
@@ -220,7 +222,8 @@ public final class LazyLoadingProxyFactory {
 			try {
 				this.result = in.readObject();
 				this.resolved = true;
-			} catch (ClassNotFoundException e) {
+			}
+			catch (ClassNotFoundException e) {
 				throw new LazyLoadingException("Could not deserialize result", e);
 			}
 		}
@@ -239,8 +242,8 @@ public final class LazyLoadingProxyFactory {
 				}
 			}
 			if (LOGGER.isTraceEnabled()) {
-				LOGGER.trace(String.format("Resolving lazy loading property %s.%s",
-						this.property.getOwner().getName(), this.property.getName()));
+				LOGGER.trace(String.format("Resolving lazy loading property %s.%s", this.property.getOwner().getName(),
+						this.property.getName()));
 			}
 			try (AcquiredLock l = this.writeLock.lock()) {
 				if (!this.resolved) {
@@ -248,7 +251,8 @@ public final class LazyLoadingProxyFactory {
 					this.resolved = true;
 				}
 				return this.result;
-			} catch (ReindexerException e) {
+			}
+			catch (ReindexerException e) {
 				throw new LazyLoadingException("Unable to lazily resolve reference", e);
 			}
 		}

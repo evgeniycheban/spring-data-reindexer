@@ -38,49 +38,48 @@ public @interface Namespace {
 
 	/**
 	 * The namespace name the index representing the entity is supposed to be stored in.
-	 *
 	 * @return the namespace name to use
 	 */
 	String name();
 
 	/**
-	 * Only in memory namespace. Defaults to {@link NamespaceOptions#DEFAULT_ENABLE_STORAGE}
-	 *
+	 * Only in memory namespace. Defaults to
+	 * {@link NamespaceOptions#DEFAULT_ENABLE_STORAGE}
 	 * @return true, if only in memory namespace
 	 */
 	boolean enableStorage() default NamespaceOptions.DEFAULT_ENABLE_STORAGE;
 
 	/**
-	 * Create item storage if missing. Defaults to {@link NamespaceOptions#DEFAULT_CREATE_IF_MISSING}
-	 *
+	 * Create item storage if missing. Defaults to
+	 * {@link NamespaceOptions#DEFAULT_CREATE_IF_MISSING}
 	 * @return true, if create item storage if missing
 	 */
 	boolean createStorageIfMissing() default NamespaceOptions.DEFAULT_CREATE_IF_MISSING;
 
 	/**
-	 * Drop ns on index mismatch error. Defaults to {@link NamespaceOptions#DEFAULT_DROP_ON_INDEX_CONFLICT}
-	 *
+	 * Drop ns on index mismatch error. Defaults to
+	 * {@link NamespaceOptions#DEFAULT_DROP_ON_INDEX_CONFLICT}
 	 * @return true, if drop ns on index mismatch error
 	 */
 	boolean dropOnIndexesConflict() default NamespaceOptions.DEFAULT_DROP_ON_INDEX_CONFLICT;
 
 	/**
-	 * Drop on file errors. Defaults to {@link NamespaceOptions#DEFAULT_DROP_ON_FILE_FORMAT_ERROR}
-	 *
+	 * Drop on file errors. Defaults to
+	 * {@link NamespaceOptions#DEFAULT_DROP_ON_FILE_FORMAT_ERROR}
 	 * @return true, if drop on file errors
 	 */
 	boolean dropOnFileFormatError() default NamespaceOptions.DEFAULT_DROP_ON_FILE_FORMAT_ERROR;
 
 	/**
-	 * Disable object cache. Defaults to {@link NamespaceOptions#DEFAULT_DISABLE_OBJ_CACHE}
-	 *
+	 * Disable object cache. Defaults to
+	 * {@link NamespaceOptions#DEFAULT_DISABLE_OBJ_CACHE}
 	 * @return true, if disable object cache
 	 */
 	boolean disableObjCache() default NamespaceOptions.DEFAULT_DISABLE_OBJ_CACHE;
 
 	/**
-	 * Object cache items count. Defaults to {@link NamespaceOptions#DEFAULT_OBJ_CACHE_ITEMS_COUNT}
-	 *
+	 * Object cache items count. Defaults to
+	 * {@link NamespaceOptions#DEFAULT_OBJ_CACHE_ITEMS_COUNT}
 	 * @return object cache items count
 	 */
 	long objCacheItemsCount() default NamespaceOptions.DEFAULT_OBJ_CACHE_ITEMS_COUNT;
