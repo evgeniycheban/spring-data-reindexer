@@ -28,7 +28,6 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.convert.ConversionService;
-import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.convert.support.GenericConversionService;
@@ -273,30 +272,14 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		@SuppressWarnings("unchecked")
 		private <T> T readPropertyValue(ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty, Object value) {
 			ReindexerConversionContext conversionContext = new ReindexerConversionContext(MappingReindexerConverter.this,
-					sourceProperty, MappingReindexerConverter.this.conversionService);
+					sourceProperty, MappingReindexerConverter.this.conversionService, MappingReindexerConverter.this.conversions);
 			PropertyValueConversions valueConversions = MappingReindexerConverter.this.conversions.getPropertyValueConversions();
 			if (valueConversions != null && valueConversions.hasValueConverter(targetProperty)) {
 				PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = valueConversions
 						.getValueConverter(targetProperty);
 				return (T) (value != null ? valueConverter.read(value, conversionContext) : valueConverter.readNull(conversionContext));
 			}
-			if (MappingReindexerConverter.this.conversions.hasCustomReadTarget(sourceProperty.getActualType(), targetProperty.getActualType())) {
-				TypeDescriptor targetType = getTypeDescriptor(targetProperty);
-				if (MappingReindexerConverter.this.conversionService.canConvert(getTypeDescriptor(sourceProperty), targetType)) {
-					return (T) MappingReindexerConverter.this.conversionService.convert(value, targetType);
-				}
-			}
-			if (MappingReindexerConverter.this.conversions.isSimpleType(targetProperty.getType())) {
-				return (T) value;
-			}
 			return (T) conversionContext.read(value, targetProperty.getTypeInformation());
-		}
-
-		private TypeDescriptor getTypeDescriptor(ReindexerPersistentProperty property) {
-			if (property.isCollectionLike()) {
-				return TypeDescriptor.collection(property.getType(), TypeDescriptor.valueOf(property.getActualType()));
-			}
-			return TypeDescriptor.valueOf(property.getType());
 		}
 
 	}

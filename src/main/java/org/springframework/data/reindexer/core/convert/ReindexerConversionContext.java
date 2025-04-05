@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.core.convert.ConversionService;
+import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
@@ -38,11 +40,14 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 
 	private final ConversionService conversionService;
 
+	private final CustomConversions conversions;
+
 	public ReindexerConversionContext(ReindexerConverter reindexerConverter,
-			ReindexerPersistentProperty property, ConversionService conversionService) {
+			ReindexerPersistentProperty property, ConversionService conversionService, CustomConversions conversions) {
 		this.reindexerConverter = reindexerConverter;
 		this.property = property;
 		this.conversionService = conversionService;
+		this.conversions = conversions;
 	}
 
 	@Override
@@ -56,14 +61,30 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 		if (value == null) {
 			return null;
 		}
-		if (this.property.isNamespaceReference()) {
-			return (T) readNamespaceReference(value, target);
+		if (this.conversions.hasCustomReadTarget(this.property.getActualType(), target.getRequiredActualType().getType())) {
+			TypeDescriptor targetType = getTypeDescriptor(target);
+			if (this.conversionService.canConvert(getTypeDescriptor(this.property.getTypeInformation()), targetType)) {
+				return (T) this.conversionService.convert(value, targetType);
+			}
+		}
+		if (this.property.isEntity()) {
+			return (T) readEntity(value, target);
+		}
+		if (this.conversions.isSimpleType(target.getType())) {
+			return (T) value;
 		}
 		return ValueConversionContext.super.read(value, target);
 	}
 
+	private TypeDescriptor getTypeDescriptor(TypeInformation<?> typeInformation) {
+		if (typeInformation.isCollectionLike()) {
+			return TypeDescriptor.collection(typeInformation.getType(), TypeDescriptor.valueOf(typeInformation.getRequiredActualType().getType()));
+		}
+		return TypeDescriptor.valueOf(typeInformation.getType());
+	}
+
 	@SuppressWarnings("unchecked")
-	private Object readNamespaceReference(Object value, TypeInformation<?> target) {
+	private Object readEntity(Object value, TypeInformation<?> target) {
 		EntityProjection<Object, Object> projection = (EntityProjection<Object, Object>) this.reindexerConverter.getProjectionIntrospector()
 				.introspect(target.getRequiredActualType().getType(), this.property.getActualType());
 		if (value instanceof Iterable<?> referenceEntities) {
