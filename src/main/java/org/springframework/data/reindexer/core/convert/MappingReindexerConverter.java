@@ -238,7 +238,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 				return readNamespaceReference(sourceProperty, targetProperty);
 			}
 			String expression = targetProperty.getSpelExpression();
-			Object value = expression != null ? this.evaluator.evaluate(expression) : this.accessor.getProperty(targetProperty);
+			Object value = expression != null ? this.evaluator.evaluate(expression) : this.accessor.getProperty(sourceProperty);
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
 
@@ -273,7 +273,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 				}
 				return namespace.query().where(indexName, Condition.EQ, source).findOne().orElse(null);
 			};
-			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(targetProperty.getType(), targetProperty, callback, new NamespaceReferenceSource(namespaceName, source), valueConverter);
+			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(targetProperty.getType(), sourceProperty, callback, new NamespaceReferenceSource(namespaceName, source), valueConverter);
 		}
 
 		@SuppressWarnings("unchecked")
