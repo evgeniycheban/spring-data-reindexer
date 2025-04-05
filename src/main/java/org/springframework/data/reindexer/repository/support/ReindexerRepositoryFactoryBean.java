@@ -23,6 +23,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.repository.Repository;
@@ -41,6 +42,8 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 	private Reindexer reindexer;
 
 	private ReindexerMappingContext mappingContext;
+
+	private ReindexerConverter reindexerConverter;
 
 	private ApplicationContext ctx;
 
@@ -71,9 +74,19 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 		this.mappingContext = mappingContext;
 	}
 
+	/**
+	 * Sets the {@link ReindexerConverter}.
+	 *
+	 * @param reindexerConverter the {@link ReindexerConverter} to use
+	 * @since 1.4
+	 */
+	public void setReindexerConverter(ReindexerConverter reindexerConverter) {
+		this.reindexerConverter = reindexerConverter;
+	}
+
 	@Override
 	protected RepositoryFactorySupport createRepositoryFactory() {
-		return new ReindexerRepositoryFactory(this.reindexer, this.mappingContext, this.ctx);
+		return new ReindexerRepositoryFactory(this.reindexer, this.mappingContext, this.reindexerConverter, this.ctx);
 	}
 
 	@Override

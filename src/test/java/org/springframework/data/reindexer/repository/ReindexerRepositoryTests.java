@@ -16,6 +16,8 @@
 package org.springframework.data.reindexer.repository;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,9 +46,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.data.domain.*;
-import org.springframework.data.repository.query.FluentQuery;
-import org.springframework.data.repository.query.QueryByExampleExecutor;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -64,16 +63,32 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.convert.CustomConversions.StoreConversions;
+import org.springframework.data.convert.PropertyValueConverter;
+import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.convert.ValueConverter;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
-import org.springframework.data.reindexer.core.mapping.NamespaceReference;
+import org.springframework.data.reindexer.core.convert.ReindexerConversionContext;
+import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.Namespace;
+import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
+import org.springframework.data.repository.query.FluentQuery;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
@@ -1116,9 +1131,9 @@ class ReindexerRepositoryTests {
 	public void findDistinctNameValueProjectionByIdIn() {
 		TestJoinedItem joinedItem1 = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
 		TestJoinedItem joinedItem2 = this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName2"));
-		this.repository.save(new TestItem(1L, joinedItem1.getId(), Collections.emptyList(), "TestName1", "TestValue2"));
-		this.repository.save(new TestItem(2L, joinedItem2.getId(), Collections.emptyList(), "TestName2", "TestValue3"));
-		this.repository.save(new TestItem(3L, joinedItem2.getId(), Collections.emptyList(), "TestName3", "TestValue3"));
+		this.repository.save(new TestItem(1L, null, joinedItem1.getId(), Collections.emptyList(), "TestName1", "TestValue2", null, null));
+		this.repository.save(new TestItem(2L, null, joinedItem2.getId(), Collections.emptyList(), "TestName2", "TestValue3", null, null));
+		this.repository.save(new TestItem(3L, null, joinedItem2.getId(), Collections.emptyList(), "TestName3", "TestValue3", null, null));
 		List<TestItemNameValueJoinedItemProjection> foundItems = this.repository.findDistinctNameValueJoinedItemProjectionByIdIn(List.of(1L, 2L, 3L));
 		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getName).toList()).containsOnly("TestName1", "TestName3");
 		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
@@ -1405,9 +1420,10 @@ class ReindexerRepositoryTests {
 		expectedJoinedItems.put(4L, this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
 		expectedJoinedItems.put(5L, this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
 		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
-		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItem.getId(), joinedItemIds, "TestName", "TestValue"));
+		TestItem expectedItem = this.repository.save(new TestItem(1L, null, joinedItem.getId(), joinedItemIds, "TestName", "TestValue", null, null));
 		TestItem foundItem = this.repository.findByName("TestName").orElse(null);
 		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getNestedItem()).isNull(); ;
 		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
 		assertThat(foundItem.getJoinedItem().getId()).isEqualTo(joinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getName()).isEqualTo(joinedItem.getName());
@@ -1436,10 +1452,14 @@ class ReindexerRepositoryTests {
 		expectedJoinedItems.put(4L, this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
 		expectedJoinedItems.put(5L, this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
 		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
-		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItem.getId(), joinedItemIds, "TestName", "TestValue"));
+		TestNestedItem nestedItem = new TestNestedItem("TestNestedName", "TestNestedValue");
+		TestItem expectedItem = this.repository.save(new TestItem(1L, nestedItem, joinedItem.getId(), joinedItemIds, "TestName", "TestValue", "2015-01-01", "2015-01-01T15:30"));
 		TestItemProjectionWithJoinedItems foundItem = this.repository.findProjectionByName("TestName");
 		assertThat(foundItem).isNotNull();
 		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getLocalDate()).isEqualTo(LocalDate.parse(expectedItem.getLocalDate()));
+		assertThat(foundItem.getLocalDateTime()).isEqualTo(LocalDateTime.parse(expectedItem.getLocalDateTime()));
+		assertThat(foundItem.getNestedItem()).isEqualTo(nestedItem.getName() + " " + nestedItem.getValue());
 		assertThat(foundItem.getJoinedItem().getId()).isEqualTo(joinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getName()).isEqualTo(joinedItem.getName());
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem()).isNotNull();
@@ -1460,7 +1480,7 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findOneByExample() {
-		TestJoinedItem nestedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
+		TestNestedItem nestedItem = new TestNestedItem("TestNestedName", "TestNestedValue");
 		TestItem expectedItem = this.repository.save(new TestItem(1L, nestedItem, "TestName", "TestValue"));
 		TestItem foundItem = this.repository.findOne(Example.of(expectedItem)).orElse(null);
 		assertNotNull(foundItem);
@@ -1468,8 +1488,8 @@ class ReindexerRepositoryTests {
 		assertEquals(expectedItem.getName(), foundItem.getName());
 		assertEquals(expectedItem.getValue(), foundItem.getValue());
 		assertNotNull(foundItem.getNestedItem());
-		assertEquals(nestedItem.getId(), foundItem.getNestedItem().getId());
 		assertEquals(nestedItem.getName(), foundItem.getNestedItem().getName());
+		assertEquals(nestedItem.getValue(), foundItem.getNestedItem().getValue());
 	}
 
 	@Test
@@ -1503,8 +1523,8 @@ class ReindexerRepositoryTests {
 				Sort.by(Direction.DESC, "id"));
 		assertNotNull(foundItems);
 		List<Long> ids = foundItems.stream()
-						.map(TestItem::getId)
-						.toList();
+				.map(TestItem::getId)
+				.toList();
 		assertThat(ids).containsExactly(3L, 2L, 1L);
 	}
 
@@ -1542,7 +1562,7 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue2"));
 		List<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
-				query -> query.project("id", "name").as(TestItemDto.class))
+						query -> query.project("id", "name").as(TestItemDto.class))
 				.sortBy(Sort.by(Direction.DESC, "id"))
 				.all();
 		assertNotNull(foundItems);
@@ -1603,8 +1623,8 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(3L, "C", "TestValue2", true));
 		this.repository.save(new TestItem(4L, "C", "TestValue2", false));
 		Page<TestItem> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, null, true)),
-						query -> query.sortBy(Sort.by(Direction.DESC, "value"))
-								.page(PageRequest.of(0, 3,
+				query -> query.sortBy(Sort.by(Direction.DESC, "value"))
+						.page(PageRequest.of(0, 3,
 								Sort.by(Direction.ASC, "name"))));
 		assertNotNull(foundItems);
 		List<Long> ids = foundItems.stream()
@@ -1619,7 +1639,7 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue2"));
 		long count = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
-                FluentQuery.FetchableFluentQuery::count);
+				FluentQuery.FetchableFluentQuery::count);
 		assertEquals(2, count);
 	}
 
@@ -1637,7 +1657,7 @@ class ReindexerRepositoryTests {
 	public void findByFluentQueryExampleExists() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		boolean exists = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue")),
-                FluentQuery.FetchableFluentQuery::exists);
+				FluentQuery.FetchableFluentQuery::exists);
 		assertTrue(exists);
 	}
 
@@ -1919,6 +1939,12 @@ class ReindexerRepositoryTests {
 			return new ReindexerTransactionManager<>(reindexer, reindexerMappingContext(), TestItem.class);
 		}
 
+		@Override
+		public ReindexerCustomConversions customConversions() {
+			List<Converter<?, ?>> converters = new ArrayList<>();
+			converters.add(TestNestedItemConverter.INSTANCE);
+			return new ReindexerCustomConversions(StoreConversions.NONE, converters);
+		}
 	}
 
 	@Transactional(transactionManager = "txManager")
@@ -2174,15 +2200,19 @@ class ReindexerRepositoryTests {
 		private List<Long> joinedItemIds = new ArrayList<>();
 
 		@Reindex(name = "nested")
-		private TestJoinedItem nestedItem;
+		private TestNestedItem nestedItem;
 
 		@Transient
 		@NamespaceReference(indexName = "joinedItemId", joinType = JoinType.LEFT, lazy = true)
 		private TestJoinedItem joinedItem;
 
 		@Transient
-		@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT)
+		@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT, lazy = true)
 		private List<TestJoinedItem> joinedItems = new ArrayList<>();
+
+		private String localDate;
+
+		private String localDateTime;
 
 		public TestItem() {
 		}
@@ -2220,15 +2250,18 @@ class ReindexerRepositoryTests {
 			this.testEnumOrdinal = testEnumOrdinal;
 		}
 
-		public TestItem(Long id, Long joinedItemId, List<Long> joinedItemIds, String name, String value) {
+		public TestItem(Long id, TestNestedItem nestedItem, Long joinedItemId, List<Long> joinedItemIds, String name, String value, String localDate, String localDateTime) {
 			this.id = id;
+			this.nestedItem = nestedItem;
 			this.joinedItemId = joinedItemId;
 			this.joinedItemIds = joinedItemIds;
 			this.name = name;
 			this.value = value;
+			this.localDate = localDate;
+			this.localDateTime = localDateTime;
 		}
 
-		public TestItem(Long id, TestJoinedItem nestedItem, String name, String value) {
+		public TestItem(Long id, TestNestedItem nestedItem, String name, String value) {
 			this.id = id;
 			this.nestedItem = nestedItem;
 			this.name = name;
@@ -2307,11 +2340,11 @@ class ReindexerRepositoryTests {
 			this.joinedItemIds = joinedItemIds;
 		}
 
-		public TestJoinedItem getNestedItem() {
+		public TestNestedItem getNestedItem() {
 			return this.nestedItem;
 		}
 
-		public void setNestedItem(TestJoinedItem nestedItem) {
+		public void setNestedItem(TestNestedItem nestedItem) {
 			this.nestedItem = nestedItem;
 		}
 
@@ -2331,6 +2364,22 @@ class ReindexerRepositoryTests {
 			this.joinedItems = joinedItems;
 		}
 
+		public String getLocalDate() {
+			return this.localDate;
+		}
+
+		public void setLocalDate(String localDate) {
+			this.localDate = localDate;
+		}
+
+		public String getLocalDateTime() {
+			return this.localDateTime;
+		}
+
+		public void setLocalDateTime(String localDateTime) {
+			this.localDateTime = localDateTime;
+		}
+
 		@Override
 		public boolean equals(Object o) {
 			if (o == null || getClass() != o.getClass()) {
@@ -2341,13 +2390,14 @@ class ReindexerRepositoryTests {
 					&& Objects.equals(value, item.value) && testEnumString == item.testEnumString
 					&& testEnumOrdinal == item.testEnumOrdinal && Objects.equals(cities, item.cities)
 					&& Objects.equals(nestedItem, item.nestedItem)
-					&& Objects.equals(joinedItemId, item.joinedItemId) && Objects.equals(joinedItemIds, item.joinedItemIds);
+					&& Objects.equals(joinedItemId, item.joinedItemId) && Objects.equals(joinedItemIds, item.joinedItemIds)
+					&& Objects.equals(localDate, item.localDate) && Objects.equals(localDateTime, item.localDateTime);
 		}
 
 		@Override
 		public int hashCode() {
 			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities,
-					active, nestedItem, joinedItemId, joinedItemIds);
+					active, nestedItem, joinedItemId, joinedItemIds, localDate, localDateTime);
 		}
 
 		@Override
@@ -2360,6 +2410,8 @@ class ReindexerRepositoryTests {
 					", testEnumOrdinal=" + this.testEnumOrdinal +
 					", cities=" + this.cities +
 					", active=" + this.active +
+					", localDate=" + this.localDate +
+					", localDateTime=" + this.localDateTime +
 					'}';
 		}
 
@@ -2445,6 +2497,60 @@ class ReindexerRepositoryTests {
 			return "TestJoinedItem{" +
 					"id=" + this.id +
 					", name='" + this.name + '\'' +
+					'}';
+		}
+
+	}
+
+	public static class TestNestedItem {
+
+		private String name;
+
+		private String value;
+
+		public TestNestedItem() {
+		}
+
+		public TestNestedItem(String name, String value) {
+			this.name = name;
+			this.value = value;
+		}
+
+		public String getName() {
+			return this.name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getValue() {
+			return this.value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (o == null || getClass() != o.getClass()) {
+				return false;
+			}
+			TestNestedItem that = (TestNestedItem) o;
+			return Objects.equals(this.name, that.name) && Objects.equals(this.value, that.value);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(this.name, this.value);
+		}
+
+		@Override
+		public String toString() {
+			return "TestNestedItem{" +
+					"name='" + this.name + '\'' +
+					", value='" + this.value + '\'' +
 					'}';
 		}
 
@@ -2574,18 +2680,41 @@ class ReindexerRepositoryTests {
 
 		private final Long id;
 
+		private final LocalDate localDate;
+
+		private final LocalDateTime localDateTime;
+
+		private final String nestedItem;
+
+		@ValueConverter(TestJoinedItemPropertyConverter.class)
 		private final TestJoinedItemProjection joinedItem;
 
+		@ValueConverter(TestJoinedItemListPropertyConverter.class)
 		private final Collection<TestJoinedItemProjection> joinedItems;
 
-		public TestItemProjectionWithJoinedItems(Long id, TestJoinedItemProjection joinedItem, Collection<TestJoinedItemProjection> joinedItems) {
+		public TestItemProjectionWithJoinedItems(Long id, LocalDate localDate, LocalDateTime localDateTime, String nestedItem, TestJoinedItemProjection joinedItem, Collection<TestJoinedItemProjection> joinedItems) {
 			this.id = id;
+			this.localDate = localDate;
+			this.localDateTime = localDateTime;
+			this.nestedItem = nestedItem;
 			this.joinedItem = joinedItem;
 			this.joinedItems = joinedItems;
 		}
 
 		public Long getId() {
 			return this.id;
+		}
+
+		public LocalDate getLocalDate() {
+			return this.localDate;
+		}
+
+		public LocalDateTime getLocalDateTime() {
+			return this.localDateTime;
+		}
+
+		public String getNestedItem() {
+			return this.nestedItem;
 		}
 
 		public TestJoinedItemProjection getJoinedItem() {
@@ -2624,6 +2753,42 @@ class ReindexerRepositoryTests {
 			return this.nestedJoinedItem;
 		}
 
+	}
+
+	@ReadingConverter
+	public enum TestNestedItemConverter implements Converter<TestNestedItem, String> {
+		INSTANCE;
+
+		@Override
+		public String convert(TestNestedItem source) {
+			return source.getName() + " " + source.getValue();
+		}
+	}
+
+	public static class TestJoinedItemPropertyConverter implements PropertyValueConverter<TestJoinedItemProjection, TestJoinedItem, ReindexerConversionContext> {
+
+		@Override
+		public TestJoinedItemProjection read(TestJoinedItem value, ReindexerConversionContext context) {
+			return context.read(value, TestJoinedItemProjection.class);
+		}
+
+		@Override
+		public TestJoinedItem write(TestJoinedItemProjection value, ReindexerConversionContext context) {
+			return null;
+		}
+	}
+
+	public static class TestJoinedItemListPropertyConverter implements PropertyValueConverter<List<TestJoinedItemProjection>, List<TestJoinedItem>, ReindexerConversionContext> {
+
+		@Override
+		public List<TestJoinedItemProjection> read(List<TestJoinedItem> values, ReindexerConversionContext context) {
+			return values.stream().map(e -> context.read(e, TestJoinedItemProjection.class)).toList();
+		}
+
+		@Override
+		public List<TestJoinedItem> write(List<TestJoinedItemProjection> values, ReindexerConversionContext context) {
+			return Collections.emptyList();
+		}
 	}
 
 	public enum TestEnum {
