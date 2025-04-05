@@ -20,10 +20,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import ru.rt.restream.reindexer.Reindexer;
+
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.reindexer.core.convert.MappingReindexerConverter;
+import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.util.ClassUtils;
@@ -36,6 +40,19 @@ import org.springframework.util.StringUtils;
  * @since 1.4
  */
 public abstract class ReindexerConfigurationSupport {
+
+	@Bean
+	public MappingReindexerConverter reindexerConverter(Reindexer reindexer, ReindexerMappingContext mappingContext,
+			ReindexerCustomConversions conversions) {
+		MappingReindexerConverter reindexerConverter = new MappingReindexerConverter(reindexer, mappingContext);
+		reindexerConverter.setConversions(conversions);
+		return reindexerConverter;
+	}
+
+	@Bean
+	public ReindexerCustomConversions customConversions() {
+		return new ReindexerCustomConversions();
+	}
 
 	@Bean
 	public ReindexerMappingContext reindexerMappingContext() throws ClassNotFoundException {

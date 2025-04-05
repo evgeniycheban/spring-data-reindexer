@@ -23,7 +23,6 @@ import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
-import org.springframework.data.reindexer.core.convert.MappingReindexerConverter;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
@@ -42,7 +41,6 @@ import org.springframework.data.repository.query.QueryLookupStrategy;
 import org.springframework.data.repository.query.QueryMethodEvaluationContextProvider;
 import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
-import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 
 /**
@@ -58,20 +56,21 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final ApplicationContext ctx;
 
-	private final Lazy<ReindexerConverter> reindexerConverter;
+	private final ReindexerConverter reindexerConverter;
 
 	/**
 	 * Creates an instance.
 	 *
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @param ctx the {@link ApplicationContext} to use
 	 */
-	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext, ApplicationContext ctx) {
+	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext, ReindexerConverter reindexerConverter, ApplicationContext ctx) {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
+		this.reindexerConverter = reindexerConverter;
 		this.ctx = ctx;
-		this.reindexerConverter = Lazy.of(() -> new MappingReindexerConverter(reindexer, mappingContext, getProjectionFactory()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -91,7 +90,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	@Override
 	protected Object getTargetRepository(RepositoryInformation metadata) {
 		EntityInformation<?, Serializable> entityInformation = getEntityInformation(metadata.getDomainType());
-		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.reindexer, this.reindexerConverter.get());
+		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.reindexer, this.reindexerConverter);
 	}
 
 	@Override
@@ -111,10 +110,10 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
 			if (queryMethod.hasQueryAnnotation()) {
 				return new StringBasedReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter.get());
+						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter);
 			}
 			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter.get());
+					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter);
 		}
 
 	}

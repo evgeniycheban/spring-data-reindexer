@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.util.Collection;
 import java.util.Collections;
 
 import org.springframework.data.convert.CustomConversions;
@@ -34,4 +35,7 @@ public class ReindexerCustomConversions extends CustomConversions {
 		super(new ConverterConfiguration(StoreConversions.NONE, Collections.emptyList()));
 	}
 
+	public ReindexerCustomConversions(StoreConversions storeConversions, Collection<?> converters) {
+		super(storeConversions, converters);
+	}
 }
