@@ -184,7 +184,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		PersistentPropertyAccessor<?> accessor = new ConvertingPropertyAccessor<>(entity.getPropertyAccessor(source), this.conversionService);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor);
 		populateProperties(entity, accessor, valueProvider);
-		return (R) source;
+		return (R) accessor.getBean();
 	}
 
 	private void populateProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor, ReindexerPropertyValueProvider valueProvider) {
