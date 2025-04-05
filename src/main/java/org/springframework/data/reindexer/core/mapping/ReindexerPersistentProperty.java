@@ -18,7 +18,8 @@ package org.springframework.data.reindexer.core.mapping;
 import org.springframework.data.mapping.PersistentProperty;
 
 /**
- * Reindexer specific {@link org.springframework.data.mapping.PersistentProperty} extension.
+ * Reindexer specific {@link org.springframework.data.mapping.PersistentProperty}
+ * extension.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -26,15 +27,15 @@ import org.springframework.data.mapping.PersistentProperty;
 public interface ReindexerPersistentProperty extends PersistentProperty<ReindexerPersistentProperty> {
 
 	/**
-	 * Returns {@literal true} if the property contains {@link NamespaceReference} annotation.
-	 *
-	 * @return {@literal true} if the property contains {@link NamespaceReference} annotation.
+	 * Returns {@literal true} if the property contains {@link NamespaceReference}
+	 * annotation.
+	 * @return {@literal true} if the property contains {@link NamespaceReference}
+	 * annotation.
 	 */
 	boolean isNamespaceReference();
 
 	/**
 	 * Returns {@link NamespaceReference} annotation. Can be {@literal null}.
-	 *
 	 * @return the {@link NamespaceReference} annotation. Can be {@literal null}.
 	 */
 	NamespaceReference getNamespaceReference();

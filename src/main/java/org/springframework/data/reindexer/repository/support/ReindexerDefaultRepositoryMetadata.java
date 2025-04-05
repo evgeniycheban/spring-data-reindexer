@@ -22,16 +22,18 @@ import org.springframework.data.repository.util.ReactiveWrapperConverters;
 import org.springframework.data.util.TypeInformation;
 
 /**
- * Default implementation of {@link org.springframework.data.repository.core.RepositoryMetadata}.
- * Will inspect generic types of {@link org.springframework.data.repository.Repository} to find out about domain and id class.
+ * Default implementation of
+ * {@link org.springframework.data.repository.core.RepositoryMetadata}. Will inspect
+ * generic types of {@link org.springframework.data.repository.Repository} to find out
+ * about domain and id class.
  *
  * @author Evgeniy Cheban
  */
 public class ReindexerDefaultRepositoryMetadata extends DefaultRepositoryMetadata {
 
 	/**
-	 * Creates a new {@link ReindexerDefaultRepositoryMetadata} for the given repository interface.
-	 *
+	 * Creates a new {@link ReindexerDefaultRepositoryMetadata} for the given repository
+	 * interface.
 	 * @param repositoryInterface must not be {@literal null}.
 	 */
 	public ReindexerDefaultRepositoryMetadata(Class<?> repositoryInterface) {

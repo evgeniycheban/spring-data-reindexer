@@ -27,7 +27,6 @@ final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 
 	/**
 	 * Creates a new {@link ParametersParameterAccessor}.
-	 *
 	 * @param parameters must not be {@literal null}.
 	 * @param values must not be {@literal null}.
 	 */
@@ -42,4 +41,5 @@ final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 	protected Object[] getValues() {
 		return super.getValues();
 	}
+
 }

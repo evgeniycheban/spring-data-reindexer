@@ -25,19 +25,21 @@ import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 
 /**
- * Central Reindexer specific converter interface which combines {@link EntityWriter} and {@link EntityReader}.
+ * Central Reindexer specific converter interface which combines {@link EntityWriter} and
+ * {@link EntityReader}.
  *
  * @author Evgeniy Cheban
  * @since 1.4
  */
-public interface ReindexerConverter extends EntityConverter<ReindexerPersistentEntity<?>, ReindexerPersistentProperty, Object, Object> {
+public interface ReindexerConverter
+		extends EntityConverter<ReindexerPersistentEntity<?>, ReindexerPersistentProperty, Object, Object> {
 
 	/**
 	 * Apply a projection to {@link E} and return the projection return type {@code R}.
-	 * {@link EntityProjection#isProjection() Non-projecting} descriptors fall back to {@link #read(Class, Object) regular
-	 * object materialization}.
-	 *
-	 * @param entityProjection the projection entity descriptor, must not be {@literal null}.
+	 * {@link EntityProjection#isProjection() Non-projecting} descriptors fall back to
+	 * {@link #read(Class, Object) regular object materialization}.
+	 * @param entityProjection the projection entity descriptor, must not be
+	 * {@literal null}.
 	 * @param entity must not be {@literal null}.
 	 * @param <R> projection type
 	 * @param <E> entity type
@@ -47,7 +49,6 @@ public interface ReindexerConverter extends EntityConverter<ReindexerPersistentE
 
 	/**
 	 * Returns a {@link EntityProjectionIntrospector} that introspects the returned type.
-	 *
 	 * @return the {@link EntityProjectionIntrospector} to introspect the returned type
 	 */
 	EntityProjectionIntrospector getProjectionIntrospector();

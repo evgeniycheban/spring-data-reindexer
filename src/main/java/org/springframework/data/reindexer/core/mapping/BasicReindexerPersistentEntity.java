@@ -26,8 +26,8 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * Reindexer specific {@link ReindexerPersistentProperty} implementation that adds Reindexer specific meta-data such as the
- * namespace name and {@link NamespaceOptions}.
+ * Reindexer specific {@link ReindexerPersistentProperty} implementation that adds
+ * Reindexer specific meta-data such as the namespace name and {@link NamespaceOptions}.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -45,7 +45,6 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param information the {@link TypeInformation} to use
 	 */
 	public BasicReindexerPersistentEntity(TypeInformation<T> information) {
@@ -69,7 +68,9 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 
 	@Override
 	public String getNamespace() {
-		return this.expression != null ? ObjectUtils.nullSafeToString(this.expression.evaluate(getValueEvaluationContext(null))) : this.namespace;
+		return this.expression != null
+				? ObjectUtils.nullSafeToString(this.expression.evaluate(getValueEvaluationContext(null)))
+				: this.namespace;
 	}
 
 	@Override

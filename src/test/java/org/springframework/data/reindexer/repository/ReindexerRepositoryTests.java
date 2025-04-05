@@ -125,7 +125,7 @@ class ReindexerRepositoryTests {
 
 	@Container
 	static GenericContainer<?> reindexer = new GenericContainer<>(DockerImageName.parse("reindexer/reindexer"))
-			.withExposedPorts(REST_API_PORT, RPC_PORT);
+		.withExposedPorts(REST_API_PORT, RPC_PORT);
 
 	@Autowired
 	TestItemReindexerRepository repository;
@@ -150,14 +150,9 @@ class ReindexerRepositoryTests {
 
 	private static void request(String method, String path, Object body) throws IOException {
 		String url = "http://localhost:" + reindexer.getMappedPort(REST_API_PORT) + "/api/v1" + path;
-		Gson gson = new GsonBuilder()
-				.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-				.create();
+		Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).create();
 		String json = gson.toJson(body);
-		HttpUriRequest request = RequestBuilder.create(method)
-				.setUri(url)
-				.setEntity(new StringEntity(json))
-				.build();
+		HttpUriRequest request = RequestBuilder.create(method).setUri(url).setEntity(new StringEntity(json)).build();
 		try (CloseableHttpClient client = HttpClients.createDefault()) {
 			client.execute(request);
 		}
@@ -195,7 +190,8 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findByTestEnumString() {
-		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", TestEnum.TEST_CONSTANT_1, null));
+		TestItem testItem = this.repository
+			.save(new TestItem(1L, "TestName", "TestValue", TestEnum.TEST_CONSTANT_1, null));
 		TestItem item = this.repository.findByTestEnumString(TestEnum.TEST_CONSTANT_1).orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
@@ -207,7 +203,8 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findByTestEnumOrdinal() {
-		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", null, TestEnum.TEST_CONSTANT_1));
+		TestItem testItem = this.repository
+			.save(new TestItem(1L, "TestName", "TestValue", null, TestEnum.TEST_CONSTANT_1));
 		TestItem item = this.repository.findByTestEnumOrdinal(TestEnum.TEST_CONSTANT_1).orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
@@ -306,8 +303,10 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findOneSqlByNameManyParameters() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		TestItem item = this.repository.findOneSqlByNameAndValueManyParams(null, null,
-				null, null, null, null, null, null, null, null, "TestName", "TestValue").orElse(null);
+		TestItem item = this.repository
+			.findOneSqlByNameAndValueManyParams(null, null, null, null, null, null, null, null, null, null, "TestName",
+					"TestValue")
+			.orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
@@ -347,7 +346,8 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findOneSqlSpelByIdAndNameAndValueParam() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		TestItem item = this.repository.findOneSqlSpelByIdAndNameAndValueParam(1L, "TestName", "TestValue").orElse(null);
+		TestItem item = this.repository.findOneSqlSpelByIdAndNameAndValueParam(1L, "TestName", "TestValue")
+			.orElse(null);
 		assertNotNull(item);
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
@@ -433,8 +433,9 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			items.add(new TestItem(i, "TestName" + i, "TestValue" + i));
 		}
-		Map<Long, TestItem> expectedItems = this.repository.saveAll(items).stream()
-				.collect(Collectors.toMap(TestItem::getId, Function.identity()));
+		Map<Long, TestItem> expectedItems = this.repository.saveAll(items)
+			.stream()
+			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
 		assertEquals(items.size(), expectedItems.size());
 		for (TestItem actual : this.repository.findAll()) {
 			TestItem expected = expectedItems.remove(actual.getId());
@@ -619,9 +620,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItem> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItem> foundItems = this.repository
+			.findByIdIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(expectedItems.size(), foundItems.size());
 	}
 
@@ -631,9 +631,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemProjection> foundItems = this.repository.findItemProjectionByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItemProjection> foundItems = this.repository
+			.findItemProjectionByIdIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
@@ -647,9 +646,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemDto> foundItems = this.repository.findItemDtoByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItemDto> foundItems = this.repository
+			.findItemDtoByIdIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
@@ -663,9 +661,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemPreferredConstructorDto> foundItems = this.repository.findItemPreferredConstructorDtoByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItemPreferredConstructorDto> foundItems = this.repository.findItemPreferredConstructorDtoByIdIn(
+				expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
@@ -679,9 +676,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemRecord> foundItems = this.repository.findItemRecordByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItemRecord> foundItems = this.repository
+			.findItemRecordByIdIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).id());
@@ -695,9 +691,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemPreferredConstructorRecord> foundItems = this.repository.findItemPreferredConstructorRecordByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItemPreferredConstructorRecord> foundItems = this.repository.findItemPreferredConstructorRecordByIdIn(
+				expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertNull(foundItems.get(i).id());
@@ -711,9 +706,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemProjection> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()), TestItemProjection.class);
+		List<TestItemProjection> foundItems = this.repository.findByIdIn(
+				expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()), TestItemProjection.class);
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
@@ -727,9 +721,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemDto> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()), TestItemDto.class);
+		List<TestItemDto> foundItems = this.repository
+			.findByIdIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()), TestItemDto.class);
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
@@ -743,9 +736,9 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemPreferredConstructorDto> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()), TestItemPreferredConstructorDto.class);
+		List<TestItemPreferredConstructorDto> foundItems = this.repository.findByIdIn(
+				expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()),
+				TestItemPreferredConstructorDto.class);
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).getId());
@@ -759,9 +752,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemRecord> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()), TestItemRecord.class);
+		List<TestItemRecord> foundItems = this.repository
+			.findByIdIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()), TestItemRecord.class);
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertEquals(expectedItems.get(i).getId(), foundItems.get(i).id());
@@ -775,9 +767,9 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemPreferredConstructorRecord> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()), TestItemPreferredConstructorRecord.class);
+		List<TestItemPreferredConstructorRecord> foundItems = this.repository.findByIdIn(
+				expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()),
+				TestItemPreferredConstructorRecord.class);
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < foundItems.size(); i++) {
 			assertNull(foundItems.get(i).id());
@@ -791,9 +783,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItem> foundItems = this.repository.findByIdIn(expectedItems.stream()
-				.mapToLong(TestItem::getId)
-				.toArray());
+		List<TestItem> foundItems = this.repository
+			.findByIdIn(expectedItems.stream().mapToLong(TestItem::getId).toArray());
 		expectedItems.removeAll(foundItems);
 		assertEquals(0, expectedItems.size());
 	}
@@ -804,9 +795,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItem> foundItems = this.repository.findByIdNotIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.collect(Collectors.toList()));
+		List<TestItem> foundItems = this.repository
+			.findByIdNotIn(expectedItems.stream().map(TestItem::getId).collect(Collectors.toList()));
 		assertEquals(0, foundItems.size());
 	}
 
@@ -830,9 +820,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItem> foundItems = this.repository.findAllByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.toList(), Sort.by(Direction.ASC, "id"));
+		List<TestItem> foundItems = this.repository.findAllByIdIn(expectedItems.stream().map(TestItem::getId).toList(),
+				Sort.by(Direction.ASC, "id"));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < expectedItems.size(); i++) {
 			assertEquals(expectedItems.get(i), foundItems.get(i));
@@ -845,9 +834,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItem> foundItems = this.repository.findAllByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.toList(), Sort.by(Direction.DESC, "id"));
+		List<TestItem> foundItems = this.repository.findAllByIdIn(expectedItems.stream().map(TestItem::getId).toList(),
+				Sort.by(Direction.DESC, "id"));
 		assertEquals(expectedItems.size(), foundItems.size());
 		for (int i = 0; i < expectedItems.size(); i++) {
 			assertEquals(expectedItems.get(i), foundItems.get(foundItems.size() - 1 - i));
@@ -861,9 +849,7 @@ class ReindexerRepositoryTests {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
 		Pageable pageable = Pageable.ofSize(5);
-		List<Long> expectedIds = expectedItems.stream()
-				.map(TestItem::getId)
-				.toList();
+		List<Long> expectedIds = expectedItems.stream().map(TestItem::getId).toList();
 		long totalCount = this.repository.countByIdIn(expectedIds);
 		do {
 			List<TestItem> foundItems = this.repository.findByIdIn(expectedIds, pageable);
@@ -871,7 +857,8 @@ class ReindexerRepositoryTests {
 				assertTrue(expectedItems.remove(item));
 			}
 			pageable = new PageImpl<>(foundItems, pageable, totalCount).nextPageable();
-		} while (pageable.isPaged());
+		}
+		while (pageable.isPaged());
 		assertEquals(0, expectedItems.size());
 	}
 
@@ -882,16 +869,15 @@ class ReindexerRepositoryTests {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
 		Pageable pageable = Pageable.ofSize(5);
-		List<Long> expectedIds = expectedItems.stream()
-				.map(TestItem::getId)
-				.toList();
+		List<Long> expectedIds = expectedItems.stream().map(TestItem::getId).toList();
 		do {
 			Page<TestItem> foundItems = this.repository.findPageByIdIn(expectedIds, pageable);
 			for (TestItem item : foundItems) {
 				assertTrue(expectedItems.remove(item));
 			}
 			pageable = foundItems.nextPageable();
-		} while (pageable.isPaged());
+		}
+		while (pageable.isPaged());
 		assertEquals(0, expectedItems.size());
 	}
 
@@ -930,7 +916,8 @@ class ReindexerRepositoryTests {
 				assertTrue(expectedItems.remove(item));
 			}
 			pageable = foundItems.nextPageable();
-		} while (pageable.isPaged());
+		}
+		while (pageable.isPaged());
 		assertEquals(0, expectedItems.size());
 	}
 
@@ -964,11 +951,11 @@ class ReindexerRepositoryTests {
 	public void findByEnumStringIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
-			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, TestEnum.values()[i], null)));
+			expectedItems.add(this.repository
+				.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, TestEnum.values()[i], null)));
 		}
-		List<TestItem> foundItems = this.repository.findByTestEnumStringIn(expectedItems.stream()
-				.map(TestItem::getTestEnumString)
-				.toList());
+		List<TestItem> foundItems = this.repository
+			.findByTestEnumStringIn(expectedItems.stream().map(TestItem::getTestEnumString).toList());
 		expectedItems.removeAll(foundItems);
 		assertEquals(0, expectedItems.size());
 	}
@@ -977,11 +964,11 @@ class ReindexerRepositoryTests {
 	public void findByEnumStringInArray() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
-			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, TestEnum.values()[i], null)));
+			expectedItems.add(this.repository
+				.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, TestEnum.values()[i], null)));
 		}
-		List<TestItem> foundItems = this.repository.findByTestEnumStringIn(expectedItems.stream()
-				.map(TestItem::getTestEnumString)
-				.toArray(TestEnum[]::new));
+		List<TestItem> foundItems = this.repository
+			.findByTestEnumStringIn(expectedItems.stream().map(TestItem::getTestEnumString).toArray(TestEnum[]::new));
 		expectedItems.removeAll(foundItems);
 		assertEquals(0, expectedItems.size());
 	}
@@ -990,11 +977,11 @@ class ReindexerRepositoryTests {
 	public void findByEnumOrdinalIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
-			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, null, TestEnum.values()[i])));
+			expectedItems.add(this.repository
+				.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, null, TestEnum.values()[i])));
 		}
-		List<TestItem> foundItems = this.repository.findByTestEnumOrdinalIn(expectedItems.stream()
-				.map(TestItem::getTestEnumOrdinal)
-				.toList());
+		List<TestItem> foundItems = this.repository
+			.findByTestEnumOrdinalIn(expectedItems.stream().map(TestItem::getTestEnumOrdinal).toList());
 		expectedItems.removeAll(foundItems);
 		assertEquals(0, expectedItems.size());
 	}
@@ -1003,11 +990,11 @@ class ReindexerRepositoryTests {
 	public void findByEnumOrdinalInArray() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
-			expectedItems.add(this.repository.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, null, TestEnum.values()[i])));
+			expectedItems.add(this.repository
+				.save(new TestItem((long) i, "TestName" + i, "TestValue" + i, null, TestEnum.values()[i])));
 		}
-		List<TestItem> foundItems = this.repository.findByTestEnumOrdinalIn(expectedItems.stream()
-				.map(TestItem::getTestEnumOrdinal)
-				.toArray(TestEnum[]::new));
+		List<TestItem> foundItems = this.repository
+			.findByTestEnumOrdinalIn(expectedItems.stream().map(TestItem::getTestEnumOrdinal).toArray(TestEnum[]::new));
 		expectedItems.removeAll(foundItems);
 		assertEquals(0, expectedItems.size());
 	}
@@ -1122,22 +1109,34 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
 		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
 		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
-		List<TestItemNameValueRecord> foundItems = this.repository.findDistinctNameValueRecordByIdIn(List.of(1L, 2L, 3L));
-		assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1", "TestName2");
-		assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2", "TestValue3");
+		List<TestItemNameValueRecord> foundItems = this.repository
+			.findDistinctNameValueRecordByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1",
+				"TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2",
+				"TestValue3");
 	}
 
 	@Test
 	public void findDistinctNameValueProjectionByIdIn() {
 		TestJoinedItem joinedItem1 = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
 		TestJoinedItem joinedItem2 = this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName2"));
-		this.repository.save(new TestItem(1L, null, joinedItem1.getId(), Collections.emptyList(), "TestName1", "TestValue2", null, null));
-		this.repository.save(new TestItem(2L, null, joinedItem2.getId(), Collections.emptyList(), "TestName2", "TestValue3", null, null));
-		this.repository.save(new TestItem(3L, null, joinedItem2.getId(), Collections.emptyList(), "TestName3", "TestValue3", null, null));
-		List<TestItemNameValueJoinedItemProjection> foundItems = this.repository.findDistinctNameValueJoinedItemProjectionByIdIn(List.of(1L, 2L, 3L));
-		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getName).toList()).containsOnly("TestName1", "TestName3");
-		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
-		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getJoinedItem).map(TestJoinedItem::getId).toList()).containsOnly(1L, 2L);
+		this.repository.save(new TestItem(1L, null, joinedItem1.getId(), Collections.emptyList(), "TestName1",
+				"TestValue2", null, null));
+		this.repository.save(new TestItem(2L, null, joinedItem2.getId(), Collections.emptyList(), "TestName2",
+				"TestValue3", null, null));
+		this.repository.save(new TestItem(3L, null, joinedItem2.getId(), Collections.emptyList(), "TestName3",
+				"TestValue3", null, null));
+		List<TestItemNameValueJoinedItemProjection> foundItems = this.repository
+			.findDistinctNameValueJoinedItemProjectionByIdIn(List.of(1L, 2L, 3L));
+		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getName).toList())
+			.containsOnly("TestName1", "TestName3");
+		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getValue).toList())
+			.containsOnly("TestValue2", "TestValue3");
+		assertThat(foundItems.stream()
+			.map(TestItemNameValueJoinedItemProjection::getJoinedItem)
+			.map(TestJoinedItem::getId)
+			.toList()).containsOnly(1L, 2L);
 	}
 
 	@Test
@@ -1146,8 +1145,10 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
 		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
 		List<TestItemNameValueDto> foundItems = this.repository.findDistinctNameValueDtoByIdIn(List.of(1L, 2L, 3L));
-		assertThat(foundItems.stream().map(TestItemNameValueDto::getName).toList()).containsOnly("TestName1", "TestName2");
-		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getName).toList()).containsOnly("TestName1",
+				"TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2",
+				"TestValue3");
 	}
 
 	@Test
@@ -1155,9 +1156,12 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
 		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
 		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
-		List<TestItemNameValueRecord> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L), TestItemNameValueRecord.class);
-		assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1", "TestName2");
-		assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2", "TestValue3");
+		List<TestItemNameValueRecord> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L),
+				TestItemNameValueRecord.class);
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1",
+				"TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2",
+				"TestValue3");
 	}
 
 	@Test
@@ -1165,9 +1169,12 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
 		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
 		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
-		List<TestItemNameValueProjection> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L), TestItemNameValueProjection.class);
-		assertThat(foundItems.stream().map(TestItemNameValueProjection::getName).toList()).containsOnly("TestName1", "TestName2");
-		assertThat(foundItems.stream().map(TestItemNameValueProjection::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+		List<TestItemNameValueProjection> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L),
+				TestItemNameValueProjection.class);
+		assertThat(foundItems.stream().map(TestItemNameValueProjection::getName).toList()).containsOnly("TestName1",
+				"TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueProjection::getValue).toList()).containsOnly("TestValue2",
+				"TestValue3");
 	}
 
 	@Test
@@ -1175,9 +1182,12 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
 		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
 		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
-		List<TestItemNameValueDto> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L), TestItemNameValueDto.class);
-		assertThat(foundItems.stream().map(TestItemNameValueDto::getName).toList()).containsOnly("TestName1", "TestName2");
-		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2", "TestValue3");
+		List<TestItemNameValueDto> foundItems = this.repository.findDistinctByIdIn(List.of(1L, 2L, 3L),
+				TestItemNameValueDto.class);
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getName).toList()).containsOnly("TestName1",
+				"TestName2");
+		assertThat(foundItems.stream().map(TestItemNameValueDto::getValue).toList()).containsOnly("TestValue2",
+				"TestValue3");
 	}
 
 	@Test
@@ -1186,8 +1196,8 @@ class ReindexerRepositoryTests {
 			this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i));
 		}
 		List<TestItem> foundItems = this.repository.findAllByIdBetween(80L, 90L);
-		assertThat(foundItems.stream().map(TestItem::getId).toList())
-				.containsExactly(80L, 81L, 82L, 83L, 84L, 85L, 86L, 87L, 88L, 89L, 90L);
+		assertThat(foundItems.stream().map(TestItem::getId).toList()).containsExactly(80L, 81L, 82L, 83L, 84L, 85L, 86L,
+				87L, 88L, 89L, 90L);
 	}
 
 	@Test
@@ -1216,9 +1226,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemProjection> foundItems = this.repository.findAllItemProjectionByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.toList(), Sort.by(Direction.DESC, "id"));
+		List<TestItemProjection> foundItems = this.repository.findAllItemProjectionByIdIn(
+				expectedItems.stream().map(TestItem::getId).toList(), Sort.by(Direction.DESC, "id"));
 		assertThat(foundItems).hasSameSizeAs(expectedItems);
 		for (int i = 0; i < foundItems.size(); i++) {
 			TestItemProjection foundItem = foundItems.get(i);
@@ -1234,9 +1243,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemDto> foundItems = this.repository.findAllItemDtoByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.toList(), Sort.by(Direction.ASC, "id"));
+		List<TestItemDto> foundItems = this.repository
+			.findAllItemDtoByIdIn(expectedItems.stream().map(TestItem::getId).toList(), Sort.by(Direction.ASC, "id"));
 		assertThat(foundItems).hasSameSizeAs(expectedItems);
 		for (int i = 0; i < foundItems.size(); i++) {
 			TestItemDto foundItem = foundItems.get(i);
@@ -1252,9 +1260,8 @@ class ReindexerRepositoryTests {
 		for (long i = 0; i < 100; i++) {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
-		List<TestItemRecord> foundItems = this.repository.findAllItemRecordByIdIn(expectedItems.stream()
-				.map(TestItem::getId)
-				.toList());
+		List<TestItemRecord> foundItems = this.repository
+			.findAllItemRecordByIdIn(expectedItems.stream().map(TestItem::getId).toList());
 		assertThat(foundItems).hasSameSizeAs(expectedItems);
 		for (int i = 0; i < foundItems.size(); i++) {
 			TestItemRecord foundItem = foundItems.get(i);
@@ -1271,16 +1278,15 @@ class ReindexerRepositoryTests {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
 		Pageable pageable = PageRequest.of(0, 5, Sort.by(Order.desc("id"), Order.asc("name")));
-		List<Long> expectedIds = expectedItems.stream()
-				.map(TestItem::getId)
-				.toList();
+		List<Long> expectedIds = expectedItems.stream().map(TestItem::getId).toList();
 		do {
 			Page<TestItem> foundItems = this.repository.findAllCountByIdIn(expectedIds, pageable);
 			for (TestItem item : foundItems) {
 				assertTrue(expectedItems.remove(item));
 			}
 			pageable = foundItems.nextPageable();
-		} while (pageable.isPaged());
+		}
+		while (pageable.isPaged());
 		assertEquals(0, expectedItems.size());
 	}
 
@@ -1291,16 +1297,15 @@ class ReindexerRepositoryTests {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
 		Pageable pageable = PageRequest.of(0, 5, Sort.by(Order.desc("id"), Order.asc("name")));
-		List<Long> expectedIds = expectedItems.stream()
-				.map(TestItem::getId)
-				.toList();
+		List<Long> expectedIds = expectedItems.stream().map(TestItem::getId).toList();
 		do {
 			Page<TestItem> foundItems = this.repository.findAllCountCachedByIdIn(expectedIds, pageable);
 			for (TestItem item : foundItems) {
 				assertTrue(expectedItems.remove(item));
 			}
 			pageable = foundItems.nextPageable();
-		} while (pageable.isPaged());
+		}
+		while (pageable.isPaged());
 		assertEquals(0, expectedItems.size());
 	}
 
@@ -1414,16 +1419,21 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findByNameWithJoinedItems() {
 		TestJoinedItem nestedJoinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
-		TestJoinedItem joinedItem = this.joinedItemRepository.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
+		TestJoinedItem joinedItem = this.joinedItemRepository
+			.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
 		Map<Long, TestJoinedItem> expectedJoinedItems = new HashMap<>();
-		expectedJoinedItems.put(3L, this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
-		expectedJoinedItems.put(4L, this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
-		expectedJoinedItems.put(5L, this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
+		expectedJoinedItems.put(3L,
+				this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
+		expectedJoinedItems.put(4L,
+				this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
+		expectedJoinedItems.put(5L,
+				this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
 		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
-		TestItem expectedItem = this.repository.save(new TestItem(1L, null, joinedItem.getId(), joinedItemIds, "TestName", "TestValue", null, null));
+		TestItem expectedItem = this.repository
+			.save(new TestItem(1L, null, joinedItem.getId(), joinedItemIds, "TestName", "TestValue", null, null));
 		TestItem foundItem = this.repository.findByName("TestName").orElse(null);
 		assertThat(foundItem).isNotNull();
-		assertThat(foundItem.getNestedItem()).isNull(); ;
+		assertThat(foundItem.getNestedItem()).isNull();
 		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
 		assertThat(foundItem.getJoinedItem().getId()).isEqualTo(joinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getName()).isEqualTo(joinedItem.getName());
@@ -1446,14 +1456,19 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findProjectionByNameWithJoinedItems() {
 		TestJoinedItem nestedJoinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
-		TestJoinedItem joinedItem = this.joinedItemRepository.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
+		TestJoinedItem joinedItem = this.joinedItemRepository
+			.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
 		Map<Long, TestJoinedItem> expectedJoinedItems = new HashMap<>();
-		expectedJoinedItems.put(3L, this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
-		expectedJoinedItems.put(4L, this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
-		expectedJoinedItems.put(5L, this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
+		expectedJoinedItems.put(3L,
+				this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
+		expectedJoinedItems.put(4L,
+				this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
+		expectedJoinedItems.put(5L,
+				this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
 		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
 		TestNestedItem nestedItem = new TestNestedItem("TestNestedName", "TestNestedValue");
-		TestItem expectedItem = this.repository.save(new TestItem(1L, nestedItem, joinedItem.getId(), joinedItemIds, "TestName", "TestValue", "2015-01-01", "2015-01-01T15:30"));
+		TestItem expectedItem = this.repository.save(new TestItem(1L, nestedItem, joinedItem.getId(), joinedItemIds,
+				"TestName", "TestValue", "2015-01-01", "2015-01-01T15:30"));
 		TestItemProjectionWithJoinedItems foundItem = this.repository.findProjectionByName("TestName");
 		assertThat(foundItem).isNotNull();
 		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
@@ -1522,9 +1537,7 @@ class ReindexerRepositoryTests {
 		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "TestValue1")),
 				Sort.by(Direction.DESC, "id"));
 		assertNotNull(foundItems);
-		List<Long> ids = foundItems.stream()
-				.map(TestItem::getId)
-				.toList();
+		List<Long> ids = foundItems.stream().map(TestItem::getId).toList();
 		assertThat(ids).containsExactly(3L, 2L, 1L);
 	}
 
@@ -1547,9 +1560,9 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findByFluentQueryExampleClassProjection() {
 		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		TestItemDto foundItem = this.repository.findBy(Example.of(expectedItem),
-						query -> query.project(List.of("id", "name")).as(TestItemDto.class).one())
-				.orElse(null);
+		TestItemDto foundItem = this.repository
+			.findBy(Example.of(expectedItem), query -> query.project(List.of("id", "name")).as(TestItemDto.class).one())
+			.orElse(null);
 		assertNotNull(foundItem);
 		assertEquals(expectedItem.getId(), foundItem.getId());
 		assertEquals(expectedItem.getName(), foundItem.getName());
@@ -1561,14 +1574,13 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue2"));
-		List<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
-						query -> query.project("id", "name").as(TestItemDto.class))
-				.sortBy(Sort.by(Direction.DESC, "id"))
-				.all();
+		List<TestItemDto> foundItems = this.repository
+			.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+					query -> query.project("id", "name").as(TestItemDto.class))
+			.sortBy(Sort.by(Direction.DESC, "id"))
+			.all();
 		assertNotNull(foundItems);
-		List<Long> ids = foundItems.stream()
-				.map(TestItemDto::getId)
-				.toList();
+		List<Long> ids = foundItems.stream().map(TestItemDto::getId).toList();
 		assertThat(ids).containsExactly(3L, 2L, 1L);
 	}
 
@@ -1577,10 +1589,11 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
-		TestItemDto foundItem = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
-						query -> query.project("id", "name").as(TestItemDto.class))
-				.sortBy(Sort.by(Direction.DESC, "id"))
-				.firstValue();
+		TestItemDto foundItem = this.repository
+			.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+					query -> query.project("id", "name").as(TestItemDto.class))
+			.sortBy(Sort.by(Direction.DESC, "id"))
+			.firstValue();
 		assertNotNull(foundItem);
 		assertEquals(3L, foundItem.getId());
 	}
@@ -1590,14 +1603,13 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
-		Page<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
-						query -> query.project("id", "name").as(TestItemDto.class))
-				.sortBy(Sort.by(Direction.DESC, "id"))
-				.page(PageRequest.of(0, 2));
+		Page<TestItemDto> foundItems = this.repository
+			.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+					query -> query.project("id", "name").as(TestItemDto.class))
+			.sortBy(Sort.by(Direction.DESC, "id"))
+			.page(PageRequest.of(0, 2));
 		assertNotNull(foundItems);
-		List<Long> ids = foundItems.stream()
-				.map(TestItemDto::getId)
-				.toList();
+		List<Long> ids = foundItems.stream().map(TestItemDto::getId).toList();
 		assertThat(ids).containsExactly(3L, 2L);
 	}
 
@@ -1606,13 +1618,12 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(2L, "TestName", "TestValue1"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue1"));
-		Page<TestItemDto> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, "TestValue1")),
-						query -> query.project("id", "name").as(TestItemDto.class))
-				.page(PageRequest.of(0, 2, Sort.by(Direction.DESC, "id")));
+		Page<TestItemDto> foundItems = this.repository
+			.findBy(Example.of(new TestItem(null, null, "TestValue1")),
+					query -> query.project("id", "name").as(TestItemDto.class))
+			.page(PageRequest.of(0, 2, Sort.by(Direction.DESC, "id")));
 		assertNotNull(foundItems);
-		List<Long> ids = foundItems.stream()
-				.map(TestItemDto::getId)
-				.toList();
+		List<Long> ids = foundItems.stream().map(TestItemDto::getId).toList();
 		assertThat(ids).containsExactly(3L, 2L);
 	}
 
@@ -1624,12 +1635,9 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(4L, "C", "TestValue2", false));
 		Page<TestItem> foundItems = this.repository.findBy(Example.of(new TestItem(null, null, null, true)),
 				query -> query.sortBy(Sort.by(Direction.DESC, "value"))
-						.page(PageRequest.of(0, 3,
-								Sort.by(Direction.ASC, "name"))));
+					.page(PageRequest.of(0, 3, Sort.by(Direction.ASC, "name"))));
 		assertNotNull(foundItems);
-		List<Long> ids = foundItems.stream()
-				.map(TestItem::getId)
-				.toList();
+		List<Long> ids = foundItems.stream().map(TestItem::getId).toList();
 		assertThat(ids).containsExactly(3L, 1L, 2L);
 	}
 
@@ -1664,9 +1672,10 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findByFluentQueryExampleRecordProjection() {
 		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		TestItemRecord foundItem = this.repository.findBy(Example.of(expectedItem),
-						query -> query.project(List.of("id", "name")).as(TestItemRecord.class).one())
-				.orElse(null);
+		TestItemRecord foundItem = this.repository
+			.findBy(Example.of(expectedItem),
+					query -> query.project(List.of("id", "name")).as(TestItemRecord.class).one())
+			.orElse(null);
 		assertNotNull(foundItem);
 		assertEquals(expectedItem.getId(), foundItem.id());
 		assertEquals(expectedItem.getName(), foundItem.name());
@@ -1675,9 +1684,10 @@ class ReindexerRepositoryTests {
 	@Test
 	public void findByFluentQueryExampleInterfaceProjection() {
 		TestItem expectedItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		TestItemProjection foundItem = this.repository.findBy(Example.of(expectedItem),
-						query -> query.project(List.of("id", "name")).as(TestItemProjection.class).one())
-				.orElse(null);
+		TestItemProjection foundItem = this.repository
+			.findBy(Example.of(expectedItem),
+					query -> query.project(List.of("id", "name")).as(TestItemProjection.class).one())
+			.orElse(null);
 		assertNotNull(foundItem);
 		assertEquals(expectedItem.getId(), foundItem.getId());
 		assertEquals(expectedItem.getName(), foundItem.getName());
@@ -1688,7 +1698,8 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "est"),
 				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+					.withMatcher("value",
+							ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertNotNull(foundItem);
 		assertTrue(foundItem.isPresent());
 	}
@@ -1701,7 +1712,8 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
 		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "est"),
 				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+					.withMatcher("value",
+							ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertNotNull(foundItems);
 		assertEquals(3, foundItems.size());
 	}
@@ -1712,11 +1724,11 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
-		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, "est", "est"),
-				ExampleMatcher.matchingAll()
-						.withIgnorePaths("id")
-						.withMatcher("name", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, "est", "est"), ExampleMatcher
+			.matchingAll()
+			.withIgnorePaths("id")
+			.withMatcher("name", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertNotNull(foundItems);
 		assertEquals(3, foundItems.size());
 	}
@@ -1724,9 +1736,8 @@ class ReindexerRepositoryTests {
 	@Test
 	public void existsByExampleMatcherContaining() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "est"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "est"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertTrue(exists);
 	}
 
@@ -1736,9 +1747,8 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
-		long count = this.repository.count(Example.of(new TestItem(null, null, "est"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "est"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.CONTAINING))));
 		assertEquals(3, count);
 	}
 
@@ -1747,7 +1757,8 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "Test"),
 				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+					.withMatcher("value",
+							ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
 		assertNotNull(foundItem);
 		assertTrue(foundItem.isPresent());
 	}
@@ -1760,7 +1771,8 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
 		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "Test"),
 				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+					.withMatcher("value",
+							ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
 		assertNotNull(foundItems);
 		assertEquals(3, foundItems.size());
 	}
@@ -1768,9 +1780,8 @@ class ReindexerRepositoryTests {
 	@Test
 	public void existsByExampleMatcherStarting() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Test"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Test"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
 		assertTrue(exists);
 	}
 
@@ -1780,18 +1791,17 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "Value"));
-		long count = this.repository.count(Example.of(new TestItem(null, null, "Test"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "Test"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))));
 		assertEquals(3, count);
 	}
 
 	@Test
 	public void findOneByExampleMatcherEnding() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "Value"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		Optional<TestItem> foundItem = this.repository
+			.findOne(Example.of(new TestItem(null, null, "Value"), ExampleMatcher.matching()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
 		assertNotNull(foundItem);
 		assertTrue(foundItem.isPresent());
 	}
@@ -1802,9 +1812,9 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
-		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "Value"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		List<TestItem> foundItems = this.repository
+			.findAll(Example.of(new TestItem(null, null, "Value"), ExampleMatcher.matching()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
 		assertNotNull(foundItems);
 		assertEquals(3, foundItems.size());
 	}
@@ -1812,9 +1822,8 @@ class ReindexerRepositoryTests {
 	@Test
 	public void existsByExampleMatcherEnding() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Value"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "Value"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
 		assertTrue(exists);
 	}
 
@@ -1824,18 +1833,17 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
-		long count = this.repository.count(Example.of(new TestItem(null, null, "Value"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "Value"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.ENDING))));
 		assertEquals(3, count);
 	}
 
 	@Test
 	public void findOneByExampleMatcherExact() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "TestValue"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		Optional<TestItem> foundItem = this.repository
+			.findOne(Example.of(new TestItem(null, null, "TestValue"), ExampleMatcher.matching()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertNotNull(foundItem);
 		assertTrue(foundItem.isPresent());
 	}
@@ -1846,9 +1854,9 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
-		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "TestValue"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		List<TestItem> foundItems = this.repository
+			.findAll(Example.of(new TestItem(null, null, "TestValue"), ExampleMatcher.matching()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertNotNull(foundItems);
 		assertEquals(3, foundItems.size());
 	}
@@ -1856,9 +1864,9 @@ class ReindexerRepositoryTests {
 	@Test
 	public void existsByExampleMatcherExact() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "TestValue"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		boolean exists = this.repository
+			.exists(Example.of(new TestItem(null, null, "TestValue"), ExampleMatcher.matching()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertTrue(exists);
 	}
 
@@ -1868,19 +1876,18 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
-		long count = this.repository.count(Example.of(new TestItem(null, null, "TestValue"),
-				ExampleMatcher.matching()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "TestValue"), ExampleMatcher.matching()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertEquals(3, count);
 	}
 
 	@Test
 	public void findOneByExampleMatcherExactIgnoreCase() {
 		this.repository.save(new TestItem(1L, "TestItem", "TestValue"));
-		Optional<TestItem> foundItem = this.repository.findOne(Example.of(new TestItem(null, null, "testvalue"),
-				ExampleMatcher.matching()
-						.withIgnoreCase()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		Optional<TestItem> foundItem = this.repository
+			.findOne(Example.of(new TestItem(null, null, "testvalue"), ExampleMatcher.matching()
+				.withIgnoreCase()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertTrue(foundItem.isPresent());
 	}
 
@@ -1890,10 +1897,10 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
-		List<TestItem> foundItems = this.repository.findAll(Example.of(new TestItem(null, null, "testvalue"),
-				ExampleMatcher.matching()
-						.withIgnoreCase()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		List<TestItem> foundItems = this.repository
+			.findAll(Example.of(new TestItem(null, null, "testvalue"), ExampleMatcher.matching()
+				.withIgnoreCase()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertNotNull(foundItems);
 		assertEquals(3, foundItems.size());
 	}
@@ -1901,10 +1908,10 @@ class ReindexerRepositoryTests {
 	@Test
 	public void existsByExampleMatcherExactIgnoreCase() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
-		boolean exists = this.repository.exists(Example.of(new TestItem(null, null, "testvalue"),
-				ExampleMatcher.matching()
-						.withIgnoreCase()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		boolean exists = this.repository
+			.exists(Example.of(new TestItem(null, null, "testvalue"), ExampleMatcher.matching()
+				.withIgnoreCase()
+				.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertTrue(exists);
 	}
 
@@ -1914,15 +1921,15 @@ class ReindexerRepositoryTests {
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(3L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(4L, "TestName", "TestValue1"));
-		long count = this.repository.count(Example.of(new TestItem(null, null, "testvalue"),
-				ExampleMatcher.matching()
-						.withIgnoreCase()
-						.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
+		long count = this.repository.count(Example.of(new TestItem(null, null, "testvalue"), ExampleMatcher.matching()
+			.withIgnoreCase()
+			.withMatcher("value", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.EXACT))));
 		assertEquals(3, count);
 	}
 
 	@Configuration
-	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class, considerNestedRepositories = true)
+	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
+			considerNestedRepositories = true)
 	@EnableTransactionManagement
 	@ComponentScan(basePackageClasses = TestItemTransactionalService.class)
 	static class TestConfig extends ReindexerConfigurationSupport {
@@ -1930,8 +1937,8 @@ class ReindexerRepositoryTests {
 		@Bean
 		Reindexer reindexer() {
 			return ReindexerConfiguration.builder()
-					.url("cproto://localhost:" + reindexer.getMappedPort(RPC_PORT) + "/" + DATABASE_NAME)
-					.getReindexer();
+				.url("cproto://localhost:" + reindexer.getMappedPort(RPC_PORT) + "/" + DATABASE_NAME)
+				.getReindexer();
 		}
 
 		@Bean
@@ -1945,6 +1952,7 @@ class ReindexerRepositoryTests {
 			converters.add(TestNestedItemConverter.INSTANCE);
 			return new ReindexerCustomConversions(StoreConversions.NONE, converters);
 		}
+
 	}
 
 	@Transactional(transactionManager = "txManager")
@@ -2011,14 +2019,16 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findOneSqlByNameParam(@Param("name") String name);
 
 		@Query("SELECT * FROM items WHERE name = ?11 AND value = ?12")
-		Optional<TestItem> findOneSqlByNameAndValueManyParams(String name1, String name2, String name3, String name4, String name5,
-				String name6, String name7, String name8, String name9, String name10, String name11, String value);
+		Optional<TestItem> findOneSqlByNameAndValueManyParams(String name1, String name2, String name3, String name4,
+				String name5, String name6, String name7, String name8, String name9, String name10, String name11,
+				String value);
 
 		@Query("SELECT * FROM items WHERE id = ?1 AND name = ?2 AND value = ?3")
 		Optional<TestItem> findOneSqlByIdAndNameAndValue(Long id, String name, String value);
 
 		@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
-		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name, @Param("value") String value);
+		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name,
+				@Param("value") String value);
 
 		@Query("SELECT * FROM items WHERE id = ?#{[0]} AND name = ?#{[1]} AND value = ?#{[2]}")
 		Optional<TestItem> findOneSqlSpelByIdAndNameAndValueParam(Long id, String name, String value);
@@ -2030,7 +2040,8 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findOneSqlByIdAndNameAndValue(String value, Long id, String name);
 
 		@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
-		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("value") String value, @Param("id") Long id, @Param("name") String name);
+		Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("value") String value, @Param("id") Long id,
+				@Param("name") String name);
 
 		@Query("SELECT * FROM items WHERE name = ?1")
 		TestItem getOneSqlByName(String name);
@@ -2162,6 +2173,7 @@ class ReindexerRepositoryTests {
 		List<TestItem> findAllByNameStartingWith(String text);
 
 		List<TestItem> findAllByNameEndingWith(String text);
+
 	}
 
 	@Repository
@@ -2250,7 +2262,8 @@ class ReindexerRepositoryTests {
 			this.testEnumOrdinal = testEnumOrdinal;
 		}
 
-		public TestItem(Long id, TestNestedItem nestedItem, Long joinedItemId, List<Long> joinedItemIds, String name, String value, String localDate, String localDateTime) {
+		public TestItem(Long id, TestNestedItem nestedItem, Long joinedItemId, List<Long> joinedItemIds, String name,
+				String value, String localDate, String localDateTime) {
 			this.id = id;
 			this.nestedItem = nestedItem;
 			this.joinedItemId = joinedItemId;
@@ -2389,30 +2402,23 @@ class ReindexerRepositoryTests {
 			return active == item.active && Objects.equals(id, item.id) && Objects.equals(name, item.name)
 					&& Objects.equals(value, item.value) && testEnumString == item.testEnumString
 					&& testEnumOrdinal == item.testEnumOrdinal && Objects.equals(cities, item.cities)
-					&& Objects.equals(nestedItem, item.nestedItem)
-					&& Objects.equals(joinedItemId, item.joinedItemId) && Objects.equals(joinedItemIds, item.joinedItemIds)
-					&& Objects.equals(localDate, item.localDate) && Objects.equals(localDateTime, item.localDateTime);
+					&& Objects.equals(nestedItem, item.nestedItem) && Objects.equals(joinedItemId, item.joinedItemId)
+					&& Objects.equals(joinedItemIds, item.joinedItemIds) && Objects.equals(localDate, item.localDate)
+					&& Objects.equals(localDateTime, item.localDateTime);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities,
-					active, nestedItem, joinedItemId, joinedItemIds, localDate, localDateTime);
+			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities, active, nestedItem,
+					joinedItemId, joinedItemIds, localDate, localDateTime);
 		}
 
 		@Override
 		public String toString() {
-			return "TestItem{" +
-					"id=" + this.id +
-					", name='" + this.name + '\'' +
-					", value='" + this.value + '\'' +
-					", testEnumString=" + this.testEnumString +
-					", testEnumOrdinal=" + this.testEnumOrdinal +
-					", cities=" + this.cities +
-					", active=" + this.active +
-					", localDate=" + this.localDate +
-					", localDateTime=" + this.localDateTime +
-					'}';
+			return "TestItem{" + "id=" + this.id + ", name='" + this.name + '\'' + ", value='" + this.value + '\''
+					+ ", testEnumString=" + this.testEnumString + ", testEnumOrdinal=" + this.testEnumOrdinal
+					+ ", cities=" + this.cities + ", active=" + this.active + ", localDate=" + this.localDate
+					+ ", localDateTime=" + this.localDateTime + '}';
 		}
 
 	}
@@ -2494,10 +2500,7 @@ class ReindexerRepositoryTests {
 
 		@Override
 		public String toString() {
-			return "TestJoinedItem{" +
-					"id=" + this.id +
-					", name='" + this.name + '\'' +
-					'}';
+			return "TestJoinedItem{" + "id=" + this.id + ", name='" + this.name + '\'' + '}';
 		}
 
 	}
@@ -2548,10 +2551,7 @@ class ReindexerRepositoryTests {
 
 		@Override
 		public String toString() {
-			return "TestNestedItem{" +
-					"name='" + this.name + '\'' +
-					", value='" + this.value + '\'' +
-					'}';
+			return "TestNestedItem{" + "name='" + this.name + '\'' + ", value='" + this.value + '\'' + '}';
 		}
 
 	}
@@ -2692,7 +2692,9 @@ class ReindexerRepositoryTests {
 		@ValueConverter(TestJoinedItemListPropertyConverter.class)
 		private final Collection<TestJoinedItemProjection> joinedItems;
 
-		public TestItemProjectionWithJoinedItems(Long id, LocalDate localDate, LocalDateTime localDateTime, String nestedItem, TestJoinedItemProjection joinedItem, Collection<TestJoinedItemProjection> joinedItems) {
+		public TestItemProjectionWithJoinedItems(Long id, LocalDate localDate, LocalDateTime localDateTime,
+				String nestedItem, TestJoinedItemProjection joinedItem,
+				Collection<TestJoinedItemProjection> joinedItems) {
 			this.id = id;
 			this.localDate = localDate;
 			this.localDateTime = localDateTime;
@@ -2757,15 +2759,18 @@ class ReindexerRepositoryTests {
 
 	@ReadingConverter
 	public enum TestNestedItemConverter implements Converter<TestNestedItem, String> {
+
 		INSTANCE;
 
 		@Override
 		public String convert(TestNestedItem source) {
 			return source.getName() + " " + source.getValue();
 		}
+
 	}
 
-	public static class TestJoinedItemPropertyConverter implements PropertyValueConverter<TestJoinedItemProjection, TestJoinedItem, ReindexerConversionContext> {
+	public static class TestJoinedItemPropertyConverter
+			implements PropertyValueConverter<TestJoinedItemProjection, TestJoinedItem, ReindexerConversionContext> {
 
 		@Override
 		public TestJoinedItemProjection read(TestJoinedItem value, ReindexerConversionContext context) {
@@ -2776,9 +2781,11 @@ class ReindexerRepositoryTests {
 		public TestJoinedItem write(TestJoinedItemProjection value, ReindexerConversionContext context) {
 			return null;
 		}
+
 	}
 
-	public static class TestJoinedItemListPropertyConverter implements PropertyValueConverter<List<TestJoinedItemProjection>, List<TestJoinedItem>, ReindexerConversionContext> {
+	public static class TestJoinedItemListPropertyConverter implements
+			PropertyValueConverter<List<TestJoinedItemProjection>, List<TestJoinedItem>, ReindexerConversionContext> {
 
 		@Override
 		public List<TestJoinedItemProjection> read(List<TestJoinedItem> values, ReindexerConversionContext context) {
@@ -2789,12 +2796,13 @@ class ReindexerRepositoryTests {
 		public List<TestJoinedItem> write(List<TestJoinedItemProjection> values, ReindexerConversionContext context) {
 			return Collections.emptyList();
 		}
+
 	}
 
 	public enum TestEnum {
-		TEST_CONSTANT_1,
-		TEST_CONSTANT_2,
-		TEST_CONSTANT_3,
+
+		TEST_CONSTANT_1, TEST_CONSTANT_2, TEST_CONSTANT_3,
+
 	}
 
 	public static class CreateDatabase {

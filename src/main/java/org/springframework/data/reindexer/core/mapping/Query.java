@@ -36,14 +36,12 @@ public @interface Query {
 
 	/**
 	 * An SQL-based Reindexer query to execute.
-	 *
 	 * @return the SQL-based Reindexer query to execute
 	 */
 	String value();
 
 	/**
 	 * Indicates whether query is for UPDATE or not.
-	 *
 	 * @return true, if query is for UPDATE. Default is false
 	 */
 	boolean update() default false;

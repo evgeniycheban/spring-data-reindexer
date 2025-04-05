@@ -26,14 +26,12 @@ public interface LazyLoadingProxy {
 
 	/**
 	 * Initializes the proxy and returns the wrapped value.
-	 *
 	 * @return a target object
 	 */
 	Object getTarget();
 
 	/**
 	 * Returns the raw {@literal source} object that defines the reference.
-	 *
 	 * @return can be {@literal null}.
 	 */
 	Object getSource();

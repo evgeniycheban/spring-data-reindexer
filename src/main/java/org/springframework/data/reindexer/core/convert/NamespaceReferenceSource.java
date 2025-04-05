@@ -29,7 +29,6 @@ public final class NamespaceReferenceSource {
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param namespace the namespace to use
 	 * @param source the source to use
 	 */
@@ -40,7 +39,6 @@ public final class NamespaceReferenceSource {
 
 	/**
 	 * Returns a namespace.
-	 *
 	 * @return the namespace to use
 	 */
 	public String getNamespace() {
@@ -49,7 +47,6 @@ public final class NamespaceReferenceSource {
 
 	/**
 	 * Returns a source.
-	 *
 	 * @return the source to use
 	 */
 	public Object getSource() {

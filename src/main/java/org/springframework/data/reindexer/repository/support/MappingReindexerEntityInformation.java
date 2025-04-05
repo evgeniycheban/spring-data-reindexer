@@ -23,8 +23,8 @@ import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProper
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 
 /**
- * {@link ReindexerEntityInformation} implementation using a domain class to lookup the necessary
- * information.
+ * {@link ReindexerEntityInformation} implementation using a domain class to lookup the
+ * necessary information.
  *
  * @author Evgeniy Cheban
  */
@@ -34,7 +34,6 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param metadata the {@link ReindexerPersistentEntity} to use
 	 */
 	public MappingReindexerEntityInformation(ReindexerPersistentEntity<T> metadata) {

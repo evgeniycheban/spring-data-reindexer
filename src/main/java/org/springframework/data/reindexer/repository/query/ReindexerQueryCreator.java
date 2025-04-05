@@ -72,8 +72,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
-			Map<String, ReindexerIndex> indexes,
-			ParameterAccessor parameters, ReturnedType returnedType) {
+			Map<String, ReindexerIndex> indexes, ParameterAccessor parameters, ReturnedType returnedType) {
 		super(tree, parameters);
 		this.tree = tree;
 		this.reindexer = reindexer;
@@ -112,15 +111,18 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			case IS_NULL -> base.isNull(indexName);
 			case SIMPLE_PROPERTY -> where(base, indexName, Condition.EQ, parameters);
 			case NEGATING_SIMPLE_PROPERTY -> where(base.not(), indexName, Condition.EQ, parameters);
-			case BETWEEN -> base.where(indexName, Condition.RANGE, getParameterValues(indexName, parameters.next(), parameters.next()));
+			case BETWEEN -> base.where(indexName, Condition.RANGE,
+					getParameterValues(indexName, parameters.next(), parameters.next()));
 			case TRUE -> base.where(indexName, Condition.EQ, true);
 			case FALSE -> base.where(indexName, Condition.EQ, false);
 			case LIKE, NOT_LIKE, STARTING_WITH, ENDING_WITH, CONTAINING, NOT_CONTAINING -> {
 				if (part.getProperty().getLeafProperty().isCollection()) {
-					yield where(part.getType() == Type.NOT_CONTAINING ? base.not() : base, indexName, Condition.SET, parameters);
+					yield where(part.getType() == Type.NOT_CONTAINING ? base.not() : base, indexName, Condition.SET,
+							parameters);
 				}
 				Object value = parameters.next();
-				Assert.isInstanceOf(String.class, value, () -> "Value of '" + part.getType() + "' expression must be String");
+				Assert.isInstanceOf(String.class, value,
+						() -> "Value of '" + part.getType() + "' expression must be String");
 				String expression = switch (part.getType()) {
 					case STARTING_WITH -> value + "%";
 					case ENDING_WITH -> "%" + value;
@@ -223,10 +225,10 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		if (this.tree.getMaxResults() != null) {
 			if (pageable.isPaged()) {
 				/*
-				 * In order to return the correct results, we have to adjust the first result offset to be returned if:
-				 * - a Pageable parameter is present
-				 * - AND the requested page number > 0
-				 * - AND the requested page size was bigger than the derived result limitation via the First/Top keyword.
+				 * In order to return the correct results, we have to adjust the first
+				 * result offset to be returned if: - a Pageable parameter is present -
+				 * AND the requested page number > 0 - AND the requested page size was
+				 * bigger than the derived result limitation via the First/Top keyword.
 				 */
 				int firstResult = PageableUtils.getOffsetAsInteger(pageable);
 				if (pageable.getPageSize() > this.tree.getMaxResults() && firstResult > 0) {
@@ -240,4 +242,5 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
 	}
+
 }

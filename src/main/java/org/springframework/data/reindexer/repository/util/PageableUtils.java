@@ -33,15 +33,17 @@ public final class PageableUtils {
 
 	/**
 	 * Converts a {@link Pageable}'s offset value from {@link Long} to {@link Integer}.
-	 *
 	 * @param pageable the {@link Pageable} to use
 	 * @return integer
-	 * @throws InvalidDataAccessApiUsageException if {@link Pageable}'s offset exceeds {@link Integer#MAX_VALUE}
+	 * @throws InvalidDataAccessApiUsageException if {@link Pageable}'s offset exceeds
+	 * {@link Integer#MAX_VALUE}
 	 */
 	public static int getOffsetAsInteger(Pageable pageable) {
 		if (pageable.getOffset() > Integer.MAX_VALUE) {
-			throw new InvalidDataAccessApiUsageException("Page offset exceeds Integer.MAX_VALUE (" + Integer.MAX_VALUE + ")");
+			throw new InvalidDataAccessApiUsageException(
+					"Page offset exceeds Integer.MAX_VALUE (" + Integer.MAX_VALUE + ")");
 		}
 		return Math.toIntExact(pageable.getOffset());
 	}
+
 }

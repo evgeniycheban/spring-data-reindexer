@@ -30,14 +30,12 @@ public interface ReindexerPersistentEntity<T> extends MutablePersistentEntity<T,
 
 	/**
 	 * Returns a namespace name.
-	 *
 	 * @return the namespace name to use
 	 */
 	String getNamespace();
 
 	/**
 	 * Returns a {@link NamespaceOptions}.
-	 *
 	 * @return the {@link NamespaceOptions} to use
 	 */
 	NamespaceOptions getNamespaceOptions();

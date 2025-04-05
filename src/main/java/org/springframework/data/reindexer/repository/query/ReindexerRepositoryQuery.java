@@ -60,22 +60,25 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
-	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext, Reindexer reindexer, ReindexerConverter reindexerConverter) {
+	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
+			ReindexerMappingContext mappingContext, Reindexer reindexer, ReindexerConverter reindexerConverter) {
 		this.method = method;
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
 		this.reindexer = reindexer;
 		this.reindexerConverter = reindexerConverter;
-		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
+		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(
+				entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
-		this.indexes = namespace.getIndexes().stream().collect(Collectors.toUnmodifiableMap(ReindexerIndex::getName, Function.identity()));
+		this.indexes = namespace.getIndexes()
+			.stream()
+			.collect(Collectors.toUnmodifiableMap(ReindexerIndex::getName, Function.identity()));
 		this.namespace = new TransactionalNamespace<>(namespace);
 		this.tree = new PartTree(method.getName(), entityInformation.getJavaType());
 		this.queryExecution = Lazy.of(() -> {
@@ -90,8 +93,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			}
 			if (method.isPageQuery()) {
 				return (creator) -> {
-					ProjectingResultIterator iterator = new ProjectingResultIterator(creator.createQuery().reqTotal(), creator.getReturnedType(), reindexerConverter);
-					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator), creator.getParameters().getPageable(), iterator::getTotalCount);
+					ProjectingResultIterator iterator = new ProjectingResultIterator(creator.createQuery().reqTotal(),
+							creator.getReturnedType(), reindexerConverter);
+					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
+							creator.getParameters().getPageable(), iterator::getTotalCount);
 				};
 			}
 			if (this.tree.isCountProjection()) {
@@ -111,15 +116,18 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private ProjectingResultIterator toIterator(ReindexerQueryCreator queryCreator) {
-		return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType(), this.reindexerConverter);
+		return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType(),
+				this.reindexerConverter);
 	}
 
 	@Override
 	public Object execute(Object[] parameters) {
-		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(), parameters);
+		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(),
+				parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
-		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace, this.entityInformation,
-				this.mappingContext, this.indexes, parameterAccessor, resultProcessor.getReturnedType());
+		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace,
+				this.entityInformation, this.mappingContext, this.indexes, parameterAccessor,
+				resultProcessor.getReturnedType());
 		Object result = this.queryExecution.get().apply(queryCreator);
 		return resultProcessor.processResult(result);
 	}
@@ -128,4 +136,5 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	public ReindexerQueryMethod getQueryMethod() {
 		return this.method;
 	}
+
 }

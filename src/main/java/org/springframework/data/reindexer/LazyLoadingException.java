@@ -27,7 +27,6 @@ public class LazyLoadingException extends UncategorizedDataAccessException {
 
 	/**
 	 * Constructor for LazyLoadingException.
-	 *
 	 * @param msg the detail message
 	 * @param cause the exception thrown by underlying data access API
 	 */

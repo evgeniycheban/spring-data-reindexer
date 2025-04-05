@@ -60,13 +60,13 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @param ctx the {@link ApplicationContext} to use
 	 */
-	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext, ReindexerConverter reindexerConverter, ApplicationContext ctx) {
+	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext,
+			ReindexerConverter reindexerConverter, ApplicationContext ctx) {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
 		this.reindexerConverter = reindexerConverter;
@@ -76,21 +76,24 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T, ID> ReindexerEntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
-		ReindexerPersistentEntity<T> persistentEntity = (ReindexerPersistentEntity<T>) this.mappingContext.getRequiredPersistentEntity(domainClass);
+		ReindexerPersistentEntity<T> persistentEntity = (ReindexerPersistentEntity<T>) this.mappingContext
+			.getRequiredPersistentEntity(domainClass);
 		return new MappingReindexerEntityInformation<>(persistentEntity);
 	}
 
 	@Override
 	protected RepositoryMetadata getRepositoryMetadata(Class<?> repositoryInterface) {
 		Assert.notNull(repositoryInterface, "Repository interface must not be null");
-		return Repository.class.isAssignableFrom(repositoryInterface) ? new ReindexerDefaultRepositoryMetadata(repositoryInterface)
+		return Repository.class.isAssignableFrom(repositoryInterface)
+				? new ReindexerDefaultRepositoryMetadata(repositoryInterface)
 				: new ReindexerAnnotationRepositoryMetadata(repositoryInterface);
 	}
 
 	@Override
 	protected Object getTargetRepository(RepositoryInformation metadata) {
 		EntityInformation<?, Serializable> entityInformation = getEntityInformation(metadata.getDomainType());
-		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.reindexer, this.reindexerConverter);
+		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.reindexer,
+				this.reindexerConverter);
 	}
 
 	@Override
@@ -99,21 +102,26 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	}
 
 	@Override
-	protected Optional<QueryLookupStrategy> getQueryLookupStrategy(QueryLookupStrategy.Key key, QueryMethodEvaluationContextProvider evaluationContextProvider) {
+	protected Optional<QueryLookupStrategy> getQueryLookupStrategy(QueryLookupStrategy.Key key,
+			QueryMethodEvaluationContextProvider evaluationContextProvider) {
 		return Optional.of(new ReindexerQueryLookupStrategy());
 	}
 
 	private class ReindexerQueryLookupStrategy implements QueryLookupStrategy {
 
 		@Override
-		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory, NamedQueries namedQueries) {
+		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory,
+				NamedQueries namedQueries) {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
 			if (queryMethod.hasQueryAnnotation()) {
-				return new StringBasedReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter);
+				return new StringBasedReindexerRepositoryQuery(queryMethod,
+						getEntityInformation(metadata.getDomainType()),
+						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx),
+						ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter);
 			}
 			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
-					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter);
+					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer,
+					ReindexerRepositoryFactory.this.reindexerConverter);
 		}
 
 	}

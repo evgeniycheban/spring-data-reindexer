@@ -41,13 +41,11 @@ final class ReindexerQueryExecutionConverters {
 			return type;
 		}
 		Class<?> rawType = type.getType();
-		boolean needToUnwrap = type.isCollectionLike()
-				|| Slice.class.isAssignableFrom(rawType)
-				|| GeoResults.class.isAssignableFrom(rawType)
-				|| rawType.isArray()
-				|| QueryExecutionConverters.supports(rawType)
-				|| Stream.class.isAssignableFrom(rawType)
+		boolean needToUnwrap = type.isCollectionLike() || Slice.class.isAssignableFrom(rawType)
+				|| GeoResults.class.isAssignableFrom(rawType) || rawType.isArray()
+				|| QueryExecutionConverters.supports(rawType) || Stream.class.isAssignableFrom(rawType)
 				|| ResultIterator.class.isAssignableFrom(rawType);
 		return needToUnwrap ? unwrapWrapperTypes(type.getRequiredComponentType(), reference) : type;
 	}
+
 }

@@ -81,7 +81,6 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param reindexer the {@link Reindexer} to use
@@ -96,7 +95,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		this.namespace = openNamespace(entityInformation, reindexer);
 	}
 
-	private TransactionalNamespace<T> openNamespace(ReindexerEntityInformation<T, ID> entityInformation, Reindexer reindexer) {
+	private TransactionalNamespace<T> openNamespace(ReindexerEntityInformation<T, ID> entityInformation,
+			Reindexer reindexer) {
 		Namespace<T> namespace = reindexer.openNamespace(entityInformation.getNamespaceName(),
 				entityInformation.getNamespaceOptions(), entityInformation.getJavaType());
 		return new TransactionalNamespace<>(namespace);
@@ -230,8 +230,9 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	}
 
 	private <R> R projectEntity(T e, Class<R> resultType) {
-		EntityProjection<R, T> descriptor = SimpleReindexerRepository.this.reindexerConverter.getProjectionIntrospector()
-				.introspect(resultType, SimpleReindexerRepository.this.entityInformation.getJavaType());
+		EntityProjection<R, T> descriptor = SimpleReindexerRepository.this.reindexerConverter
+			.getProjectionIntrospector()
+			.introspect(resultType, SimpleReindexerRepository.this.entityInformation.getJavaType());
 		return this.reindexerConverter.project(descriptor, e);
 	}
 
@@ -288,7 +289,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@SuppressWarnings("unchecked")
 	private Query<T> joinedQuery() {
 		Query<T> query = query();
-		return (Query<T>) QueryUtils.withJoins(query, this.entityInformation.getJavaType(), this.mappingContext, this.reindexer);
+		return (Query<T>) QueryUtils.withJoins(query, this.entityInformation.getJavaType(), this.mappingContext,
+				this.reindexer);
 	}
 
 	private Query<T> withExample(Query<T> criteria, Example<?> example) {
@@ -310,7 +312,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 					StringMatcher stringMatcher = propertySpecifier.getStringMatcher();
 					if (stringMatcher == null) {
 						if (LOGGER.isTraceEnabled()) {
-							LOGGER.trace("No StringMatcher provided for property: " + propertyPath + " defaults to `StringMatcher.DEFAULT`");
+							LOGGER.trace("No StringMatcher provided for property: " + propertyPath
+									+ " defaults to `StringMatcher.DEFAULT`");
 						}
 						stringMatcher = StringMatcher.DEFAULT;
 					}
@@ -318,14 +321,16 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 						case DEFAULT, EXACT -> {
 							if (matcher.isIgnoreCaseEnabled()) {
 								criteria.like(propertyPath, s);
-							} else {
+							}
+							else {
 								criteria.where(propertyPath, Condition.EQ, s);
 							}
 						}
 						case STARTING -> criteria.like(propertyPath, s + "%");
 						case ENDING -> criteria.like(propertyPath, "%" + s);
 						case CONTAINING -> criteria.like(propertyPath, "%" + s + "%");
-						default -> throw new InvalidDataAccessApiUsageException("Unsupported StringMatcher: " + stringMatcher);
+						default ->
+							throw new InvalidDataAccessApiUsageException("Unsupported StringMatcher: " + stringMatcher);
 					}
 				}
 				else {
@@ -375,11 +380,13 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		private final List<String> fieldsToInclude;
 
 		@SuppressWarnings("unchecked")
-        private FluentQueryByExample(Example<E> example, Sort sort, Integer limit, Class<R> resultType, List<String> fieldsToInclude) {
+		private FluentQueryByExample(Example<E> example, Sort sort, Integer limit, Class<R> resultType,
+				List<String> fieldsToInclude) {
 			this.example = example;
 			this.sort = sort != null ? sort : Sort.unsorted();
 			this.limit = limit;
-			this.resultType = resultType != null ? resultType : (Class<R>) SimpleReindexerRepository.this.entityInformation.getJavaType();
+			this.resultType = resultType != null ? resultType
+					: (Class<R>) SimpleReindexerRepository.this.entityInformation.getJavaType();
 			this.fieldsToInclude = fieldsToInclude;
 		}
 
@@ -400,7 +407,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		@Override
 		public FetchableFluentQuery<R> project(Collection<String> properties) {
-			return new FluentQueryByExample<>(this.example, this.sort, this.limit, this.resultType, new ArrayList<>(properties));
+			return new FluentQueryByExample<>(this.example, this.sort, this.limit, this.resultType,
+					new ArrayList<>(properties));
 		}
 
 		@Override

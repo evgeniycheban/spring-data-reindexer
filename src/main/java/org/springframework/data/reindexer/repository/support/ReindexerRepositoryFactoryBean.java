@@ -49,7 +49,6 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param repositoryInterface the repository interface to use
 	 */
 	public ReindexerRepositoryFactoryBean(Class<? extends T> repositoryInterface) {
@@ -58,7 +57,6 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	/**
 	 * Sets the {@link Reindexer}.
-	 *
 	 * @param reindexer the {@link Reindexer} to use
 	 */
 	public void setReindexer(Reindexer reindexer) {
@@ -67,7 +65,6 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	/**
 	 * Sets the {@link ReindexerMappingContext}.
-	 *
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 */
 	public void setMappingContext(ReindexerMappingContext mappingContext) {
@@ -76,7 +73,6 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	/**
 	 * Sets the {@link ReindexerConverter}.
-	 *
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @since 1.4
 	 */
@@ -100,4 +96,5 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 	public void setApplicationContext(ApplicationContext ctx) throws BeansException {
 		this.ctx = ctx;
 	}
+
 }

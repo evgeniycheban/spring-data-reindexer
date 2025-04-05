@@ -21,8 +21,8 @@ import java.util.Collections;
 import org.springframework.data.convert.CustomConversions;
 
 /**
- * Value object to capture custom conversion. {@link ReindexerCustomConversions} also acts as a factory for
- * {@link org.springframework.data.mapping.model.SimpleTypeHolder}.
+ * Value object to capture custom conversion. {@link ReindexerCustomConversions} also acts
+ * as a factory for {@link org.springframework.data.mapping.model.SimpleTypeHolder}.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -38,4 +38,5 @@ public class ReindexerCustomConversions extends CustomConversions {
 	public ReindexerCustomConversions(StoreConversions storeConversions, Collection<?> converters) {
 		super(storeConversions, converters);
 	}
+
 }

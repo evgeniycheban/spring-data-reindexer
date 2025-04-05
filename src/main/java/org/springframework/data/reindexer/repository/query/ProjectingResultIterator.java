@@ -62,7 +62,8 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 		this(query.execute(), projectionType, reindexerConverter);
 	}
 
-	ProjectingResultIterator(ResultIterator<?> delegate, ReturnedType projectionType, ReindexerConverter reindexerConverter) {
+	ProjectingResultIterator(ResultIterator<?> delegate, ReturnedType projectionType,
+			ReindexerConverter reindexerConverter) {
 		this.delegate = delegate;
 		this.projectionType = projectionType;
 		this.reindexerConverter = reindexerConverter;
@@ -94,7 +95,8 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 
 	@Override
 	public boolean hasNext() {
-		return this.delegate.hasNext() || this.aggregationFacet != null && this.aggregationPosition < this.aggregationFacet.getFacets().size();
+		return this.delegate.hasNext()
+				|| this.aggregationFacet != null && this.aggregationPosition < this.aggregationFacet.getFacets().size();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -104,8 +106,9 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 		if (entity == null) {
 			return null;
 		}
-		EntityProjection<Object, Object> descriptor = (EntityProjection<Object, Object>) this.reindexerConverter.getProjectionIntrospector()
-				.introspect(this.projectionType.getReturnedType(), this.projectionType.getDomainType());
+		EntityProjection<Object, Object> descriptor = (EntityProjection<Object, Object>) this.reindexerConverter
+			.getProjectionIntrospector()
+			.introspect(this.projectionType.getReturnedType(), this.projectionType.getDomainType());
 		return this.reindexerConverter.project(descriptor, entity);
 	}
 
@@ -121,13 +124,15 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 			throw new RuntimeException(e);
 		}
 		ReindexerMappingContext mappingContext = this.reindexerConverter.getMappingContext();
-		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(this.projectionType.getDomainType());
+		ReindexerPersistentEntity<?> persistentEntity = mappingContext
+			.getRequiredPersistentEntity(this.projectionType.getDomainType());
 		int aggregationPosition = this.aggregationPosition++;
 		List<String> fields = this.aggregationFacet.getFields();
 		for (int i = 0; i < fields.size(); i++) {
 			String field = fields.get(i);
 			Facet facet = this.aggregationFacet.getFacets().get(aggregationPosition);
-			if (i < facet.getValues().size() && this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
+			if (i < facet.getValues().size()
+					&& this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
 				ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(field);
 				Object value = this.conversionService.convert(facet.getValues().get(i), persistentProperty.getType());
 				BeanPropertyUtils.setProperty(entity, field, value);
@@ -157,4 +162,5 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 		}
 		return null;
 	}
+
 }

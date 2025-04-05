@@ -24,8 +24,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.Assert;
 
 /**
- * A {@link Namespace} implementation that lookups for a {@link Transaction} and
- * delegates a call if it exists otherwise fallbacks to the original {@link Namespace}.
+ * A {@link Namespace} implementation that lookups for a {@link Transaction} and delegates
+ * a call if it exists otherwise fallbacks to the original {@link Namespace}.
  *
  * @author Evgeniy Cheban
  * @since 1.1
@@ -36,7 +36,6 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 
 	/**
 	 * Creates an instance.
-	 *
 	 * @param fallback the {@link Namespace} to use as a fallback
 	 */
 	public TransactionalNamespace(Namespace<T> fallback) {

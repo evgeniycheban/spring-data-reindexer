@@ -64,4 +64,5 @@ final class ReindexerQueryExecutions {
 		}
 		return result;
 	}
+
 }

@@ -33,7 +33,8 @@ import org.springframework.data.repository.query.QueryByExampleExecutor;
  * @author Evgeniy Cheban
  */
 @NoRepositoryBean
-public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID>, PagingAndSortingRepository<T, ID>, QueryByExampleExecutor<T> {
+public interface ReindexerRepository<T, ID>
+		extends CrudRepository<T, ID>, PagingAndSortingRepository<T, ID>, QueryByExampleExecutor<T> {
 
 	@Override
 	<S extends T> List<S> saveAll(Iterable<S> entities);
@@ -56,7 +57,6 @@ public interface ReindexerRepository<T, ID> extends CrudRepository<T, ID>, Pagin
 	/**
 	 * Returns a new {@link Query} instance for further customizations.
 	 * @see Query for more information regarding supported conditions and result types.
-	 *
 	 * @return the {@link Query} for further customizations
 	 */
 	Query<T> query();

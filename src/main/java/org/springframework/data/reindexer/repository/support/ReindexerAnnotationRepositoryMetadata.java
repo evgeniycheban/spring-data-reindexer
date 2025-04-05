@@ -22,17 +22,18 @@ import org.springframework.data.repository.util.ReactiveWrapperConverters;
 import org.springframework.data.util.TypeInformation;
 
 /**
- * {@link org.springframework.data.repository.core.RepositoryMetadata} implementation inspecting the given
- * repository interface for a {@link org.springframework.data.repository.RepositoryDefinition} annotation.
+ * {@link org.springframework.data.repository.core.RepositoryMetadata} implementation
+ * inspecting the given repository interface for a
+ * {@link org.springframework.data.repository.RepositoryDefinition} annotation.
  *
  * @author Evgeniy Cheban
  */
 public class ReindexerAnnotationRepositoryMetadata extends AnnotationRepositoryMetadata {
 
 	/**
-	 * Creates a new {@link ReindexerAnnotationRepositoryMetadata} instance looking up repository types from a
+	 * Creates a new {@link ReindexerAnnotationRepositoryMetadata} instance looking up
+	 * repository types from a
 	 * {@link org.springframework.data.repository.RepositoryDefinition} annotation.
-	 *
 	 * @param repositoryInterface must not be {@literal null}.
 	 */
 	public ReindexerAnnotationRepositoryMetadata(Class<?> repositoryInterface) {
