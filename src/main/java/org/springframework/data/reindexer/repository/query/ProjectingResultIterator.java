@@ -89,6 +89,11 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 	}
 
 	@Override
+	public float getCurrentRank() {
+		return this.delegate.getCurrentRank();
+	}
+
+	@Override
 	public void close() {
 		this.delegate.close();
 	}
