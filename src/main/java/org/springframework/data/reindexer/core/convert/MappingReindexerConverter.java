@@ -164,7 +164,7 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		PersistentPropertyAccessor<?> mappedAccessor = new ConvertingPropertyAccessor<>(mappedEntity.getPropertyAccessor(instance),
 				this.conversionService);
 		if (mappedEntity.requiresPropertyPopulation()) {
-			readProperties(mappedEntity, mappedAccessor, valueProvider);
+			populateProperties(mappedEntity, mappedAccessor, valueProvider);
 		}
 		return (R) mappedAccessor.getBean();
 	}
@@ -183,11 +183,11 @@ public class MappingReindexerConverter implements ReindexerConverter, Applicatio
 		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(type);
 		PersistentPropertyAccessor<?> accessor = new ConvertingPropertyAccessor<>(entity.getPropertyAccessor(source), this.conversionService);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor);
-		readProperties(entity, accessor, valueProvider);
+		populateProperties(entity, accessor, valueProvider);
 		return (R) source;
 	}
 
-	private void readProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor, ReindexerPropertyValueProvider valueProvider) {
+	private void populateProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor, ReindexerPropertyValueProvider valueProvider) {
 		for (ReindexerPersistentProperty property : entity) {
 			if (!entity.isCreatorArgument(property) && property.isReadable()) {
 				accessor.setProperty(property, valueProvider.getPropertyValue(property));
