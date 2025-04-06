@@ -31,10 +31,21 @@ import org.springframework.data.convert.CustomConversions;
  */
 public class ReindexerCustomConversions extends CustomConversions {
 
+	/**
+	 * Creates an instance with default converters.
+	 */
 	public ReindexerCustomConversions() {
-		super(new ConverterConfiguration(StoreConversions.NONE, Collections.emptyList()));
+		this(StoreConversions.NONE, Collections.emptyList());
 	}
 
+	/**
+	 * Creates an instance.
+	 * @param storeConversions the {@link StoreConversions} to use, must not be
+	 * {@literal null}
+	 * @param converters the {@link Collection} of
+	 * {@link org.springframework.core.convert.converter.Converter}s to use, must not be
+	 * {@literal null}
+	 */
 	public ReindexerCustomConversions(StoreConversions storeConversions, Collection<?> converters) {
 		super(storeConversions, converters);
 	}

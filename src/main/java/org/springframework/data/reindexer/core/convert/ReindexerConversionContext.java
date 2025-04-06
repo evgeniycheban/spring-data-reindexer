@@ -22,9 +22,11 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.ValueConversionContext;
+import org.springframework.data.mapping.PersistentProperty;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.util.TypeInformation;
+import org.springframework.util.Assert;
 
 /**
  * {@link ValueConversionContext} that allows to delegate read/write to an underlying
@@ -43,8 +45,22 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 
 	private final CustomConversions conversions;
 
+	/**
+	 * Creates an instance.
+	 * @param reindexerConverter the {@link ReindexerConverter} to use, must not be
+	 * {@literal null}
+	 * @param property the {@link PersistentProperty} to use, must not be {@literal null}
+	 * @param conversionService the {@link ConversionService} to use, must not be
+	 * {@literal null}
+	 * @param conversions the {@link CustomConversions} to use, must not be
+	 * {@literal null}
+	 */
 	public ReindexerConversionContext(ReindexerConverter reindexerConverter, ReindexerPersistentProperty property,
 			ConversionService conversionService, CustomConversions conversions) {
+		Assert.notNull(reindexerConverter, "reindexerConverter must not be null");
+		Assert.notNull(property, "property must not be null");
+		Assert.notNull(conversionService, "conversionService must not be null");
+		Assert.notNull(conversions, "conversions must not be null");
 		this.reindexerConverter = reindexerConverter;
 		this.property = property;
 		this.conversionService = conversionService;
