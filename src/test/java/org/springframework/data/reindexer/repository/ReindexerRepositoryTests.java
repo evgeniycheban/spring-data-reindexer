@@ -1928,6 +1928,13 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void finByNameIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findByNameIgnoreCase("testname");
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
 	public void findTestItemDTOByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", new Price(100.0),
 				new Place("TestCountry", List.of("TestCity1", "TestCity2", "TestCity3"))));
@@ -2018,6 +2025,8 @@ class ReindexerRepositoryTests {
 	interface TestItemReindexerRepository extends ReindexerRepository<TestItem, Long> {
 
 		Optional<TestItem> findByName(String name);
+
+		Optional<TestItem> findByNameIgnoreCase(String name);
 
 		TestItemProjectionWithJoinedItems findProjectionByName(String name);
 
