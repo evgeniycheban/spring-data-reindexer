@@ -109,8 +109,16 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			case NOT_IN -> where(base.not(), indexName, Condition.SET, parameters);
 			case IS_NOT_NULL -> base.isNotNull(indexName);
 			case IS_NULL -> base.isNull(indexName);
-			case SIMPLE_PROPERTY -> where(base, indexName, Condition.EQ, parameters);
-			case NEGATING_SIMPLE_PROPERTY -> where(base.not(), indexName, Condition.EQ, parameters);
+			case NEGATING_SIMPLE_PROPERTY, SIMPLE_PROPERTY -> {
+				if (part.getType() == Type.NEGATING_SIMPLE_PROPERTY) {
+					base.not();
+				}
+				if (part.getProperty().getTypeInformation().getType() == String.class
+						&& part.shouldIgnoreCase() == Part.IgnoreCaseType.ALWAYS) {
+					yield base.like(indexName, String.valueOf(parameters.next()));
+				}
+				yield where(base, indexName, Condition.EQ, parameters);
+			}
 			case BETWEEN -> base.where(indexName, Condition.RANGE,
 					getParameterValues(indexName, parameters.next(), parameters.next()));
 			case TRUE -> base.where(indexName, Condition.EQ, true);
