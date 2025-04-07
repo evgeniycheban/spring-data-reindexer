@@ -1927,6 +1927,38 @@ class ReindexerRepositoryTests {
 		assertEquals(3, count);
 	}
 
+	@Test
+	public void findTestItemDTOByName() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", new Price(100.0),
+				new Place("TestCountry", List.of("TestCity1", "TestCity2", "TestCity3"))));
+		Optional<TestItemDto> foundItem = this.repository.findTestItemDTOByName("TestName");
+		assertTrue(foundItem.isPresent());
+		TestItemDto testItemDto = foundItem.get();
+		assertEquals(testItem.getId(), testItemDto.getId());
+		assertEquals(testItem.getName(), testItemDto.getName());
+		assertEquals(testItem.getValue(), testItemDto.getValue());
+		assertEquals(testItem.getPrice().getValue(), testItemDto.getPrice());
+		String place = testItemDto.getPlace();
+		assertNotNull(place);
+		assertEquals("Country: " + testItem.getPlace().getCountry() + ", cities: " + testItem.getPlace().getCities(),
+				testItemDto.getPlace());
+	}
+
+	@Test
+	public void findTestItemDTOWhenPriceIsNull() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", null,
+				new Place("TestCountry", List.of("TestCity1", "TestCity2", "TestCity3"))));
+		Optional<TestItemDto> foundItem = this.repository.findTestItemDTOByName("TestName");
+		assertTrue(foundItem.isPresent());
+		TestItemDto testItemDto = foundItem.get();
+		assertEquals(testItem.getId(), testItemDto.getId());
+		assertEquals(testItem.getName(), testItemDto.getName());
+		assertEquals(testItem.getValue(), testItemDto.getValue());
+		assertEquals(0.0, testItemDto.getPrice());
+		assertEquals("Country: " + testItem.getPlace().getCountry() + ", cities: " + testItem.getPlace().getCities(),
+				testItemDto.getPlace());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -1950,6 +1982,7 @@ class ReindexerRepositoryTests {
 		public ReindexerCustomConversions customConversions() {
 			List<Converter<?, ?>> converters = new ArrayList<>();
 			converters.add(TestNestedItemConverter.INSTANCE);
+			converters.add(new TestItemDTOPlaceConverter());
 			return new ReindexerCustomConversions(StoreConversions.NONE, converters);
 		}
 
@@ -1987,6 +2020,8 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByName(String name);
 
 		TestItemProjectionWithJoinedItems findProjectionByName(String name);
+
+		Optional<TestItemDto> findTestItemDTOByName(String name);
 
 		Optional<TestItem> findByNameAndValue(String name, String value);
 
@@ -2193,6 +2228,9 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "value")
 		private String value;
 
+		@Reindex(name = "price")
+		private Price price;
+
 		@Enumerated(EnumType.STRING)
 		@Reindex(name = "testEnumString")
 		private TestEnum testEnumString;
@@ -2200,6 +2238,9 @@ class ReindexerRepositoryTests {
 		@Enumerated(EnumType.ORDINAL)
 		@Reindex(name = "testEnumOrdinal")
 		private TestEnum testEnumOrdinal;
+
+		@Reindex(name = "place")
+		private Place place;
 
 		@Reindex(name = "cities")
 		private List<String> cities = new ArrayList<>();
@@ -2235,6 +2276,13 @@ class ReindexerRepositoryTests {
 			this.value = value;
 		}
 
+		public TestItem(Long id, String name, String value, Price price) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
+			this.price = price;
+		}
+
 		public TestItem(Long id, String name, String value, boolean active) {
 			this.id = id;
 			this.name = name;
@@ -2252,6 +2300,14 @@ class ReindexerRepositoryTests {
 			this.name = name;
 			this.value = value;
 			this.cities = cities;
+		}
+
+		public TestItem(Long id, String name, String value, Price price, Place place) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
+			this.price = price;
+			this.place = place;
 		}
 
 		public TestItem(Long id, String name, String value, TestEnum testEnumString, TestEnum testEnumOrdinal) {
@@ -2303,6 +2359,22 @@ class ReindexerRepositoryTests {
 
 		public void setValue(String value) {
 			this.value = value;
+		}
+
+		public Price getPrice() {
+			return price;
+		}
+
+		public void setPrice(Price price) {
+			this.price = price;
+		}
+
+		public Place getPlace() {
+			return place;
+		}
+
+		public void setPlace(Place place) {
+			this.place = place;
 		}
 
 		public TestEnum getTestEnumString() {
@@ -2419,6 +2491,59 @@ class ReindexerRepositoryTests {
 					+ ", testEnumString=" + this.testEnumString + ", testEnumOrdinal=" + this.testEnumOrdinal
 					+ ", cities=" + this.cities + ", active=" + this.active + ", localDate=" + this.localDate
 					+ ", localDateTime=" + this.localDateTime + '}';
+		}
+
+	}
+
+	public static class Price {
+
+		private Double value;
+
+		public Price(Double value) {
+			this.value = value;
+		}
+
+		public Price() {
+		}
+
+		public Double getValue() {
+			return value;
+		}
+
+		public void setValue(Double value) {
+			this.value = value;
+		}
+
+	}
+
+	public static class Place {
+
+		private String country;
+
+		private List<String> cities;
+
+		public Place() {
+		}
+
+		public Place(String country, List<String> cities) {
+			this.country = country;
+			this.cities = cities;
+		}
+
+		public String getCountry() {
+			return country;
+		}
+
+		public void setCountry(String country) {
+			this.country = country;
+		}
+
+		public List<String> getCities() {
+			return cities;
+		}
+
+		public void setCities(List<String> cities) {
+			this.cities = cities;
 		}
 
 	}
@@ -2584,13 +2709,29 @@ class ReindexerRepositoryTests {
 
 	public static class TestItemDto {
 
-		private final Long id;
+		private Long id;
 
-		private final String name;
+		private String name;
+
+		private String value;
+
+		@ValueConverter(TestItemDTOPriceConverter.class)
+		private Double price;
+
+		private String place;
+
+		public TestItemDto() {
+		}
 
 		public TestItemDto(Long id, String name) {
 			this.id = id;
 			this.name = name;
+		}
+
+		public TestItemDto(Long id, String name, String value) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
 		}
 
 		public Long getId() {
@@ -2599,6 +2740,30 @@ class ReindexerRepositoryTests {
 
 		public String getName() {
 			return this.name;
+		}
+
+		public String getValue() {
+			return value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
+
+		public Double getPrice() {
+			return price;
+		}
+
+		public void setPrice(Double price) {
+			this.price = price;
+		}
+
+		public String getPlace() {
+			return place;
+		}
+
+		public void setPlace(String place) {
+			this.place = place;
 		}
 
 	}
@@ -2753,6 +2918,36 @@ class ReindexerRepositoryTests {
 
 		public TestJoinedItemProjection getNestedJoinedItem() {
 			return this.nestedJoinedItem;
+		}
+
+	}
+
+	@ReadingConverter
+	public static class TestItemDTOPlaceConverter implements Converter<Place, String> {
+
+		@Override
+		public String convert(Place source) {
+			return "Country: " + source.getCountry() + ", cities: " + source.getCities();
+		}
+
+	}
+
+	public static class TestItemDTOPriceConverter
+			implements PropertyValueConverter<Double, Price, ReindexerConversionContext> {
+
+		@Override
+		public Double read(Price source, ReindexerConversionContext context) {
+			return source.getValue();
+		}
+
+		@Override
+		public Price write(Double value, ReindexerConversionContext context) {
+			return null;
+		}
+
+		@Override
+		public Double readNull(ReindexerConversionContext context) {
+			return 0.0;
 		}
 
 	}
