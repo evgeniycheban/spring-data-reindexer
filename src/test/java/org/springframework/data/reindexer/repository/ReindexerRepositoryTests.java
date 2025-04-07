@@ -1935,6 +1935,22 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findByNameNotIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue2"));
+		List<TestItem> foundItem = this.repository.findByNameNotIgnoreCase("testname2");
+		assertThat(foundItem.stream().map(TestItem::getId).toList()).containsOnly(1L);
+	}
+
+	@Test
+	public void findByIdAndNameIgnoreCaseAndValueAllIgnoreCase() {
+		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findByIdAndNameIgnoreCaseAndValueAllIgnoreCase(1L, "testname",
+				"testvalue");
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
 	public void findTestItemDTOByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue", new Price(100.0),
 				new Place("TestCountry", List.of("TestCity1", "TestCity2", "TestCity3"))));
@@ -1945,8 +1961,6 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getName(), testItemDto.getName());
 		assertEquals(testItem.getValue(), testItemDto.getValue());
 		assertEquals(testItem.getPrice().getValue(), testItemDto.getPrice());
-		String place = testItemDto.getPlace();
-		assertNotNull(place);
 		assertEquals("Country: " + testItem.getPlace().getCountry() + ", cities: " + testItem.getPlace().getCities(),
 				testItemDto.getPlace());
 	}
@@ -2027,6 +2041,10 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByName(String name);
 
 		Optional<TestItem> findByNameIgnoreCase(String name);
+
+		Optional<TestItem> findByIdAndNameIgnoreCaseAndValueAllIgnoreCase(Long id, String name, String value);
+
+		List<TestItem> findByNameNotIgnoreCase(String name);
 
 		TestItemProjectionWithJoinedItems findProjectionByName(String name);
 

@@ -34,6 +34,7 @@ import ru.rt.restream.reindexer.ReindexerIndex;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.mapping.PropertyPath;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
@@ -43,6 +44,7 @@ import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.AbstractQueryCreator;
 import org.springframework.data.repository.query.parser.Part;
+import org.springframework.data.repository.query.parser.Part.IgnoreCaseType;
 import org.springframework.data.repository.query.parser.Part.Type;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.util.Assert;
@@ -110,14 +112,25 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			case IS_NOT_NULL -> base.isNotNull(indexName);
 			case IS_NULL -> base.isNull(indexName);
 			case NEGATING_SIMPLE_PROPERTY, SIMPLE_PROPERTY -> {
-				if (part.getType() == Type.NEGATING_SIMPLE_PROPERTY) {
-					base.not();
+				boolean isSimpleComparison = switch (part.shouldIgnoreCase()) {
+					case NEVER -> true;
+					case WHEN_POSSIBLE -> part.getProperty().getType() != String.class;
+					case ALWAYS -> false;
+				};
+				if (isSimpleComparison) {
+					yield where(part.getType() == Type.NEGATING_SIMPLE_PROPERTY ? base.not() : base, indexName,
+							Condition.EQ, parameters);
 				}
-				if (part.getProperty().getTypeInformation().getType() == String.class
-						&& part.shouldIgnoreCase() == Part.IgnoreCaseType.ALWAYS) {
-					yield base.like(indexName, String.valueOf(parameters.next()));
+				PropertyPath path = part.getProperty().getLeafProperty();
+				if (part.shouldIgnoreCase() == IgnoreCaseType.ALWAYS) {
+					Assert.isTrue(part.getProperty().getType() == String.class,
+							() -> "Property '" + indexName + "' must be of type String but was " + path.getType());
 				}
-				yield where(base, indexName, Condition.EQ, parameters);
+				Object value = parameters.next();
+				Assert.notNull(value,
+						() -> "Argument for creating like pattern for property '" + indexName + "' must not be null");
+				yield part.getType() == Type.NEGATING_SIMPLE_PROPERTY ? base.not().like(indexName, value.toString())
+						: base.like(indexName, value.toString());
 			}
 			case BETWEEN -> base.where(indexName, Condition.RANGE,
 					getParameterValues(indexName, parameters.next(), parameters.next()));
