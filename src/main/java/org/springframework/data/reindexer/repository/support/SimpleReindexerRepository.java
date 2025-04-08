@@ -64,6 +64,7 @@ import org.springframework.util.Assert;
  * Repository base implementation for Reindexer.
  *
  * @author Evgeniy Cheban
+ * @author Daniil Cheban
  */
 public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, ID> {
 

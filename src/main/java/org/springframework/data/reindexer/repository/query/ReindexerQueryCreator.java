@@ -53,6 +53,7 @@ import org.springframework.util.Assert;
  * For internal use only, as this contract is likely to change.
  *
  * @author Evgeniy Cheban
+ * @author Daniil Cheban
  */
 final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?>> {
 

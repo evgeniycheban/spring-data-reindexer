@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.core.mapping;
 import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.annotations.Transient;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mapping.Association;
 import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.mapping.model.AnnotationBasedPersistentProperty;
@@ -45,8 +46,8 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 		return reindex != null && reindex.isPrimaryKey();
 	});
 
-	private final Lazy<Boolean> isTransient = Lazy
-		.of(() -> !isNamespaceReference() && (super.isTransient() || isAnnotationPresent(Transient.class)));
+	private final Lazy<Boolean> isTransient = Lazy.of(() -> !isNamespaceReference() && !isAnnotationPresent(Value.class)
+			&& (super.isTransient() || isAnnotationPresent(Transient.class)));
 
 	/**
 	 * Creates a new {@link BasicReindexerPersistentProperty}.
