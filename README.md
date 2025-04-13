@@ -202,8 +202,8 @@ NestedItem nestedItem = new NestedItem();
 nestedItem.setValue("Value");
 item.setNestedItem(nestedItem);
 List<Item> items = this.repository.findAll(Example.of(item, ExampleMatcher.matching()
-	.withMatcher("name", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))
-	.withMatcher("nestedItem.value", ExampleMatcher.GenericPropertyMatcher.of(StringMatcher.ENDING))));
+    .withMatcher("name", ExampleMatcher.GenericPropertyMatcher.of(ExampleMatcher.StringMatcher.STARTING))
+    .withMatcher("nestedItem.value", ExampleMatcher.GenericPropertyMatcher.of(StringMatcher.ENDING))));
 ```
 More information can be read in [Spring Data reference guide.](https://docs.spring.io/spring-data/relational/reference/query-by-example.html)
 
