@@ -48,6 +48,7 @@ import org.springframework.data.repository.query.parser.Part.IgnoreCaseType;
 import org.springframework.data.repository.query.parser.Part.Type;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -212,16 +213,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria = this.namespace.query();
 		}
 		if (this.returnedType.needsCustomConstruction()) {
-			Set<String> inputProperties = new HashSet<>(this.returnedType.getInputProperties());
-			for (ReindexerPersistentProperty referenceProperty : this.entityInformation.getNamespaceReferences()) {
-				if (inputProperties.remove(referenceProperty.getName())) {
-					NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
-					if (namespaceReference.lazy() || namespaceReference.fetch()) {
-						inputProperties.add(namespaceReference.indexName());
-					}
-				}
-			}
-			String[] fields = inputProperties.toArray(String[]::new);
+			String[] fields = getSelectFields();
 			if (this.tree.isDistinct()) {
 				for (String field : fields) {
 					criteria.aggregateDistinct(field);
@@ -263,6 +255,32 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria.limit(1);
 		}
 		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
+	}
+
+	private String[] getSelectFields() {
+		Set<String> inputProperties = new HashSet<>(this.returnedType.getInputProperties());
+		for (ReindexerPersistentProperty referenceProperty : this.entityInformation.getNamespaceReferences()) {
+			if (!inputProperties.remove(referenceProperty.getName())) {
+				continue;
+			}
+			NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
+			if (StringUtils.hasText(namespaceReference.lookup())) {
+				/*
+				 * The indexName is added to the input properties passively if a lookup
+				 * query contains SpEL expression and indexName, therefore indexName is
+				 * considered being used within the expression.
+				 */
+				if (namespaceReference.lookup().contains("#{") && StringUtils.hasText(namespaceReference.indexName())
+						&& namespaceReference.lookup().contains(namespaceReference.indexName())) {
+					inputProperties.add(namespaceReference.indexName());
+				}
+				continue;
+			}
+			if (namespaceReference.lazy()) {
+				inputProperties.add(namespaceReference.indexName());
+			}
+		}
+		return inputProperties.toArray(String[]::new);
 	}
 
 }

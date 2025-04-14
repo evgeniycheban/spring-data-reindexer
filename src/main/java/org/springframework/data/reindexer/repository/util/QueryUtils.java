@@ -53,7 +53,7 @@ public final class QueryUtils {
 		for (ReindexerPersistentProperty persistentProperty : persistentEntity
 			.getPersistentProperties(NamespaceReference.class)) {
 			NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
-			if (namespaceReference.lazy()) {
+			if (namespaceReference.lazy() || StringUtils.hasText(namespaceReference.lookup())) {
 				continue;
 			}
 			ReindexerPersistentEntity<?> referencedEntity = mappingContext

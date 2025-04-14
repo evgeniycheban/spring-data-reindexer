@@ -15,13 +15,16 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Supplier;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.ResultIterator;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
@@ -78,10 +81,10 @@ public class MappingReindexerConverter
 
 	private final SpelExpressionParser expressionParser = new SpelExpressionParser();
 
-	private final SpELContext spELContext = new SpELContext(this.expressionParser, new ReflectivePropertyAccessor());
+	private SpELContext spELContext = new SpELContext(this.expressionParser, new ReflectivePropertyAccessor());
 
 	private final CachingValueExpressionEvaluatorFactory expressionEvaluatorFactory = new CachingValueExpressionEvaluatorFactory(
-			this.expressionParser, this, this.spELContext::getEvaluationContext);
+			this.expressionParser, this, o -> this.spELContext.getEvaluationContext(o));
 
 	private final SpelAwareProxyProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory(
 			this.expressionParser);
@@ -210,6 +213,7 @@ public class MappingReindexerConverter
 		this.projectionFactory.setBeanFactory(applicationContext);
 		this.projectionFactory.setBeanClassLoader(applicationContext.getClassLoader());
 		this.environment = applicationContext.getEnvironment();
+		this.spELContext = new SpELContext(this.spELContext, applicationContext);
 	}
 
 	@Override
@@ -259,22 +263,34 @@ public class MappingReindexerConverter
 			Object value = this.accessor.getProperty(sourceProperty);
 			if (ObjectUtils.isEmpty(value)) {
 				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
-				if (namespaceReference.lazy() || namespaceReference.fetch()) {
-					Object source = this.accessor
-						.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
-					if (ObjectUtils.isEmpty(source)) {
-						return (T) value;
-					}
-					return (T) createProxyIfNeeded(namespaceReference, source, sourceProperty, targetProperty,
+				if (shouldCreateProxy(namespaceReference)) {
+					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty,
 							resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
+					return (T) (proxy != null ? (T) proxy : value);
 				}
 			}
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
 
-		private Object createProxyIfNeeded(NamespaceReference namespaceReference, Object source,
+		private boolean shouldCreateProxy(NamespaceReference namespaceReference) {
+			return namespaceReference.lazy() || namespaceReference.fetch()
+					|| StringUtils.hasText(namespaceReference.lookup());
+		}
+
+		private Object createProxyIfNeeded(NamespaceReference namespaceReference,
 				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty,
 				Converter<Object, ?> valueConverter) {
+			Object source;
+			if (StringUtils.hasText(namespaceReference.lookup())) {
+				source = namespaceReference.lookup();
+			}
+			else {
+				source = this.accessor
+					.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+				if (ObjectUtils.isEmpty(source)) {
+					return null;
+				}
+			}
 			ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
 				.getRequiredPersistentEntity(sourceProperty);
 			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
@@ -282,6 +298,20 @@ public class MappingReindexerConverter
 			Supplier<Object> callback = () -> {
 				Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(namespaceName,
 						NamespaceOptions.defaultOptions(), referenceEntity.getType());
+				if (StringUtils.hasText(namespaceReference.lookup())) {
+					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup());
+					if (!(evaluated instanceof String preparedQuery)) {
+						return evaluated;
+					}
+					try (ResultIterator<?> iterator = namespace.execSql(preparedQuery)) {
+						if (targetProperty.isCollectionLike()) {
+							List<Object> result = new ArrayList<>();
+							iterator.forEachRemaining(result::add);
+							return result;
+						}
+						return iterator.hasNext() ? iterator.next() : null;
+					}
+				}
 				String indexName = referenceEntity.getRequiredIdProperty().getName();
 				if (source instanceof Collection<?> values) {
 					return namespace.query().where(indexName, Condition.SET, values).toList();

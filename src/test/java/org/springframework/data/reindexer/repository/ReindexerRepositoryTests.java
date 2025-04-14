@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1459,14 +1460,14 @@ class ReindexerRepositoryTests {
 		TestJoinedItem nestedJoinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
 		TestJoinedItem joinedItem = this.joinedItemRepository
 			.save(new TestJoinedItem(2L, nestedJoinedItem.getId(), "TestName2"));
-		Map<Long, TestJoinedItem> expectedJoinedItems = new HashMap<>();
-		expectedJoinedItems.put(3L,
-				this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
-		expectedJoinedItems.put(4L,
-				this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
-		expectedJoinedItems.put(5L,
-				this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
-		List<Long> joinedItemIds = new ArrayList<>(expectedJoinedItems.keySet());
+		List<TestJoinedItem> expectedJoinedItems = new ArrayList<>();
+		expectedJoinedItems
+			.add(this.joinedItemRepository.save(new TestJoinedItem(3L, nestedJoinedItem.getId(), "TestName3")));
+		expectedJoinedItems
+			.add(this.joinedItemRepository.save(new TestJoinedItem(4L, nestedJoinedItem.getId(), "TestName4")));
+		expectedJoinedItems
+			.add(this.joinedItemRepository.save(new TestJoinedItem(5L, nestedJoinedItem.getId(), "TestName5")));
+		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
 		TestNestedItem nestedItem = new TestNestedItem("TestNestedName", "TestNestedValue");
 		TestItem expectedItem = this.repository.save(new TestItem(1L, nestedItem, joinedItem.getId(), joinedItemIds,
 				"TestName", "TestValue", "2015-01-01", "2015-01-01T15:30"));
@@ -1484,16 +1485,35 @@ class ReindexerRepositoryTests {
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
+		int i = 0;
 		for (TestJoinedItemProjection foundJoinedItem : foundItem.getJoinedItems()) {
-			TestJoinedItem expectedJoinedItem = expectedJoinedItems.remove(foundJoinedItem.getId());
-			assertThat(expectedJoinedItem).isNotNull();
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(i++);
 			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
 			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
-		assertThat(expectedJoinedItems).hasSize(0);
+		assertThat(foundItem.getJoinedItemsReverseOrder()).hasSize(expectedJoinedItems.size());
+		i = 0;
+		for (TestJoinedItemProjection foundJoinedItem : foundItem.getJoinedItemsReverseOrder()) {
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(expectedJoinedItems.size() - 1 - i++);
+			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
+			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		}
+		assertThat(foundItem.getJoinedItemsRepository()).hasSize(expectedJoinedItems.size());
+		i = 0;
+		for (TestJoinedItemProjection foundJoinedItem : foundItem.getJoinedItemsRepository()) {
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(i++);
+			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
+			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		}
 	}
 
 	@Test
@@ -2270,7 +2290,7 @@ class ReindexerRepositoryTests {
 
 	}
 
-	@Repository
+	@Repository("joinedItemRepository")
 	interface TestJoinedItemRepository extends ReindexerRepository<TestJoinedItem, Long> {
 
 	}
@@ -2324,6 +2344,15 @@ class ReindexerRepositoryTests {
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT, lazy = true)
 		private List<TestJoinedItem> joinedItems = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemIds",
+				lookup = "select * from test_joined_items where id in (#{joinedItemIds}) order by id desc")
+		private List<TestJoinedItem> joinedItemsReverseOrder = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(lookup = "#{@joinedItemRepository.findAllById(joinedItemIds)}")
+		private List<TestJoinedItem> joinedItemsRepository = new ArrayList<>();
 
 		private String localDate;
 
@@ -2518,6 +2547,22 @@ class ReindexerRepositoryTests {
 
 		public void setJoinedItems(List<TestJoinedItem> joinedItems) {
 			this.joinedItems = joinedItems;
+		}
+
+		public List<TestJoinedItem> getJoinedItemsReverseOrder() {
+			return this.joinedItemsReverseOrder;
+		}
+
+		public void setJoinedItemsReverseOrder(List<TestJoinedItem> joinedItemsReverseOrder) {
+			this.joinedItemsReverseOrder = joinedItemsReverseOrder;
+		}
+
+		public List<TestJoinedItem> getJoinedItemsRepository() {
+			return this.joinedItemsRepository;
+		}
+
+		public void setJoinedItemsRepository(List<TestJoinedItem> joinedItemsRepository) {
+			this.joinedItemsRepository = joinedItemsRepository;
 		}
 
 		public String getLocalDate() {
@@ -2948,15 +2993,22 @@ class ReindexerRepositoryTests {
 
 		private final Set<TestJoinedItemProjection> joinedItems;
 
+		private final Collection<TestJoinedItemProjection> joinedItemsReverseOrder;
+
+		private final Collection<TestJoinedItemProjection> joinedItemsRepository;
+
 		public TestItemProjectionWithJoinedItems(Long id, LocalDate localDate, LocalDateTime localDateTime,
 				NestedItemRecord nestedItem, TestJoinedItemProjection joinedItem,
-				Set<TestJoinedItemProjection> joinedItems) {
+				Set<TestJoinedItemProjection> joinedItems, Collection<TestJoinedItemProjection> joinedItemsReverseOrder,
+				Collection<TestJoinedItemProjection> joinedItemsRepository) {
 			this.id = id;
 			this.localDate = localDate;
 			this.localDateTime = localDateTime;
 			this.nestedItem = nestedItem;
 			this.joinedItem = joinedItem;
 			this.joinedItems = joinedItems;
+			this.joinedItemsReverseOrder = joinedItemsReverseOrder;
+			this.joinedItemsRepository = joinedItemsRepository;
 		}
 
 		public Long getId() {
@@ -2981,6 +3033,14 @@ class ReindexerRepositoryTests {
 
 		public Set<TestJoinedItemProjection> getJoinedItems() {
 			return this.joinedItems;
+		}
+
+		public Collection<TestJoinedItemProjection> getJoinedItemsReverseOrder() {
+			return this.joinedItemsReverseOrder;
+		}
+
+		public Collection<TestJoinedItemProjection> getJoinedItemsRepository() {
+			return this.joinedItemsRepository;
 		}
 
 	}
@@ -3017,13 +3077,12 @@ class ReindexerRepositoryTests {
 				return false;
 			}
 			TestJoinedItemProjection that = (TestJoinedItemProjection) o;
-			return Objects.equals(this.id, that.id) && Objects.equals(this.name, that.name)
-					&& Objects.equals(this.nestedJoinedItem, that.nestedJoinedItem);
+			return Objects.equals(this.id, that.id) && Objects.equals(this.name, that.name);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(this.id, this.name, this.nestedJoinedItem);
+			return Objects.hash(this.id, this.name);
 		}
 
 		@Override
