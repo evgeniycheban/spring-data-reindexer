@@ -41,7 +41,24 @@ public @interface NamespaceReference {
 	 * Represents an index name to join.
 	 * @return the index name to join
 	 */
-	String indexName();
+	String indexName() default "";
+
+	/**
+	 * Defines a custom lookup query to fetch namespace reference. The query can contain
+	 * SpEL expression that refers to application or aggregate root's context:
+	 * <p>
+	 * {@code select * from joined_items where id in #{joinedItemIds} order by id desc}.
+	 * </p>
+	 * Alternatively you can use SpEL expression to fetch namespace reference by calling a
+	 * spring-managed bean, for example you can directly call repository method to
+	 * retrieve necessary data:
+	 * <p>
+	 * {@code #{@joinedItemRepository.findAllById(joinedItemIds)}}.
+	 * </p>
+	 * @return the custom lookup query to fetch namespace reference
+	 * @since 1.5
+	 */
+	String lookup() default "";
 
 	/**
 	 * Represents a join type, defaults to {@link JoinType#LEFT}.
