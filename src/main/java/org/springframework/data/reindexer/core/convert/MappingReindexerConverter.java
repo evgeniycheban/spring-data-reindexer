@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import ru.rt.restream.reindexer.Namespace;
-import ru.rt.restream.reindexer.NamespaceOptions;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
@@ -299,7 +298,7 @@ public class MappingReindexerConverter
 					: referenceEntity.getNamespace();
 			Supplier<Object> callback = () -> {
 				Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(namespaceName,
-						NamespaceOptions.defaultOptions(), referenceEntity.getType());
+						referenceEntity.getNamespaceOptions(), referenceEntity.getType());
 				if (StringUtils.hasText(namespaceReference.lookup())) {
 					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup());
 					if (!(evaluated instanceof String preparedQuery)) {
