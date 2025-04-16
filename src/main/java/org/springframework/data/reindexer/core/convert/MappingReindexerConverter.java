@@ -314,7 +314,7 @@ public class MappingReindexerConverter
 				}
 				String indexName = referenceEntity.getRequiredIdProperty().getName();
 				Namespace<?> namespace = openNamespace(namespaceName, referenceEntity);
-				Query<?> query = QueryUtils.withJoins(namespace.query(), sourceProperty.getActualType(),
+				Query<?> query = QueryUtils.withJoins(namespace.query(), referenceEntity.getType(),
 						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.reindexer);
 				if (source instanceof Collection<?> values) {
 					return query.where(indexName, Condition.SET, values).toList();
