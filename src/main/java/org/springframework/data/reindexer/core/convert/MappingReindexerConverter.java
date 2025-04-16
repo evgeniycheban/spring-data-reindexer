@@ -59,6 +59,7 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.ReflectivePropertyAccessor;
@@ -297,14 +298,12 @@ public class MappingReindexerConverter
 			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
 					: referenceEntity.getNamespace();
 			Supplier<Object> callback = () -> {
-				Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(namespaceName,
-						referenceEntity.getNamespaceOptions(), referenceEntity.getType());
 				if (StringUtils.hasText(namespaceReference.lookup())) {
 					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup());
 					if (!(evaluated instanceof String preparedQuery)) {
 						return evaluated;
 					}
-					try (ResultIterator<?> iterator = namespace.execSql(preparedQuery)) {
+					try (ResultIterator<?> iterator = executeQuery(preparedQuery, referenceEntity)) {
 						if (targetProperty.isCollectionLike()) {
 							List<Object> result = new ArrayList<>();
 							iterator.forEachRemaining(result::add);
@@ -314,6 +313,7 @@ public class MappingReindexerConverter
 					}
 				}
 				String indexName = referenceEntity.getRequiredIdProperty().getName();
+				Namespace<?> namespace = openNamespace(namespaceName, referenceEntity);
 				Query<?> query = QueryUtils.withJoins(namespace.query(), sourceProperty.getActualType(),
 						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.reindexer);
 				if (source instanceof Collection<?> values) {
@@ -324,6 +324,16 @@ public class MappingReindexerConverter
 			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 					targetProperty.getType(), sourceProperty, callback,
 					new NamespaceReferenceSource(namespaceName, source), valueConverter);
+		}
+
+		private ResultIterator<?> executeQuery(String query, ReindexerPersistentEntity<?> entity) {
+			return MappingReindexerConverter.this.reindexer.execSql(query, entity.getType());
+		}
+
+		private Namespace<?> openNamespace(String name, ReindexerPersistentEntity<?> entity) {
+			Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(name,
+					entity.getNamespaceOptions(), entity.getType());
+			return new TransactionalNamespace<>(namespace);
 		}
 
 		@SuppressWarnings("unchecked")
