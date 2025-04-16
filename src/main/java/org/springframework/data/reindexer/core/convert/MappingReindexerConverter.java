@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.NamespaceOptions;
+import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
@@ -59,6 +60,7 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.ReflectivePropertyAccessor;
 import org.springframework.util.Assert;
@@ -313,10 +315,12 @@ public class MappingReindexerConverter
 					}
 				}
 				String indexName = referenceEntity.getRequiredIdProperty().getName();
+				Query<?> query = QueryUtils.withJoins(namespace.query(), sourceProperty.getActualType(),
+						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.reindexer);
 				if (source instanceof Collection<?> values) {
-					return namespace.query().where(indexName, Condition.SET, values).toList();
+					return query.where(indexName, Condition.SET, values).toList();
 				}
-				return namespace.query().where(indexName, Condition.EQ, source).findOne().orElse(null);
+				return query.where(indexName, Condition.EQ, source).findOne().orElse(null);
 			};
 			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 					targetProperty.getType(), sourceProperty, callback,

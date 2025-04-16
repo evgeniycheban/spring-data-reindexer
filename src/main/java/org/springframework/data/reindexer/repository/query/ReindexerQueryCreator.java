@@ -276,7 +276,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 				}
 				continue;
 			}
-			if (namespaceReference.lazy()) {
+			if (namespaceReference.lazy() || this.tree.isDistinct()) {
 				inputProperties.add(namespaceReference.indexName());
 			}
 		}
