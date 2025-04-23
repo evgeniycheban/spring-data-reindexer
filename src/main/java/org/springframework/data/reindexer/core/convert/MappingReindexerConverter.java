@@ -17,7 +17,9 @@ package org.springframework.data.reindexer.core.convert;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import ru.rt.restream.reindexer.Namespace;
@@ -40,9 +42,10 @@ import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.PropertyValueConverter;
 import org.springframework.data.convert.ValueConversionContext;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.mapping.PersistentPropertyAccessor;
 import org.springframework.data.mapping.context.MappingContext;
-import org.springframework.data.mapping.model.CachingValueExpressionEvaluatorFactory;
 import org.springframework.data.mapping.model.ConvertingPropertyAccessor;
 import org.springframework.data.mapping.model.EntityInstantiator;
 import org.springframework.data.mapping.model.EntityInstantiators;
@@ -85,7 +88,7 @@ public class MappingReindexerConverter
 
 	private SpELContext spELContext = new SpELContext(this.expressionParser, new ReflectivePropertyAccessor());
 
-	private final CachingValueExpressionEvaluatorFactory expressionEvaluatorFactory = new CachingValueExpressionEvaluatorFactory(
+	private final ReindexerExpressionEvaluatorFactory expressionEvaluatorFactory = new ReindexerExpressionEvaluatorFactory(
 			this.expressionParser, this, o -> this.spELContext.getEvaluationContext(o));
 
 	private final SpelAwareProxyProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory(
@@ -234,7 +237,7 @@ public class MappingReindexerConverter
 
 		private final PersistentPropertyAccessor<?> accessor;
 
-		private final ValueExpressionEvaluator evaluator;
+		private final ReindexerExpressionEvaluator evaluator;
 
 		private ReindexerPropertyValueProvider(ReindexerPersistentEntity<?> entity,
 				PersistentPropertyAccessor<?> accessor) {
@@ -299,10 +302,15 @@ public class MappingReindexerConverter
 					: referenceEntity.getNamespace();
 			Supplier<Object> callback = () -> {
 				if (StringUtils.hasText(namespaceReference.lookup())) {
-					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup());
+					Map<String, Object> variables = new HashMap<>();
+					if (namespaceReference.lookup().contains("#sort")) {
+						variables.put("sort", SortUtils.getSort(namespaceReference.sort()));
+					}
+					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup(), variables);
 					if (!(evaluated instanceof String preparedQuery)) {
 						return evaluated;
 					}
+					preparedQuery = SortUtils.applySort(preparedQuery, namespaceReference.sort());
 					try (ResultIterator<?> iterator = executeQuery(preparedQuery, referenceEntity)) {
 						if (targetProperty.isCollectionLike()) {
 							List<Object> result = new ArrayList<>();
@@ -316,6 +324,12 @@ public class MappingReindexerConverter
 				Namespace<?> namespace = openNamespace(namespaceName, referenceEntity);
 				Query<?> query = QueryUtils.withJoins(namespace.query(), referenceEntity.getType(),
 						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.reindexer);
+				Sort sort = SortUtils.getSort(namespaceReference.sort());
+				if (sort.isSorted()) {
+					for (Order order : sort) {
+						query.sort(order.getProperty(), order.isDescending());
+					}
+				}
 				if (source instanceof Collection<?> values) {
 					return query.where(indexName, Condition.SET, values).toList();
 				}
