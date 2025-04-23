@@ -61,6 +61,45 @@ public @interface NamespaceReference {
 	String lookup() default "";
 
 	/**
+	 * Defines a specific sort orders to be applied to the target query.
+	 * <p>
+	 * If the {@link #lookup()} query already defines ORDER BY clause the orders will be
+	 * merged with the ones specified in this attribute: <pre>
+	 * &#064;NamespaceReference(indexName  = "joinedItemIds", lookup = """
+	 *             select *
+	 *               from joined_items
+	 *              where id in (#{joinedItemIds})
+	 *              order by
+	 *                    price desc,
+	 *                    name asc
+	 *              limit 10
+	 *         """, sort = "value, id asc")
+	 * </pre> it will be rewritten as follows:<pre>
+	 *  select *
+	 *    from joined_items
+	 *   where id in (#{joinedItemIds})
+	 *   order by
+	 *         price desc,
+	 *         name asc,
+	 *         value,
+	 *         id asc
+	 *  limit 10
+	 * </pre> if ORDER BY clause is not defined in the {@link #lookup()} query, the
+	 * specified orders will be appended at the end of the query string within ORDER BY
+	 * clause.
+	 * <p>
+	 * You can use the sort object in the SpEL expression by using reference #sort to
+	 * access it, the target type of sort object is
+	 * {@link org.springframework.data.domain.Sort} this object can be passed to the
+	 * method invocation within the expression:
+	 * <p>
+	 * {@code #{@joinedItemRepository.findAllById(joinedItemIds, #sort)}}
+	 * </p>
+	 * @since 1.5
+	 */
+	String sort() default "";
+
+	/**
 	 * Represents a join type, defaults to {@link JoinType#LEFT}.
 	 * @return the join type to use
 	 */

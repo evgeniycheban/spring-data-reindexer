@@ -1456,6 +1456,85 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findByIdWithJoinedItemsOrderByPriceDescNameValueIdAscLimit10() {
+		List<TestJoinedItem> expectedJoinedItems = new ArrayList<>();
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(1L, "A", "A", 10.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(2L, "B", "B", 20.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(3L, "C", "C", 30.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(4L, "D", "D", 50.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(5L, "D", "D", 50.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(6L, "F", "G", 90.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(7L, "F", "F", 90.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(8L, "I", "H", 90.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(9L, "H", "I", 90.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(10L, "J", "J", 100.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(11L, "K", "K", 110.0)));
+		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
+		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItemIds));
+		TestItem foundItem = this.repository.findById(1L).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getJoinedItemsOrderByPriceDescNameValueIdAscLimit10()).hasSize(10);
+		assertThat(foundItem.getJoinedItemsOrderByPriceDescNameValueIdAscLimit10()).extracting(TestJoinedItem::getId)
+			.containsExactly(11L, 10L, 7L, 6L, 9L, 8L, 4L, 5L, 3L, 2L);
+	}
+
+	@Test
+	public void findByIdWithJoinedItemsOrderByPriceDescIdAscLimit5() {
+		List<TestJoinedItem> expectedJoinedItems = new ArrayList<>();
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(1L, 10.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(2L, 20.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(3L, 40.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(4L, 40.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(5L, 50.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(6L, 60.0)));
+		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
+		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItemIds));
+		TestItem foundItem = this.repository.findById(1L).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getJoinedItemsOrderByPriceDescIdAscLimit5()).hasSize(5);
+		assertThat(foundItem.getJoinedItemsOrderByPriceDescIdAscLimit5()).extracting(TestJoinedItem::getId)
+			.containsExactly(6L, 5L, 3L, 4L, 2L);
+	}
+
+	@Test
+	public void findByIdWithJoinedItemsOrderByPriceDescIdAsc() {
+		List<TestJoinedItem> expectedJoinedItems = new ArrayList<>();
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(1L, 10.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(2L, 30.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(3L, 30.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(4L, 40.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(5L, 50.0)));
+		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
+		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItemIds));
+		TestItem foundItem = this.repository.findById(1L).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getJoinedItemsOrderByPriceDescIdAsc()).hasSize(5);
+		assertThat(foundItem.getJoinedItemsOrderByPriceDescIdAsc()).extracting(TestJoinedItem::getId)
+			.containsExactly(5L, 4L, 2L, 3L, 1L);
+	}
+
+	@Test
+	public void findByIdWithJoinedItemsFromRepositoryOrderByPriceDescIdAsc() {
+		List<TestJoinedItem> expectedJoinedItems = new ArrayList<>();
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(1L, 10.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(2L, 30.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(3L, 30.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(4L, 40.0)));
+		expectedJoinedItems.add(this.joinedItemRepository.save(new TestJoinedItem(5L, 50.0)));
+		List<Long> joinedItemIds = expectedJoinedItems.stream().map(TestJoinedItem::getId).toList();
+		TestItem expectedItem = this.repository.save(new TestItem(1L, joinedItemIds));
+		TestItem foundItem = this.repository.findById(1L).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+		assertThat(foundItem.getJoinedItemsFromRepositoryOrderByPriceDescIdAsc()).hasSize(5);
+		assertThat(foundItem.getJoinedItemsFromRepositoryOrderByPriceDescIdAsc()).extracting(TestJoinedItem::getId)
+			.containsExactly(5L, 4L, 2L, 3L, 1L);
+	}
+
+	@Test
 	public void findProjectionByNameWithJoinedItems() {
 		TestJoinedItem nestedJoinedItem = this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName1"));
 		TestJoinedItem joinedItem = this.joinedItemRepository
@@ -2293,6 +2372,8 @@ class ReindexerRepositoryTests {
 	@Repository("joinedItemRepository")
 	interface TestJoinedItemRepository extends ReindexerRepository<TestJoinedItem, Long> {
 
+		List<TestJoinedItem> findAllById(List<Long> ids, Sort sort);
+
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
@@ -2349,6 +2430,36 @@ class ReindexerRepositoryTests {
 		@NamespaceReference(indexName = "joinedItemIds",
 				lookup = "select * from test_joined_items where id in (#{joinedItemIds}) order by id desc")
 		private List<TestJoinedItem> joinedItemsReverseOrder = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemIds", lookup = """
+					select *
+					  from test_joined_items
+					 where id in (#{joinedItemIds})
+					 order by
+						   price desc,
+						   name asc
+					 limit 10
+				""", sort = "value, id asc")
+		private List<TestJoinedItem> joinedItemsOrderByPriceDescNameValueIdAscLimit10 = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemIds", lookup = """
+					select *
+					  from test_joined_items
+					 where id in (#{joinedItemIds})
+					 limit 5
+				""", sort = "price desc, id")
+		private List<TestJoinedItem> joinedItemsOrderByPriceDescIdAscLimit5 = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemIds", lazy = true, sort = "price desc, id asc")
+		private List<TestJoinedItem> joinedItemsOrderByPriceDescIdAsc = new ArrayList<>();
+
+		@Transient
+		@NamespaceReference(lookup = "#{@joinedItemRepository.findAllById(joinedItemIds, #sort)}",
+				sort = "price desc, id asc")
+		private List<TestJoinedItem> joinedItemsFromRepositoryOrderByPriceDescIdAsc = new ArrayList<>();
 
 		@Transient
 		@NamespaceReference(lookup = "#{@joinedItemRepository.findAllById(joinedItemIds)}")
@@ -2427,6 +2538,11 @@ class ReindexerRepositoryTests {
 			this.nestedItem = nestedItem;
 			this.name = name;
 			this.value = value;
+		}
+
+		public TestItem(Long id, List<Long> joinedItemIds) {
+			this.id = id;
+			this.joinedItemIds = joinedItemIds;
 		}
 
 		public Long getId() {
@@ -2557,6 +2673,41 @@ class ReindexerRepositoryTests {
 			this.joinedItemsReverseOrder = joinedItemsReverseOrder;
 		}
 
+		public List<TestJoinedItem> getJoinedItemsOrderByPriceDescNameValueIdAscLimit10() {
+			return this.joinedItemsOrderByPriceDescNameValueIdAscLimit10;
+		}
+
+		public void setJoinedItemsOrderByPriceDescNameValueIdAscLimit10(
+				List<TestJoinedItem> joinedItemsOrderByPriceDescNameValueIdAscLimit10) {
+			this.joinedItemsOrderByPriceDescNameValueIdAscLimit10 = joinedItemsOrderByPriceDescNameValueIdAscLimit10;
+		}
+
+		public List<TestJoinedItem> getJoinedItemsOrderByPriceDescIdAscLimit5() {
+			return this.joinedItemsOrderByPriceDescIdAscLimit5;
+		}
+
+		public void setJoinedItemsOrderByPriceDescIdAscLimit5(
+				List<TestJoinedItem> joinedItemsOrderByPriceDescIdAscLimit5) {
+			this.joinedItemsOrderByPriceDescIdAscLimit5 = joinedItemsOrderByPriceDescIdAscLimit5;
+		}
+
+		public List<TestJoinedItem> getJoinedItemsOrderByPriceDescIdAsc() {
+			return this.joinedItemsOrderByPriceDescIdAsc;
+		}
+
+		public void setJoinedItemsOrderByPriceDescIdAsc(List<TestJoinedItem> joinedItemsOrderByPriceDescIdAsc) {
+			this.joinedItemsOrderByPriceDescIdAsc = joinedItemsOrderByPriceDescIdAsc;
+		}
+
+		public List<TestJoinedItem> getJoinedItemsFromRepositoryOrderByPriceDescIdAsc() {
+			return this.joinedItemsFromRepositoryOrderByPriceDescIdAsc;
+		}
+
+		public void setJoinedItemsFromRepositoryOrderByPriceDescIdAsc(
+				List<TestJoinedItem> joinedItemsFromRepositoryOrderByPriceDescIdAsc) {
+			this.joinedItemsFromRepositoryOrderByPriceDescIdAsc = joinedItemsFromRepositoryOrderByPriceDescIdAsc;
+		}
+
 		public List<TestJoinedItem> getJoinedItemsRepository() {
 			return this.joinedItemsRepository;
 		}
@@ -2673,6 +2824,12 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "name")
 		private String name;
 
+		@Reindex(name = "value")
+		private String value;
+
+		@Reindex(name = "price")
+		private Double price;
+
 		private Long nestedJoinedItemId;
 
 		@Transient
@@ -2693,6 +2850,18 @@ class ReindexerRepositoryTests {
 			this.name = name;
 		}
 
+		public TestJoinedItem(Long id, String name, String value, Double price) {
+			this.id = id;
+			this.name = name;
+			this.value = value;
+			this.price = price;
+		}
+
+		public TestJoinedItem(Long id, Double price) {
+			this.id = id;
+			this.price = price;
+		}
+
 		public Long getId() {
 			return this.id;
 		}
@@ -2707,6 +2876,22 @@ class ReindexerRepositoryTests {
 
 		public void setName(String name) {
 			this.name = name;
+		}
+
+		public String getValue() {
+			return this.value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
+
+		public Double getPrice() {
+			return this.price;
+		}
+
+		public void setPrice(Double price) {
+			this.price = price;
 		}
 
 		public Long getNestedJoinedItemId() {
