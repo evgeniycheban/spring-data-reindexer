@@ -78,8 +78,8 @@ final class SortUtils {
 			String[] order = part.trim().split("\\s");
 			Assert.isTrue(order.length == 1 || order.length == 2, () -> "Invalid sort order format: " + sortString);
 			String property = order[0];
-			Direction direction = order.length == 2 ? Direction.fromString(order[1]) : Direction.ASC;
-			orders.add(Order.by(property).with(direction));
+			Direction direction = order.length == 2 ? Direction.fromString(order[1]) : null;
+			orders.add(new Order(direction, property));
 		}
 		return Sort.by(orders);
 	}
