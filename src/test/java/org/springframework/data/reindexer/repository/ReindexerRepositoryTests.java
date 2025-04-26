@@ -35,6 +35,11 @@ import java.util.stream.Stream;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -2377,6 +2382,8 @@ class ReindexerRepositoryTests {
 	}
 
 	@Namespace(name = NAMESPACE_NAME)
+	@Getter
+	@Setter
 	public static class TestItem {
 
 		@Reindex(name = "id", isPrimaryKey = true)
@@ -2545,193 +2552,6 @@ class ReindexerRepositoryTests {
 			this.joinedItemIds = joinedItemIds;
 		}
 
-		public Long getId() {
-			return this.id;
-		}
-
-		public void setId(Long id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public String getValue() {
-			return this.value;
-		}
-
-		public void setValue(String value) {
-			this.value = value;
-		}
-
-		public Price getPrice() {
-			return price;
-		}
-
-		public void setPrice(Price price) {
-			this.price = price;
-		}
-
-		public Place getPlace() {
-			return place;
-		}
-
-		public void setPlace(Place place) {
-			this.place = place;
-		}
-
-		public List<Place> getPlaces() {
-			return this.places;
-		}
-
-		public void setPlaces(List<Place> places) {
-			this.places = places;
-		}
-
-		public TestEnum getTestEnumString() {
-			return testEnumString;
-		}
-
-		public void setTestEnumString(TestEnum testEnumString) {
-			this.testEnumString = testEnumString;
-		}
-
-		public TestEnum getTestEnumOrdinal() {
-			return testEnumOrdinal;
-		}
-
-		public void setTestEnumOrdinal(TestEnum testEnumOrdinal) {
-			this.testEnumOrdinal = testEnumOrdinal;
-		}
-
-		public List<String> getCities() {
-			return this.cities;
-		}
-
-		public void setCities(List<String> cities) {
-			this.cities = cities;
-		}
-
-		public boolean isActive() {
-			return this.active;
-		}
-
-		public void setActive(boolean active) {
-			this.active = active;
-		}
-
-		public Long getJoinedItemId() {
-			return this.joinedItemId;
-		}
-
-		public void setJoinedItemId(Long joinedItemId) {
-			this.joinedItemId = joinedItemId;
-		}
-
-		public List<Long> getJoinedItemIds() {
-			return this.joinedItemIds;
-		}
-
-		public void setJoinedItemIds(List<Long> joinedItemIds) {
-			this.joinedItemIds = joinedItemIds;
-		}
-
-		public TestNestedItem getNestedItem() {
-			return this.nestedItem;
-		}
-
-		public void setNestedItem(TestNestedItem nestedItem) {
-			this.nestedItem = nestedItem;
-		}
-
-		public TestJoinedItem getJoinedItem() {
-			return this.joinedItem;
-		}
-
-		public void setJoinedItem(TestJoinedItem joinedItem) {
-			this.joinedItem = joinedItem;
-		}
-
-		public List<TestJoinedItem> getJoinedItems() {
-			return this.joinedItems;
-		}
-
-		public void setJoinedItems(List<TestJoinedItem> joinedItems) {
-			this.joinedItems = joinedItems;
-		}
-
-		public List<TestJoinedItem> getJoinedItemsReverseOrder() {
-			return this.joinedItemsReverseOrder;
-		}
-
-		public void setJoinedItemsReverseOrder(List<TestJoinedItem> joinedItemsReverseOrder) {
-			this.joinedItemsReverseOrder = joinedItemsReverseOrder;
-		}
-
-		public List<TestJoinedItem> getJoinedItemsOrderByPriceDescNameValueIdAscLimit10() {
-			return this.joinedItemsOrderByPriceDescNameValueIdAscLimit10;
-		}
-
-		public void setJoinedItemsOrderByPriceDescNameValueIdAscLimit10(
-				List<TestJoinedItem> joinedItemsOrderByPriceDescNameValueIdAscLimit10) {
-			this.joinedItemsOrderByPriceDescNameValueIdAscLimit10 = joinedItemsOrderByPriceDescNameValueIdAscLimit10;
-		}
-
-		public List<TestJoinedItem> getJoinedItemsOrderByPriceDescIdAscLimit5() {
-			return this.joinedItemsOrderByPriceDescIdAscLimit5;
-		}
-
-		public void setJoinedItemsOrderByPriceDescIdAscLimit5(
-				List<TestJoinedItem> joinedItemsOrderByPriceDescIdAscLimit5) {
-			this.joinedItemsOrderByPriceDescIdAscLimit5 = joinedItemsOrderByPriceDescIdAscLimit5;
-		}
-
-		public List<TestJoinedItem> getJoinedItemsOrderByPriceDescIdAsc() {
-			return this.joinedItemsOrderByPriceDescIdAsc;
-		}
-
-		public void setJoinedItemsOrderByPriceDescIdAsc(List<TestJoinedItem> joinedItemsOrderByPriceDescIdAsc) {
-			this.joinedItemsOrderByPriceDescIdAsc = joinedItemsOrderByPriceDescIdAsc;
-		}
-
-		public List<TestJoinedItem> getJoinedItemsFromRepositoryOrderByPriceDescIdAsc() {
-			return this.joinedItemsFromRepositoryOrderByPriceDescIdAsc;
-		}
-
-		public void setJoinedItemsFromRepositoryOrderByPriceDescIdAsc(
-				List<TestJoinedItem> joinedItemsFromRepositoryOrderByPriceDescIdAsc) {
-			this.joinedItemsFromRepositoryOrderByPriceDescIdAsc = joinedItemsFromRepositoryOrderByPriceDescIdAsc;
-		}
-
-		public List<TestJoinedItem> getJoinedItemsRepository() {
-			return this.joinedItemsRepository;
-		}
-
-		public void setJoinedItemsRepository(List<TestJoinedItem> joinedItemsRepository) {
-			this.joinedItemsRepository = joinedItemsRepository;
-		}
-
-		public String getLocalDate() {
-			return this.localDate;
-		}
-
-		public void setLocalDate(String localDate) {
-			this.localDate = localDate;
-		}
-
-		public String getLocalDateTime() {
-			return this.localDateTime;
-		}
-
-		public void setLocalDateTime(String localDateTime) {
-			this.localDateTime = localDateTime;
-		}
-
 		@Override
 		public boolean equals(Object o) {
 			if (o == null || getClass() != o.getClass()) {
@@ -2762,60 +2582,28 @@ class ReindexerRepositoryTests {
 
 	}
 
+	@Data
+	@AllArgsConstructor
+	@NoArgsConstructor
 	public static class Price {
 
 		private Double value;
 
-		public Price(Double value) {
-			this.value = value;
-		}
-
-		public Price() {
-		}
-
-		public Double getValue() {
-			return value;
-		}
-
-		public void setValue(Double value) {
-			this.value = value;
-		}
-
 	}
 
+	@Data
+	@AllArgsConstructor
+	@NoArgsConstructor
 	public static class Place {
 
 		private String country;
 
 		private List<String> cities;
 
-		public Place() {
-		}
-
-		public Place(String country, List<String> cities) {
-			this.country = country;
-			this.cities = cities;
-		}
-
-		public String getCountry() {
-			return country;
-		}
-
-		public void setCountry(String country) {
-			this.country = country;
-		}
-
-		public List<String> getCities() {
-			return cities;
-		}
-
-		public void setCities(List<String> cities) {
-			this.cities = cities;
-		}
-
 	}
 
 	@Namespace(name = "test_joined_items")
+	@Data
 	public static class TestJoinedItem {
 
 		@Reindex(name = "id", isPrimaryKey = true)
@@ -2862,123 +2650,16 @@ class ReindexerRepositoryTests {
 			this.price = price;
 		}
 
-		public Long getId() {
-			return this.id;
-		}
-
-		public void setId(Long id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public String getValue() {
-			return this.value;
-		}
-
-		public void setValue(String value) {
-			this.value = value;
-		}
-
-		public Double getPrice() {
-			return this.price;
-		}
-
-		public void setPrice(Double price) {
-			this.price = price;
-		}
-
-		public Long getNestedJoinedItemId() {
-			return this.nestedJoinedItemId;
-		}
-
-		public void setNestedJoinedItemId(Long nestedJoinedItemId) {
-			this.nestedJoinedItemId = nestedJoinedItemId;
-		}
-
-		public TestJoinedItem getNestedJoinedItem() {
-			return this.nestedJoinedItem;
-		}
-
-		public void setNestedJoinedItem(TestJoinedItem nestedJoinedItem) {
-			this.nestedJoinedItem = nestedJoinedItem;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-			TestJoinedItem that = (TestJoinedItem) o;
-			return Objects.equals(this.id, that.id) && Objects.equals(this.name, that.name);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(this.id, this.name);
-		}
-
-		@Override
-		public String toString() {
-			return "TestJoinedItem{" + "id=" + this.id + ", name='" + this.name + '\'' + '}';
-		}
-
 	}
 
+	@Data
+	@AllArgsConstructor
+	@NoArgsConstructor
 	public static class TestNestedItem {
 
 		private String name;
 
 		private String value;
-
-		public TestNestedItem() {
-		}
-
-		public TestNestedItem(String name, String value) {
-			this.name = name;
-			this.value = value;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public String getValue() {
-			return this.value;
-		}
-
-		public void setValue(String value) {
-			this.value = value;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-			TestNestedItem that = (TestNestedItem) o;
-			return Objects.equals(this.name, that.name) && Objects.equals(this.value, that.value);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(this.name, this.value);
-		}
-
-		@Override
-		public String toString() {
-			return "TestNestedItem{" + "name='" + this.name + '\'' + ", value='" + this.value + '\'' + '}';
-		}
 
 	}
 
@@ -3008,6 +2689,9 @@ class ReindexerRepositoryTests {
 
 	}
 
+	@Data
+	@AllArgsConstructor
+	@NoArgsConstructor
 	public static class TestItemDto {
 
 		private Long id;
@@ -3026,91 +2710,23 @@ class ReindexerRepositoryTests {
 
 		private List<String> places;
 
-		public TestItemDto() {
-		}
-
 		public TestItemDto(Long id, String name) {
 			this.id = id;
 			this.name = name;
 		}
 
-		public TestItemDto(Long id, String name, String value) {
-			this.id = id;
-			this.name = name;
-			this.value = value;
-		}
-
-		public Long getId() {
-			return this.id;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public String getValue() {
-			return value;
-		}
-
-		public void setValue(String value) {
-			this.value = value;
-		}
-
-		public String getNameValueExpression() {
-			return this.nameValueExpression;
-		}
-
-		public void setNameValueExpression(String nameValueExpression) {
-			this.nameValueExpression = nameValueExpression;
-		}
-
-		public Double getPrice() {
-			return price;
-		}
-
-		public void setPrice(Double price) {
-			this.price = price;
-		}
-
-		public String getPlace() {
-			return place;
-		}
-
-		public void setPlace(String place) {
-			this.place = place;
-		}
-
-		public List<String> getPlaces() {
-			return this.places;
-		}
-
-		public void setPlaces(List<String> places) {
-			this.places = places;
-		}
-
 	}
 
+	@Data
 	public static class TestItemNameValueDto {
 
 		private final String name;
 
 		private final String value;
 
-		public TestItemNameValueDto(String name, String value) {
-			this.name = name;
-			this.value = value;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public String getValue() {
-			return this.value;
-		}
-
 	}
 
+	@Data
 	public static class TestItemPreferredConstructorDto {
 
 		private Long id;
@@ -3124,22 +2740,6 @@ class ReindexerRepositoryTests {
 		@PersistenceCreator
 		public TestItemPreferredConstructorDto(Long id, String name) {
 			this.id = id;
-			this.name = name;
-		}
-
-		public Long getId() {
-			return this.id;
-		}
-
-		public void setId(Long id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public void setName(String name) {
 			this.name = name;
 		}
 
@@ -3163,6 +2763,7 @@ class ReindexerRepositoryTests {
 
 	}
 
+	@Data
 	public static class TestItemProjectionWithJoinedItems {
 
 		private final Long id;
@@ -3182,54 +2783,9 @@ class ReindexerRepositoryTests {
 
 		private final Collection<TestJoinedItemProjection> joinedItemsRepository;
 
-		public TestItemProjectionWithJoinedItems(Long id, LocalDate localDate, LocalDateTime localDateTime,
-				NestedItemRecord nestedItem, TestJoinedItemProjection joinedItem,
-				Set<TestJoinedItemProjection> joinedItems, Collection<TestJoinedItemProjection> joinedItemsReverseOrder,
-				Collection<TestJoinedItemProjection> joinedItemsRepository) {
-			this.id = id;
-			this.localDate = localDate;
-			this.localDateTime = localDateTime;
-			this.nestedItem = nestedItem;
-			this.joinedItem = joinedItem;
-			this.joinedItems = joinedItems;
-			this.joinedItemsReverseOrder = joinedItemsReverseOrder;
-			this.joinedItemsRepository = joinedItemsRepository;
-		}
-
-		public Long getId() {
-			return this.id;
-		}
-
-		public LocalDate getLocalDate() {
-			return this.localDate;
-		}
-
-		public LocalDateTime getLocalDateTime() {
-			return this.localDateTime;
-		}
-
-		public NestedItemRecord getNestedItem() {
-			return this.nestedItem;
-		}
-
-		public TestJoinedItemProjection getJoinedItem() {
-			return this.joinedItem;
-		}
-
-		public Set<TestJoinedItemProjection> getJoinedItems() {
-			return this.joinedItems;
-		}
-
-		public Collection<TestJoinedItemProjection> getJoinedItemsReverseOrder() {
-			return this.joinedItemsReverseOrder;
-		}
-
-		public Collection<TestJoinedItemProjection> getJoinedItemsRepository() {
-			return this.joinedItemsRepository;
-		}
-
 	}
 
+	@Data
 	public static class TestJoinedItemProjection {
 
 		private final Long id;
@@ -3237,44 +2793,6 @@ class ReindexerRepositoryTests {
 		private final String name;
 
 		private final TestJoinedItemProjection nestedJoinedItem;
-
-		public TestJoinedItemProjection(Long id, String name, TestJoinedItemProjection nestedJoinedItem) {
-			this.id = id;
-			this.name = name;
-			this.nestedJoinedItem = nestedJoinedItem;
-		}
-
-		public Long getId() {
-			return this.id;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		public TestJoinedItemProjection getNestedJoinedItem() {
-			return this.nestedJoinedItem;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-			TestJoinedItemProjection that = (TestJoinedItemProjection) o;
-			return Objects.equals(this.id, that.id) && Objects.equals(this.name, that.name);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(this.id, this.name);
-		}
-
-		@Override
-		public String toString() {
-			return "TestJoinedItemProjection{" + "id=" + this.id + ", name='" + this.name + '\'' + ", nestedJoinedItem="
-					+ this.nestedJoinedItem + '}';
-		}
 
 	}
 
@@ -3332,17 +2850,10 @@ class ReindexerRepositoryTests {
 
 	}
 
+	@Data
 	public static class CreateDatabase {
 
 		private String name;
-
-		public String getName() {
-			return this.name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
 
 	}
 
