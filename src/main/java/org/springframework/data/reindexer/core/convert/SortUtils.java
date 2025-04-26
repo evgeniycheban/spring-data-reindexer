@@ -36,11 +36,11 @@ final class SortUtils {
 
 	/*
 	 * Finds ORDER BY clause in the given string query, stopping if any of 'LIMIT',
-	 * 'OFFSET', 'LEFT', 'INNER', 'JOIN', 'MERGE' keyword occurs. Case-insensitive,
-	 * supports new-lined queries (i.e. pretty-printed query strings).
+	 * 'OFFSET', 'LEFT', 'INNER', 'JOIN', 'MERGE', 'WHERE' keyword occurs.
+	 * Case-insensitive, supports new-lined queries (i.e. pretty-printed query strings).
 	 */
 	private static final Pattern ORDER_BY_PATTERN = Pattern.compile(
-			"ORDER\\s+BY\\s+(.*?)(?=\\s+LIMIT|\\s+OFFSET|\\s+LEFT|\\s+INNER|\\s+JOIN|\\s+MERGE|$)",
+			"ORDER\\s+BY\\s+(.*?)(?=\\s+LIMIT|\\s+OFFSET|\\s+LEFT|\\s+INNER|\\s+JOIN|\\s+MERGE|\\s+WHERE|$)",
 			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	private static final ConcurrentLruCache<String, Sort> SORT_CACHE = new ConcurrentLruCache<>(64,
