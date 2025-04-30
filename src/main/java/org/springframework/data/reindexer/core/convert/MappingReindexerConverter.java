@@ -27,6 +27,7 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
+import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
@@ -46,7 +47,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.mapping.PersistentPropertyAccessor;
 import org.springframework.data.mapping.context.MappingContext;
-import org.springframework.data.mapping.model.ConvertingPropertyAccessor;
 import org.springframework.data.mapping.model.EntityInstantiator;
 import org.springframework.data.mapping.model.EntityInstantiators;
 import org.springframework.data.mapping.model.ParameterValueProvider;
@@ -64,8 +64,10 @@ import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.PropertyAccessor;
+import org.springframework.expression.TypedValue;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.ReflectivePropertyAccessor;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
@@ -86,7 +88,7 @@ public class MappingReindexerConverter
 
 	private final SpelExpressionParser expressionParser = new SpelExpressionParser();
 
-	private SpELContext spELContext = new SpELContext(this.expressionParser, new ReflectivePropertyAccessor());
+	private SpELContext spELContext = new SpELContext(this.expressionParser, new BeanPropertyAccessor());
 
 	private final ReindexerExpressionEvaluatorFactory expressionEvaluatorFactory = new ReindexerExpressionEvaluatorFactory(
 			this.expressionParser, this, o -> this.spELContext.getEvaluationContext(o));
@@ -165,15 +167,13 @@ public class MappingReindexerConverter
 		}
 		ReindexerPersistentEntity<?> domainEntity = this.mappingContext
 			.getRequiredPersistentEntity(entityProjection.getDomainType());
-		PersistentPropertyAccessor<E> domainAccessor = new ConvertingPropertyAccessor<>(
-				domainEntity.getPropertyAccessor(entity), this.conversionService);
+		PersistentPropertyAccessor<E> domainAccessor = domainEntity.getPropertyAccessor(entity);
 		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext
 			.getRequiredPersistentEntity(entityProjection.getMappedType());
 		EntityInstantiator instantiator = this.instantiators.getInstantiatorFor(mappedEntity);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, domainAccessor);
 		Object instance = instantiator.createInstance(mappedEntity, getParameterProvider(mappedEntity, valueProvider));
-		PersistentPropertyAccessor<?> mappedAccessor = new ConvertingPropertyAccessor<>(
-				mappedEntity.getPropertyAccessor(instance), this.conversionService);
+		PersistentPropertyAccessor<?> mappedAccessor = mappedEntity.getPropertyAccessor(instance);
 		if (mappedEntity.requiresPropertyPopulation()) {
 			populateProperties(mappedEntity, mappedAccessor, valueProvider);
 		}
@@ -192,8 +192,7 @@ public class MappingReindexerConverter
 	@Override
 	public <R> R read(Class<R> type, Object source) {
 		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(type);
-		PersistentPropertyAccessor<?> accessor = new ConvertingPropertyAccessor<>(entity.getPropertyAccessor(source),
-				this.conversionService);
+		PersistentPropertyAccessor<?> accessor = entity.getPropertyAccessor(source);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor);
 		populateProperties(entity, accessor, valueProvider);
 		return (R) accessor.getBean();
@@ -365,6 +364,39 @@ public class MappingReindexerConverter
 						: valueConverter.readNull(conversionContext));
 			}
 			return (T) conversionContext.read(value, targetProperty.getTypeInformation());
+		}
+
+	}
+
+	private static final class BeanPropertyAccessor implements PropertyAccessor {
+
+		@Override
+		public boolean canRead(EvaluationContext context, Object target, String name) {
+			return true;
+		}
+
+		@Override
+		public TypedValue read(EvaluationContext context, Object target, String name) {
+			if (target == null) {
+				return TypedValue.NULL;
+			}
+			Object value = BeanPropertyUtils.getProperty(target, name);
+			return value != null ? new TypedValue(value) : TypedValue.NULL;
+		}
+
+		@Override
+		public boolean canWrite(EvaluationContext context, Object target, String name) {
+			return false;
+		}
+
+		@Override
+		public void write(EvaluationContext context, Object target, String name, Object newValue) {
+			// NOOP
+		}
+
+		@Override
+		public Class<?>[] getSpecificTargetClasses() {
+			return new Class[] { Object.class };
 		}
 
 	}
