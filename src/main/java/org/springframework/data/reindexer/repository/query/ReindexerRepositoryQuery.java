@@ -126,7 +126,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 				parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
 		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace,
-				this.entityInformation, this.mappingContext, this.indexes, parameterAccessor,
+				this.entityInformation, this.mappingContext, this.indexes, this.reindexerConverter, parameterAccessor,
 				resultProcessor.getReturnedType());
 		Object result = this.queryExecution.get().apply(queryCreator);
 		return resultProcessor.processResult(result);

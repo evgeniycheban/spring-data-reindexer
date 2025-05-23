@@ -34,11 +34,11 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.convert.ConversionService;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.EnvironmentCapable;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.PropertyValueConverter;
@@ -137,6 +137,11 @@ public class MappingReindexerConverter
 		return this.projectionIntrospector;
 	}
 
+	@Override
+	public CustomConversions getCustomConversions() {
+		return this.conversions;
+	}
+
 	/**
 	 * Sets a {@link CustomConversions} to use.
 	 * @param conversions the {@link CustomConversions} to use
@@ -209,7 +214,8 @@ public class MappingReindexerConverter
 
 	@Override
 	public void write(Object source, Object sink) {
-		// NOOP
+		throw new InvalidDataAccessApiUsageException(
+				"Writing converters are applied during serialization in reindexer-java connector since 1.27 version");
 	}
 
 	@Override
@@ -268,8 +274,7 @@ public class MappingReindexerConverter
 			if (ObjectUtils.isEmpty(value)) {
 				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
 				if (shouldCreateProxy(namespaceReference)) {
-					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty,
-							resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
+					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty);
 					return (T) (proxy != null ? (T) proxy : value);
 				}
 			}
@@ -282,8 +287,7 @@ public class MappingReindexerConverter
 		}
 
 		private Object createProxyIfNeeded(NamespaceReference namespaceReference,
-				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty,
-				Converter<Object, ?> valueConverter) {
+				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty) {
 			Object source;
 			if (StringUtils.hasText(namespaceReference.lookup())) {
 				source = namespaceReference.lookup();
@@ -336,7 +340,8 @@ public class MappingReindexerConverter
 			};
 			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 					targetProperty.getType(), sourceProperty, callback,
-					new NamespaceReferenceSource(namespaceName, source), valueConverter);
+					new NamespaceReferenceSource(namespaceName, source),
+					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
 		}
 
 		private ResultIterator<?> executeQuery(String query, ReindexerPersistentEntity<?> entity) {
@@ -360,6 +365,11 @@ public class MappingReindexerConverter
 			if (valueConversions != null && valueConversions.hasValueConverter(targetProperty)) {
 				PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = valueConversions
 					.getValueConverter(targetProperty);
+				// If the domain entity is being read the converters have already been
+				// applied during deserialization in reindexer-java connector.
+				if (sourceProperty == targetProperty) {
+					return (T) value;
+				}
 				return (T) (value != null ? valueConverter.read(value, conversionContext)
 						: valueConverter.readNull(conversionContext));
 			}

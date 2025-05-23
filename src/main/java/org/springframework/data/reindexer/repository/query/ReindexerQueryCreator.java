@@ -31,10 +31,17 @@ import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 
+import org.springframework.core.convert.ConversionService;
+import org.springframework.data.convert.CustomConversions;
+import org.springframework.data.convert.PropertyValueConverter;
+import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.mapping.PersistentPropertyPath;
 import org.springframework.data.mapping.PropertyPath;
+import org.springframework.data.reindexer.core.convert.ReindexerConversionContext;
+import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
@@ -68,6 +75,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final ReindexerMappingContext mappingContext;
 
+	private final ReindexerConverter reindexerConverter;
+
 	private final ParameterAccessor parameters;
 
 	private final ReturnedType returnedType;
@@ -76,7 +85,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
-			Map<String, ReindexerIndex> indexes, ParameterAccessor parameters, ReturnedType returnedType) {
+			Map<String, ReindexerIndex> indexes, ReindexerConverter reindexerConverter, ParameterAccessor parameters,
+			ReturnedType returnedType) {
 		super(tree, parameters);
 		this.tree = tree;
 		this.reindexer = reindexer;
@@ -86,6 +96,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		this.parameters = parameters;
 		this.returnedType = returnedType;
 		this.indexes = indexes;
+		this.reindexerConverter = reindexerConverter;
 	}
 
 	ParameterAccessor getParameters() {
@@ -176,6 +187,28 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 	}
 
 	private Object getParameterValue(String indexName, Object value) {
+		if (value == null) {
+			return null;
+		}
+		PersistentPropertyPath<ReindexerPersistentProperty> propertyPath = this.mappingContext
+			.getPersistentPropertyPath(indexName, this.entityInformation.getJavaType());
+		ReindexerPersistentProperty property = propertyPath.getLeafProperty();
+		CustomConversions conversions = this.reindexerConverter.getCustomConversions();
+		if (conversions.hasValueConverter(property)) {
+			ReindexerConversionContext conversionContext = new ReindexerConversionContext(this.reindexerConverter,
+					property, this.reindexerConverter.getConversionService(), conversions);
+			PropertyValueConverter<Object, ?, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = conversions
+				.getPropertyValueConversions()
+				.getValueConverter(property);
+			return valueConverter.write(value, conversionContext);
+		}
+		if (conversions.hasCustomWriteTarget(value.getClass())) {
+			Class<?> customTarget = conversions.getCustomWriteTarget(property.getActualType()).get();
+			ConversionService conversionService = this.reindexerConverter.getConversionService();
+			if (conversionService.canConvert(value.getClass(), customTarget)) {
+				return conversionService.convert(value, customTarget);
+			}
+		}
 		if (value instanceof Enum<?>) {
 			ReindexerIndex index = this.indexes.get(indexName);
 			Assert.notNull(index, () -> "Index not found: " + indexName);
@@ -191,7 +224,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			}
 			return result;
 		}
-		if (value != null && value.getClass().isArray()) {
+		if (value.getClass().isArray()) {
 			int length = Array.getLength(value);
 			List<Object> result = new ArrayList<>(length);
 			for (int i = 0; i < length; i++) {

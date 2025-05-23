@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,6 +37,7 @@ import java.util.stream.Stream;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -75,6 +78,7 @@ import org.springframework.data.convert.CustomConversions.StoreConversions;
 import org.springframework.data.convert.PropertyValueConverter;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.ValueConverter;
+import org.springframework.data.convert.WritingConverter;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.Limit;
@@ -92,6 +96,7 @@ import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.Query;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
 import org.springframework.data.repository.query.FluentQuery;
@@ -2117,6 +2122,101 @@ class ReindexerRepositoryTests {
 				testItemDto.getPlaces().get(1));
 	}
 
+	@Test
+	public void saveWhenJsr310TypesThenConverted() {
+		TestItem expectedItem = TestItem.builder()
+			.id(1L)
+			.customDate(LocalDate.of(2020, 1, 1))
+			.customTime(LocalTime.of(15, 30))
+			.customDateTime(LocalDateTime.of(2020, 1, 1, 15, 30))
+			.defaultDate(LocalDate.of(2020, 1, 1))
+			.defaultTime(LocalTime.of(15, 30))
+			.defaultDateTime(LocalDateTime.of(2020, 1, 1, 15, 30))
+			.build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findById(expectedItem.getId()).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomDate()).isEqualTo(expectedItem.getCustomDate());
+		assertThat(foundItem.getCustomTime()).isEqualTo(expectedItem.getCustomTime());
+		assertThat(foundItem.getCustomDateTime()).isEqualTo(expectedItem.getCustomDateTime());
+		assertThat(foundItem.getDefaultDate()).isEqualTo(expectedItem.getDefaultDate());
+		assertThat(foundItem.getDefaultTime()).isEqualTo(expectedItem.getDefaultTime());
+		assertThat(foundItem.getDefaultDateTime()).isEqualTo(expectedItem.getDefaultDateTime());
+	}
+
+	@Test
+	public void findByDefaultTime() {
+		TestItem expectedItem = TestItem.builder().id(1L).defaultTime(LocalTime.of(15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByDefaultTime(LocalTime.of(15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getDefaultTime()).isEqualTo(expectedItem.getDefaultTime());
+	}
+
+	@Test
+	public void findByDefaultDate() {
+		TestItem expectedItem = TestItem.builder().id(1L).defaultDate(LocalDate.of(2020, 1, 1)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByDefaultDate(LocalDate.of(2020, 1, 1)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getDefaultDate()).isEqualTo(expectedItem.getDefaultDate());
+	}
+
+	@Test
+	public void findByDefaultDateTime() {
+		TestItem expectedItem = TestItem.builder().id(1L).defaultDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByDefaultDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getDefaultDateTime()).isEqualTo(expectedItem.getDefaultDateTime());
+	}
+
+	@Test
+	public void findAllByDefaultDateBetween() {
+		AtomicLong id = new AtomicLong(1);
+		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
+			.datesUntil(LocalDate.of(2020, 6, 1))
+			.map(date -> TestItem.builder().id(id.getAndIncrement()).defaultDate(date).build())
+			.map(this.repository::save)
+			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
+		List<TestItem> foundItems = this.repository.findAllByDefaultDateBetween(LocalDate.of(2020, 1, 1),
+				LocalDate.of(2020, 6, 1));
+		assertThat(foundItems).hasSize(expectedItems.size());
+		for (TestItem foundItem : foundItems) {
+			TestItem expectedItem = expectedItems.remove(foundItem.getId());
+			assertThat(expectedItem).isNotNull();
+			assertThat(expectedItem.getDefaultDate()).isEqualTo(foundItem.getDefaultDate());
+		}
+		assertThat(expectedItems).isEmpty();
+	}
+
+	@Test
+	public void findByCustomTime() {
+		TestItem expectedItem = TestItem.builder().id(1L).customTime(LocalTime.of(15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByCustomTime(LocalTime.of(15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomTime()).isEqualTo(expectedItem.getCustomTime());
+	}
+
+	@Test
+	public void findByCustomDate() {
+		TestItem expectedItem = TestItem.builder().id(1L).customDate(LocalDate.of(2020, 1, 1)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByCustomDate(LocalDate.of(2020, 1, 1)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomDate()).isEqualTo(expectedItem.getCustomDate());
+	}
+
+	@Test
+	public void findByCustomDateTime() {
+		TestItem expectedItem = TestItem.builder().id(1L).customDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByCustomDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomDateTime()).isEqualTo(expectedItem.getCustomDateTime());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -2125,9 +2225,10 @@ class ReindexerRepositoryTests {
 	static class TestConfig extends ReindexerConfigurationSupport {
 
 		@Bean
-		Reindexer reindexer() {
+		Reindexer reindexer(ReindexerCustomConversions conversions, ReindexerMappingContext context) {
 			return ReindexerConfiguration.builder()
 				.url("cproto://localhost:" + reindexer.getMappedPort(RPC_PORT) + "/" + DATABASE_NAME)
+				.fieldConverterRegistry(registry -> conversions.registerCustomConversions(registry, context))
 				.getReindexer();
 		}
 
@@ -2140,6 +2241,8 @@ class ReindexerRepositoryTests {
 		public ReindexerCustomConversions customConversions() {
 			List<Converter<?, ?>> converters = new ArrayList<>();
 			converters.add(new TestItemDTOPlaceConverter());
+			converters.add(new PriceReadingConverter());
+			converters.add(new PriceWritingConverter());
 			return new ReindexerCustomConversions(StoreConversions.NONE, converters);
 		}
 
@@ -2372,6 +2475,20 @@ class ReindexerRepositoryTests {
 
 		List<TestItem> findAllByNameEndingWith(String text);
 
+		List<TestItem> findAllByDefaultDateBetween(LocalDate start, LocalDate end);
+
+		Optional<TestItem> findByDefaultTime(LocalTime time);
+
+		Optional<TestItem> findByDefaultDate(LocalDate date);
+
+		Optional<TestItem> findByDefaultDateTime(LocalDateTime dateTime);
+
+		Optional<TestItem> findByCustomTime(LocalTime time);
+
+		Optional<TestItem> findByCustomDate(LocalDate date);
+
+		Optional<TestItem> findByCustomDateTime(LocalDateTime dateTime);
+
 	}
 
 	@Repository("joinedItemRepository")
@@ -2384,6 +2501,8 @@ class ReindexerRepositoryTests {
 	@Namespace(name = NAMESPACE_NAME)
 	@Getter
 	@Setter
+	@Builder
+	@AllArgsConstructor
 	public static class TestItem {
 
 		@Reindex(name = "id", isPrimaryKey = true)
@@ -2475,6 +2594,21 @@ class ReindexerRepositoryTests {
 		private String localDate;
 
 		private String localDateTime;
+
+		@ValueConverter(LocalDateReindexerPropertyValueConverter.class)
+		private LocalDate customDate;
+
+		@ValueConverter(LocalTimeReindexerPropertyValueConverter.class)
+		private LocalTime customTime;
+
+		@ValueConverter(LocalDateTimeReindexerPropertyValueConverter.class)
+		private LocalDateTime customDateTime;
+
+		private LocalDate defaultDate;
+
+		private LocalTime defaultTime;
+
+		private LocalDateTime defaultDateTime;
 
 		public TestItem() {
 		}
@@ -2809,6 +2943,26 @@ class ReindexerRepositoryTests {
 
 	}
 
+	@ReadingConverter
+	public static class PriceReadingConverter implements Converter<Double, Price> {
+
+		@Override
+		public Price convert(Double price) {
+			return new Price(price);
+		}
+
+	}
+
+	@WritingConverter
+	public static class PriceWritingConverter implements Converter<Price, Double> {
+
+		@Override
+		public Double convert(Price price) {
+			return price.getValue();
+		}
+
+	}
+
 	public static class TestItemDTOPriceConverter
 			implements PropertyValueConverter<Double, Price, ReindexerConversionContext> {
 
@@ -2840,6 +2994,51 @@ class ReindexerRepositoryTests {
 		@Override
 		public TestJoinedItem write(TestJoinedItemProjection value, ReindexerConversionContext context) {
 			return null;
+		}
+
+	}
+
+	public static class LocalDateReindexerPropertyValueConverter
+			implements PropertyValueConverter<LocalDate, String, ReindexerConversionContext> {
+
+		@Override
+		public LocalDate read(String value, ReindexerConversionContext context) {
+			return LocalDate.parse(value);
+		}
+
+		@Override
+		public String write(LocalDate value, ReindexerConversionContext context) {
+			return value.toString();
+		}
+
+	}
+
+	public static class LocalTimeReindexerPropertyValueConverter
+			implements PropertyValueConverter<LocalTime, String, ReindexerConversionContext> {
+
+		@Override
+		public LocalTime read(String value, ReindexerConversionContext context) {
+			return LocalTime.parse(value);
+		}
+
+		@Override
+		public String write(LocalTime value, ReindexerConversionContext context) {
+			return value.toString();
+		}
+
+	}
+
+	public static class LocalDateTimeReindexerPropertyValueConverter
+			implements PropertyValueConverter<LocalDateTime, String, ReindexerConversionContext> {
+
+		@Override
+		public LocalDateTime read(String value, ReindexerConversionContext context) {
+			return LocalDateTime.parse(value);
+		}
+
+		@Override
+		public String write(LocalDateTime value, ReindexerConversionContext context) {
+			return value.toString();
 		}
 
 	}
