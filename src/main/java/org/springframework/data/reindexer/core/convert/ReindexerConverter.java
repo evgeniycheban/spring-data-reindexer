@@ -15,7 +15,6 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
-import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.EntityConverter;
 import org.springframework.data.convert.EntityReader;
 import org.springframework.data.convert.EntityWriter;
@@ -61,10 +60,10 @@ public interface ReindexerConverter
 	ReindexerMappingContext getMappingContext();
 
 	/**
-	 * Returns a {@link CustomConversions} configured for this converter.
-	 * @return the {@link CustomConversions} to use
+	 * Returns a {@link ReindexerCustomConversions} configured for this converter.
+	 * @return the {@link ReindexerCustomConversions} to use
 	 * @since 1.5
 	 */
-	CustomConversions getCustomConversions();
+	ReindexerCustomConversions getCustomConversions();
 
 }
