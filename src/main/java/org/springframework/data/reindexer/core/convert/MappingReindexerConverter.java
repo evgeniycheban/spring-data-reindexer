@@ -39,7 +39,6 @@ import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
-import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.PropertyValueConverter;
 import org.springframework.data.convert.ValueConversionContext;
@@ -102,7 +101,7 @@ public class MappingReindexerConverter
 
 	private final EntityProjectionIntrospector projectionIntrospector;
 
-	private CustomConversions conversions = new ReindexerCustomConversions();
+	private ReindexerCustomConversions conversions = new ReindexerCustomConversions();
 
 	private EntityInstantiators instantiators = new EntityInstantiators();
 
@@ -138,15 +137,15 @@ public class MappingReindexerConverter
 	}
 
 	@Override
-	public CustomConversions getCustomConversions() {
+	public ReindexerCustomConversions getCustomConversions() {
 		return this.conversions;
 	}
 
 	/**
-	 * Sets a {@link CustomConversions} to use.
-	 * @param conversions the {@link CustomConversions} to use
+	 * Sets a {@link ReindexerCustomConversions} to use.
+	 * @param conversions the {@link ReindexerCustomConversions} to use
 	 */
-	public void setConversions(CustomConversions conversions) {
+	public void setConversions(ReindexerCustomConversions conversions) {
 		Assert.notNull(conversions, "conversions must not be null");
 		this.conversions = conversions;
 	}

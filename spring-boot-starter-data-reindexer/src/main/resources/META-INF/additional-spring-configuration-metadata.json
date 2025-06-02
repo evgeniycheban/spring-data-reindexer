@@ -1,0 +1,25 @@
+{
+  "properties": [
+    {
+      "name": "spring.data.reindexer.urls",
+      "defaultValue": [
+        "cproto://localhost:6534/db"
+      ]
+    },
+    {
+      "name": "spring.data.reindexer.data-source-factory",
+      "defaultValue": "next"
+    }
+  ],
+  "hints": [
+    {
+      "name": "spring.data.reindexer.data-source-factory",
+      "providers": [{
+        "name": "handle-as",
+        "parameters": {
+          "target": "ru.rt.restream.reindexer.binding.cproto.DataSourceFactoryStrategy"
+        }
+      }]
+    }
+  ]
+}
