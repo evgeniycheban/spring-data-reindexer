@@ -1,6 +1,16 @@
 name: Release Build
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      working-directory:
+        description: 'Select a working directory to release Spring Data Reindexer'
+        required: false
+        default: '.'
+        type: choice
+        options:
+          - '.'
+          - './spring-boot-starter-data-reindexer'
 
 jobs:
   build:
@@ -8,6 +18,9 @@ jobs:
     if: github.repository == 'evgeniycheban/spring-data-reindexer'
     env:
       MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
       - uses: actions/checkout@v4
