@@ -60,7 +60,7 @@ final class SortUtils {
 		// TODO: Consider the same approach for Query annotation.
 		Matcher matcher = ORDER_BY_PATTERN.matcher(queryString);
 		if (matcher.find()) {
-			return matcher.replaceFirst(matcher.group() + ", " + sortString);
+			return matcher.replaceFirst(matcher.group() + "," + sortString);
 		}
 		return queryString + " order by " + sortString;
 	}
