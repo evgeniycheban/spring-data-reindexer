@@ -49,15 +49,15 @@
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		<reindexer.version>1.27</reindexer.version>
-		<spring.version>6.2.0</spring.version>
-		<spring-data-commons.version>3.4.0</spring-data-commons.version>
-		<spring-test.version>6.2.0</spring-test.version>
-		<junit.version>5.11.3</junit.version>
-		<slf4j.version>2.0.16</slf4j.version>
-		<logback.version>1.5.12</logback.version>
-		<testcontainers.version>1.20.4</testcontainers.version>
-		<httpclient.version>4.5.14</httpclient.version>
-		<assertj.version>3.27.2</assertj.version>
+		<spring.version>6.2.8</spring.version>
+		<spring-data-commons.version>3.5.1</spring-data-commons.version>
+		<spring-test.version>6.2.8</spring-test.version>
+		<junit.version>5.13.1</junit.version>
+		<slf4j.version>2.0.17</slf4j.version>
+		<logback.version>1.5.18</logback.version>
+		<testcontainers.version>1.21.2</testcontainers.version>
+		<httpclient.version>5.5</httpclient.version>
+		<assertj.version>3.27.3</assertj.version>
 		<lombok.version>1.18.38</lombok.version>
 	</properties>
 
@@ -254,8 +254,8 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
+			<groupId>org.apache.httpcomponents.client5</groupId>
+			<artifactId>httpclient5</artifactId>
 			<version>${httpclient.version}</version>
 			<scope>test</scope>
 		</dependency>
