@@ -9,6 +9,12 @@
     {
       "name": "spring.data.reindexer.data-source-factory",
       "defaultValue": "next"
+    },
+    {
+      "name": "spring.data.reindexer.repositories.type",
+      "type": "org.springframework.boot.autoconfigure.data.RepositoryType",
+      "description": "Type of reindexer repositories to enable.",
+      "defaultValue": "auto"
     }
   ],
   "hints": [

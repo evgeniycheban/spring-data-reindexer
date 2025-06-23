@@ -15,11 +15,13 @@
  */
 package org.springframework.boot.autoconfigure.data.reindexer;
 
+import org.springframework.boot.autoconfigure.data.ConditionalOnRepositoryType;
+import org.springframework.boot.autoconfigure.data.RepositoryType;
+import org.springframework.data.reindexer.repository.config.ReindexerRepositoryConfigurationExtension;
 import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Import;
@@ -48,8 +50,8 @@ import org.springframework.data.reindexer.repository.support.ReindexerRepository
  */
 @AutoConfiguration(after = ReindexerDataAutoConfiguration.class)
 @ConditionalOnClass({ Reindexer.class, ReindexerRepository.class })
-@ConditionalOnBooleanProperty(name = "spring.data.reindexer.repositories.enabled", matchIfMissing = true)
-@ConditionalOnMissingBean(ReindexerRepositoryFactoryBean.class)
+@ConditionalOnMissingBean({ ReindexerRepositoryFactoryBean.class, ReindexerRepositoryConfigurationExtension.class })
+@ConditionalOnRepositoryType(store = "reindexer", type = RepositoryType.IMPERATIVE)
 @Import(ReindexerRepositoriesRegistrar.class)
 public class ReindexerRepositoriesAutoConfiguration {
 

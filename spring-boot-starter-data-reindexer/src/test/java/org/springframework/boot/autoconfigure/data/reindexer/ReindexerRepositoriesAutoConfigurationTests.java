@@ -60,6 +60,20 @@ class ReindexerRepositoriesAutoConfigurationTests {
 				.hasSingleBean(Reindexer.class));
 	}
 
+	@Test
+	void enablingReactiveRepositoriesDisablesImperativeRepositories() {
+		this.contextRunner.withUserConfiguration(TestConfiguration.class)
+			.withPropertyValues("spring.data.reindexer.repositories.type=reactive")
+			.run((context) -> assertThat(context).doesNotHaveBean(PersonRepository.class));
+	}
+
+	@Test
+	void enablingNoRepositoriesDisablesImperativeRepositories() {
+		this.contextRunner.withUserConfiguration(TestConfiguration.class)
+			.withPropertyValues("spring.data.reindexer.repositories.type=none")
+			.run((context) -> assertThat(context).doesNotHaveBean(PersonRepository.class));
+	}
+
 	@Configuration(proxyBeanMethods = false)
 	@TestAutoConfigurationPackage(Person.class)
 	static class TestConfiguration {
