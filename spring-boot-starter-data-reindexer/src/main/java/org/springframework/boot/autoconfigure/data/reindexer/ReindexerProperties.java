@@ -37,7 +37,7 @@ public class ReindexerProperties {
 	/**
 	 * Reindexer database urls.
 	 */
-	private List<String> urls = new ArrayList<>(Collections.singletonList("cproto://localhost:6534/db"));
+	private List<String> urls = new ArrayList<>(Collections.singletonList("cproto://localhost:6534/test"));
 
 	/**
 	 * Allows usage of the database urls from #replicationstats which are not in the list
