@@ -10,7 +10,7 @@
 
 	<groupId>io.github.evgeniycheban</groupId>
 	<artifactId>spring-boot-starter-data-reindexer</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>1.0</version>
 	<packaging>jar</packaging>
 
 	<name>spring-boot-starter-data-reindexer</name>
