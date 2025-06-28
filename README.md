@@ -3,7 +3,7 @@ Spring Data Reindexer
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.evgeniycheban/spring-data-reindexer/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.evgeniycheban/spring-data-reindexer)
 
 Provides Spring Data approach to work with Reindexer database.
-To use with Spring Boot, consider [Spring Boot Starter Data Reindexer](https://github.com/evgeniycheban/spring-data-reindexer/blob/main/spring-boot-starter-data-reindexer/README.md).
+To use with Spring Boot, consider [Spring Boot Starter Data Reindexer](https://github.com/evgeniycheban/spring-data-reindexer/tree/main/spring-boot-starter-data-reindexer).
 
 ## Maven
 
