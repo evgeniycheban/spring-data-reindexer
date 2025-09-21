@@ -320,7 +320,9 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 					}
 					switch (stringMatcher) {
 						case DEFAULT, EXACT -> {
-							if (matcher.isIgnoreCaseEnabled()) {
+							boolean ignoreCase = propertySpecifier.getIgnoreCase() != null
+									? propertySpecifier.getIgnoreCase() : matcher.isIgnoreCaseEnabled();
+							if (ignoreCase) {
 								criteria.like(propertyPath, s);
 							}
 							else {

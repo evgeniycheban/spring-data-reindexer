@@ -2007,6 +2007,14 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findOneByExampleWhenPropertySpecifierIgnoreCaseThenPropertySpecifierTakesPrecedence() {
+		this.repository.save(new TestItem(1L, "TestItem", "TestValue"));
+		Optional<TestItem> foundItem = this.repository.findOne(
+				Example.of(new TestItem(null, null, "testvalue"), ExampleMatcher.matching().withIgnoreCase("value")));
+		assertTrue(foundItem.isPresent());
+	}
+
+	@Test
 	public void findAllByExampleMatcherExactIgnoreCase() {
 		this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		this.repository.save(new TestItem(2L, "TestName", "TestValue"));
