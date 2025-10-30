@@ -16,6 +16,7 @@
 package org.springframework.data.reindexer.repository;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -37,6 +38,8 @@ import java.util.stream.Stream;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import eu.rekawek.toxiproxy.Proxy;
+import eu.rekawek.toxiproxy.ToxiproxyClient;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -50,11 +53,16 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.reindexer.LazyLoadingException;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.ToxiproxyContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -109,6 +117,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -131,13 +141,28 @@ class ReindexerRepositoryTests {
 
 	private static final int RPC_PORT = 6534;
 
+	private static final int PROXY_RPC_PORT = 8666;
+
 	private static final String DATABASE_NAME = "test_items";
 
 	private static final String NAMESPACE_NAME = "items";
 
+	@AutoClose
+	static Network network = Network.newNetwork();
+
 	@Container
 	static GenericContainer<?> reindexer = new GenericContainer<>(DockerImageName.parse("reindexer/reindexer"))
+		.withNetwork(network)
+		.withNetworkAliases("reindexer")
 		.withExposedPorts(REST_API_PORT, RPC_PORT);
+
+	// @formatter:off
+	@Container
+	static ToxiproxyContainer toxiproxy = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy")
+		.withNetwork(network);
+    // @formatter:on
+
+	static Proxy proxy;
 
 	@Autowired
 	TestItemReindexerRepository repository;
@@ -153,6 +178,13 @@ class ReindexerRepositoryTests {
 		CreateDatabase createDatabase = new CreateDatabase();
 		createDatabase.setName(DATABASE_NAME);
 		request(HttpPost.METHOD_NAME, "/db", createDatabase);
+		ToxiproxyClient toxiproxyClient = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
+		proxy = toxiproxyClient.createProxy("reindexer", "0.0.0.0:" + PROXY_RPC_PORT, "reindexer:" + RPC_PORT);
+	}
+
+	@AfterAll
+	static void afterAll() throws Exception {
+		proxy.delete();
 	}
 
 	@AfterEach
@@ -2228,6 +2260,27 @@ class ReindexerRepositoryTests {
 		assertThat(foundItem.getCustomDateTime()).isEqualTo(expectedItem.getCustomDateTime());
 	}
 
+	// gh-75
+	@Test
+	public void throwsLazyLoadingExceptionWhenDataSourceUnavailable() throws Exception {
+		this.repository.save(TestItem.builder().id(1L).joinedItemId(2L).build());
+		this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName"));
+		TestItem found = this.repository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getJoinedItem()).isNotNull();
+		// disable proxy to simulate Reindexer outage and verify that LazyLoadingException
+		// is thrown when accessing lazy namespace reference.
+		proxy.disable();
+		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getJoinedItem().getName())
+			.withMessage("Unable to lazily resolve reference")
+			.havingCause()
+			.withMessage("Connection timeout: no available data source to connect");
+		// enable proxy and verify that no exception is thrown when accessing lazy
+		// namespace reference.
+		proxy.enable();
+		assertThatNoException().isThrownBy(() -> found.getJoinedItem().getName());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -2238,7 +2291,8 @@ class ReindexerRepositoryTests {
 		@Bean
 		Reindexer reindexer(ReindexerCustomConversions conversions, ReindexerMappingContext context) {
 			return ReindexerConfiguration.builder()
-				.url("cproto://localhost:" + reindexer.getMappedPort(RPC_PORT) + "/" + DATABASE_NAME)
+				.url("cproto://localhost:" + toxiproxy.getMappedPort(PROXY_RPC_PORT) + "/" + DATABASE_NAME)
+				.requestTimeout(Duration.ofSeconds(5))
 				.fieldConverterRegistry(registry -> conversions.registerCustomConversions(registry, context))
 				.getReindexer();
 		}
