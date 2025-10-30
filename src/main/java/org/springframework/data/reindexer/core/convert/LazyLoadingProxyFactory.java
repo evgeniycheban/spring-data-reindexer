@@ -28,7 +28,6 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import ru.rt.restream.reindexer.exceptions.ReindexerException;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.cglib.core.SpringNamingPolicy;
@@ -252,7 +251,7 @@ public final class LazyLoadingProxyFactory {
 				}
 				return this.result;
 			}
-			catch (ReindexerException e) {
+			catch (Throwable e) {
 				throw new LazyLoadingException("Unable to lazily resolve reference", e);
 			}
 		}
