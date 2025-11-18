@@ -31,6 +31,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import org.springframework.util.Assert;
+import org.testcontainers.utility.MountableFile;
 
 /**
  * Testcontainers implementation for Reindexer.
@@ -51,6 +52,8 @@ public class ReindexerContainer extends GenericContainer<ReindexerContainer> {
 
 	private static final int RPC_PORT = 6534;
 
+	private static final int RPC_SSL_PORT = 6535;
+
 	private static final DockerImageName REINDEXER_IMAGE = DockerImageName.parse("reindexer/reindexer");
 
 	private final String database;
@@ -68,11 +71,36 @@ public class ReindexerContainer extends GenericContainer<ReindexerContainer> {
 	}
 
 	/**
+	 * Enables SSL support for Reindexer instance using provided {@literal cert} and
+	 * {@literal key}.
+	 * @param cert the SSL certificate to use
+	 * @param key the SSL key to use
+	 * @return the {@link ReindexerContainer} for further customizations
+	 */
+	public ReindexerContainer withSsl(String cert, String key) {
+		addExposedPorts(RPC_SSL_PORT);
+		return withCopyFileToContainer(MountableFile.forClasspathResource(cert), "/" + cert)
+			.withCopyFileToContainer(MountableFile.forClasspathResource(key), "/" + key)
+			.withEnv("RX_SSL_CERT", "/" + cert)
+			.withEnv("RX_SSL_KEY", "/" + key);
+	}
+
+	/**
 	 * Returns a URL to connect to Reindexer container using RPC protocol.
 	 * @return the URL to connect to Reindexer container using RPC protocol
 	 */
 	public String getRpcUrl() {
 		return "cproto://" + getHost() + ":" + getMappedPort(RPC_PORT) + "/" + this.database;
+	}
+
+	/**
+	 * Returns a URL to connect to Reindexer container using secured (SSL/TLS) RPC
+	 * protocol connection.
+	 * @return the URL to connect to Reindexer container using secured (SSL/TLS) RPC
+	 * protocol connection
+	 */
+	public String getRpcSslUrl() {
+		return "cprotos://" + getHost() + ":" + getMappedPort(RPC_SSL_PORT) + "/" + this.database;
 	}
 
 	@Override
