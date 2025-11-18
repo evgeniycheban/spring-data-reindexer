@@ -72,6 +72,11 @@ public class ReindexerProperties {
 	 */
 	private String serverConfigFile = "default-builtin-server-config.yml";
 
+	/**
+	 * Configure reindexer server SSL connection when cprotos protocol is used.
+	 */
+	private Ssl ssl;
+
 	public List<String> getUrls() {
 		return this.urls;
 	}
@@ -126,6 +131,83 @@ public class ReindexerProperties {
 
 	public void setServerConfigFile(String serverConfigFile) {
 		this.serverConfigFile = serverConfigFile;
+	}
+
+	public Ssl getSsl() {
+		return this.ssl;
+	}
+
+	public void setSsl(Ssl ssl) {
+		this.ssl = ssl;
+	}
+
+	public static class Ssl {
+
+		/**
+		 * Enable SSL support.
+		 */
+		private boolean enabled = true;
+
+		/**
+		 * Configure KeyStore.
+		 */
+		private String keyStore;
+
+		/**
+		 * Configure KeyStore password.
+		 */
+		private String keyStorePassword;
+
+		/**
+		 * Configure KeyStore type. Defaults to JKS.
+		 */
+		private String keyStoreType = "JKS";
+
+		/**
+		 * Configure secured connection protocol. Defaults to TLS.
+		 */
+		private String protocol = "TLS";
+
+		public boolean isEnabled() {
+			return this.enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
+
+		public String getKeyStore() {
+			return this.keyStore;
+		}
+
+		public void setKeyStore(String keyStore) {
+			this.keyStore = keyStore;
+		}
+
+		public String getKeyStorePassword() {
+			return this.keyStorePassword;
+		}
+
+		public void setKeyStorePassword(String keyStorePassword) {
+			this.keyStorePassword = keyStorePassword;
+		}
+
+		public String getKeyStoreType() {
+			return this.keyStoreType;
+		}
+
+		public void setKeyStoreType(String keyStoreType) {
+			this.keyStoreType = keyStoreType;
+		}
+
+		public String getProtocol() {
+			return this.protocol;
+		}
+
+		public void setProtocol(String protocol) {
+			this.protocol = protocol;
+		}
+
 	}
 
 }

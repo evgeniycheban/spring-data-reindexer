@@ -39,8 +39,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 class ReindexerRepositoriesAutoConfigurationTests {
 
+	// @formatter:off
 	@Container
-	static ReindexerContainer reindexer = new ReindexerContainer("test");
+	static ReindexerContainer reindexer = new ReindexerContainer("test")
+            .withSsl("builtin-server.crt", "builtin-server.key");
+    // @formatter:on
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
 		.withConfiguration(AutoConfigurations.of(ReindexerDataAutoConfiguration.class,
@@ -72,6 +75,16 @@ class ReindexerRepositoriesAutoConfigurationTests {
 		this.contextRunner.withUserConfiguration(TestConfiguration.class)
 			.withPropertyValues("spring.data.reindexer.repositories.type=none")
 			.run((context) -> assertThat(context).doesNotHaveBean(PersonRepository.class));
+	}
+
+	@Test
+	void enablingSslUsesProvidedKeyStore() {
+		this.contextRunner.withUserConfiguration(TestConfiguration.class)
+			.withPropertyValues("spring.data.reindexer.urls=" + reindexer.getRpcSslUrl())
+			.withPropertyValues("spring.data.reindexer.ssl.enabled=true")
+			.withPropertyValues("spring.data.reindexer.ssl.keyStore=classpath:builtin-server.jks")
+			.withPropertyValues("spring.data.reindexer.ssl.keyStorePassword=password")
+			.run((context) -> assertThat(context).hasSingleBean(PersonRepository.class));
 	}
 
 	@Configuration(proxyBeanMethods = false)

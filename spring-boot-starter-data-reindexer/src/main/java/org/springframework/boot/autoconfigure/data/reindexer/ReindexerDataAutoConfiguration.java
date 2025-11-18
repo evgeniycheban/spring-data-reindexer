@@ -15,8 +15,14 @@
  */
 package org.springframework.boot.autoconfigure.data.reindexer;
 
+import java.io.InputStream;
+import java.security.KeyStore;
 import java.util.Locale;
 
+import org.springframework.boot.context.properties.PropertyMapper;
+import org.springframework.boot.io.ApplicationResourceLoader;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.util.Assert;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactory;
@@ -39,6 +45,10 @@ import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.util.StringUtils;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
  * {@link org.springframework.boot.autoconfigure.EnableAutoConfiguration
@@ -68,7 +78,7 @@ public class ReindexerDataAutoConfiguration {
 	@ConditionalOnMissingBean
 	ReindexerConfiguration reindexerConfiguration(ReindexerProperties properties,
 			ReindexerCustomConversions conversions, ReindexerMappingContext context) {
-		return ReindexerConfiguration.builder()
+		ReindexerConfiguration configuration = ReindexerConfiguration.builder()
 			.urls(properties.getUrls())
 			.allowUnlistedDataSource(properties.isAllowUnlistedDataSource())
 			.dataSourceFactory(properties.getDataSourceFactory())
@@ -77,6 +87,31 @@ public class ReindexerDataAutoConfiguration {
 			.serverStartupTimeout(properties.getServerStartupTimeout())
 			.serverConfigFile(properties.getServerConfigFile())
 			.fieldConverterRegistry(registry -> conversions.registerCustomConversions(registry, context));
+		PropertyMapper mapper = PropertyMapper.get();
+		mapper.from(properties::getSsl)
+			.whenNonNull()
+			.when(ReindexerProperties.Ssl::isEnabled)
+			.as(this::createSSLSocketFactory)
+			.to(configuration::sslSocketFactory);
+		return configuration;
+	}
+
+	private SSLSocketFactory createSSLSocketFactory(ReindexerProperties.Ssl ssl) {
+		Assert.hasText(ssl.getKeyStore(), "KeyStore must not be empty");
+		Assert.hasText(ssl.getKeyStorePassword(), "KeyStore password must not be empty");
+		ResourceLoader resourceLoader = ApplicationResourceLoader.get();
+		try (InputStream is = resourceLoader.getResource(ssl.getKeyStore()).getInputStream()) {
+			KeyStore keyStore = KeyStore.getInstance(ssl.getKeyStoreType());
+			keyStore.load(is, ssl.getKeyStorePassword().toCharArray());
+			TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			tmf.init(keyStore);
+			SSLContext sslContext = SSLContext.getInstance(ssl.getProtocol());
+			sslContext.init(null, tmf.getTrustManagers(), null);
+			return sslContext.getSocketFactory();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Bean
