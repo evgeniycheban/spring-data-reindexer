@@ -42,6 +42,7 @@ import org.testcontainers.utility.MountableFile;
  * <ul>
  * <li>HTTP: 9088</li>
  * <li>RPC: 6534</li>
+ * <li>RPC-TLS: 6535 (if SSL is enabled)</li>
  * </ul>
  *
  * @author Evgeniy Cheban
