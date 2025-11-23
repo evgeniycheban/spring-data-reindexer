@@ -59,6 +59,9 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.reindexer.LazyLoadingException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -169,6 +172,9 @@ class ReindexerRepositoryTests {
 
 	@Autowired
 	TestJoinedItemRepository joinedItemRepository;
+
+	@Autowired
+	TestItemContainerRepository itemContainerRepository;
 
 	@Autowired
 	TestItemTransactionalService service;
@@ -2281,6 +2287,46 @@ class ReindexerRepositoryTests {
 		assertThatNoException().isThrownBy(() -> found.getJoinedItem().getName());
 	}
 
+	@Test
+	public void findByIdWhenMandatoryItemIdNullThenDataIntegrityViolationException() {
+		this.itemContainerRepository.save(TestItemContainer.builder().id(1L).build());
+		assertThatExceptionOfType(DataIntegrityViolationException.class)
+			.isThrownBy(() -> this.itemContainerRepository.findById(1L));
+	}
+
+	@Test
+	public void getMandatoryItemWhenNotFoundThenEmptyResultDataAccessException() {
+		this.itemContainerRepository.save(TestItemContainer.builder().id(1L).mandatoryItemId(1L).build());
+		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getMandatoryItem()).isNotNull();
+		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getMandatoryItem().getName())
+			.withCauseInstanceOf(EmptyResultDataAccessException.class);
+	}
+
+	@Test
+	public void getMandatoryItemLookupWhenNotFoundThenEmptyResultDataAccessException() {
+		this.itemContainerRepository.save(TestItemContainer.builder().id(1L).mandatoryItemId(1L).build());
+		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getMandatoryItemLookup()).isNotNull();
+		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getMandatoryItemLookup().getName())
+			.withCauseInstanceOf(EmptyResultDataAccessException.class);
+	}
+
+	@Test
+	public void getAmbiguousItemLookupWhenMultipleFoundThenIncorrectResultSizeDataAccessException() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.itemContainerRepository
+			.save(TestItemContainer.builder().id(1L).mandatoryItemId(1L).ambiguousItemName("TestName").build());
+		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getAmbiguousItemLookup()).isNotNull();
+		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getAmbiguousItemLookup().getName())
+			.withCauseInstanceOf(IncorrectResultSizeDataAccessException.class);
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -2560,6 +2606,11 @@ class ReindexerRepositoryTests {
 	interface TestJoinedItemRepository extends ReindexerRepository<TestJoinedItem, Long> {
 
 		List<TestJoinedItem> findAllById(List<Long> ids, Sort sort);
+
+	}
+
+	@Repository
+	interface TestItemContainerRepository extends ReindexerRepository<TestItemContainer, Long> {
 
 	}
 
@@ -2848,6 +2899,37 @@ class ReindexerRepositoryTests {
 			this.id = id;
 			this.price = price;
 		}
+
+	}
+
+	@Getter
+	@Setter
+	@Builder
+	@NoArgsConstructor
+	@AllArgsConstructor
+	@Namespace(name = "test_item_container")
+	public static class TestItemContainer {
+
+		@Reindex(name = "id", isPrimaryKey = true)
+		private Long id;
+
+		@Reindex(name = "mandatoryItemId")
+		private Long mandatoryItemId;
+
+		@Reindex(name = "ambiguousItemName")
+		private String ambiguousItemName;
+
+		@Transient
+		@NamespaceReference(indexName = "mandatoryItemId", lazy = true, nullable = false)
+		private TestItem mandatoryItem;
+
+		@Transient
+		@NamespaceReference(lookup = "select * from items where id = #{mandatoryItemId}", nullable = false)
+		private TestItem mandatoryItemLookup;
+
+		@Transient
+		@NamespaceReference(lookup = "select * from items where name = '#{ambiguousItemName}'")
+		private TestItem ambiguousItemLookup;
 
 	}
 

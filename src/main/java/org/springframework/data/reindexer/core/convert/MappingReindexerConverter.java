@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -294,6 +297,13 @@ public class MappingReindexerConverter
 			else {
 				source = this.accessor
 					.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+				if (source == null && !namespaceReference.nullable()) {
+					String entityName = sourceProperty.getOwner().getName();
+					throw new DataIntegrityViolationException(
+							"Property: '" + entityName + "." + namespaceReference.indexName()
+									+ "' violates non-null constraint of namespace reference: '" + entityName + "."
+									+ sourceProperty.getName() + "'");
+				}
 				if (ObjectUtils.isEmpty(source)) {
 					return null;
 				}
@@ -319,7 +329,7 @@ public class MappingReindexerConverter
 							iterator.forEachRemaining(result::add);
 							return result;
 						}
-						return iterator.hasNext() ? iterator.next() : null;
+						return getSingleResult(iterator, namespaceReference.nullable());
 					}
 				}
 				String indexName = referenceEntity.getRequiredIdProperty().getName();
@@ -335,12 +345,25 @@ public class MappingReindexerConverter
 				if (source instanceof Collection<?> values) {
 					return query.where(indexName, Condition.SET, values).toList();
 				}
-				return query.where(indexName, Condition.EQ, source).findOne().orElse(null);
+				try (ResultIterator<?> iterator = query.where(indexName, Condition.EQ, source).execute()) {
+					return getSingleResult(iterator, namespaceReference.nullable());
+				}
 			};
 			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 					targetProperty.getType(), sourceProperty, callback,
 					new NamespaceReferenceSource(namespaceName, source),
 					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
+		}
+
+		private Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {
+			Object result = iterator.hasNext() ? iterator.next() : null;
+			if (result == null && !nullable) {
+				throw new EmptyResultDataAccessException(1);
+			}
+			if (iterator.hasNext()) {
+				throw new IncorrectResultSizeDataAccessException(1);
+			}
+			return result;
 		}
 
 		private ResultIterator<?> executeQuery(String query, ReindexerPersistentEntity<?> entity) {
