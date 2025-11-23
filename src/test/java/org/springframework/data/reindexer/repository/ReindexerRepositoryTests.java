@@ -2868,6 +2868,7 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "price")
 		private Double price;
 
+		@Reindex(name = "nestedJoinedItemId")
 		private Long nestedJoinedItemId;
 
 		@Transient
