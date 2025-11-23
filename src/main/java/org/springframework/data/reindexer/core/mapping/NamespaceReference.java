@@ -119,4 +119,14 @@ public @interface NamespaceReference {
 	 */
 	boolean fetch() default false;
 
+	/**
+	 * Controls whether the referenced entity is allowed to be {@literal null}. Only
+	 * applicable for lazily loaded references, use {@link #joinType()} for eagerly loaded
+	 * references to define whether they are optional or not. This defaults to
+	 * {@literal true}.
+	 * @return {@literal true} by default
+	 * @since 1.6
+	 */
+	boolean nullable() default true;
+
 }
