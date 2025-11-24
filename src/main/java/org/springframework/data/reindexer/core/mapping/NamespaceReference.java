@@ -44,6 +44,14 @@ public @interface NamespaceReference {
 	String indexName() default "";
 
 	/**
+	 * Represents an index name from a referenced namespace to join. This defaults to an
+	 * ID (primary key) index.
+	 * @return the index name from a referenced namespace to join
+	 * @since 1.6
+	 */
+	String referencedIndexName() default "";
+
+	/**
 	 * Defines a custom lookup query to fetch namespace reference. The query can contain
 	 * SpEL expression that refers to application or aggregate root's context:
 	 * <p>

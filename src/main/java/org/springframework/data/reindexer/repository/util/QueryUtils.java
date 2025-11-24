@@ -62,10 +62,11 @@ public final class QueryUtils {
 					: referencedEntity.getNamespace();
 			Namespace<?> namespace = reindexer.openNamespace(namespaceName, referencedEntity.getNamespaceOptions(),
 					referencedEntity.getType());
+			String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
+					? namespaceReference.referencedIndexName() : referencedEntity.getRequiredIdProperty().getName();
 			Query<?> on = namespace.query()
 				.on(namespaceReference.indexName(),
-						persistentProperty.isCollectionLike() ? Condition.SET : Condition.EQ,
-						referencedEntity.getRequiredIdProperty().getName());
+						persistentProperty.isCollectionLike() ? Condition.SET : Condition.EQ, indexName);
 			if (namespaceReference.joinType() == JoinType.LEFT) {
 				criteria.leftJoin(on, persistentProperty.getName());
 			}

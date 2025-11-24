@@ -332,7 +332,8 @@ public class MappingReindexerConverter
 						return getSingleResult(iterator, namespaceReference.nullable());
 					}
 				}
-				String indexName = referenceEntity.getRequiredIdProperty().getName();
+				String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
+						? namespaceReference.referencedIndexName() : referenceEntity.getRequiredIdProperty().getName();
 				Namespace<?> namespace = openNamespace(namespaceName, referenceEntity);
 				Query<?> query = QueryUtils.withJoins(namespace.query(), referenceEntity.getType(),
 						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.reindexer);
