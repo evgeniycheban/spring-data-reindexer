@@ -2315,6 +2315,19 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void getAmbiguousItemWhenMultipleFoundThenIncorrectResultSizeDataAccessException() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.itemContainerRepository
+			.save(TestItemContainer.builder().id(1L).mandatoryItemId(1L).ambiguousItemName("TestName").build());
+		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getAmbiguousItem()).isNotNull();
+		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getAmbiguousItem().getName())
+			.withCauseInstanceOf(IncorrectResultSizeDataAccessException.class);
+	}
+
+	@Test
 	public void getAmbiguousItemLookupWhenMultipleFoundThenIncorrectResultSizeDataAccessException() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
 		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
@@ -2325,6 +2338,22 @@ class ReindexerRepositoryTests {
 		assertThat(found.getAmbiguousItemLookup()).isNotNull();
 		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getAmbiguousItemLookup().getName())
 			.withCauseInstanceOf(IncorrectResultSizeDataAccessException.class);
+	}
+
+	@Test
+	public void getJoinedItemsByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName1").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName2").build());
+		this.itemContainerRepository.save(TestItemContainer.builder()
+			.id(1L)
+			.mandatoryItemId(1L)
+			.joinedItemNames(List.of("TestName1", "TestName2"))
+			.build());
+		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getJoinedItemsByName()).hasSize(2);
+		assertThat(found.getJoinedItemsByName()).extracting(TestItem::getName)
+			.containsExactlyInAnyOrder("TestName1", "TestName2");
 	}
 
 	@Configuration
@@ -2920,6 +2949,9 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "ambiguousItemName")
 		private String ambiguousItemName;
 
+		@Reindex(name = "joinedItemNames")
+		private List<String> joinedItemNames = new ArrayList<>();
+
 		@Transient
 		@NamespaceReference(indexName = "mandatoryItemId", lazy = true, nullable = false)
 		private TestItem mandatoryItem;
@@ -2929,8 +2961,16 @@ class ReindexerRepositoryTests {
 		private TestItem mandatoryItemLookup;
 
 		@Transient
+		@NamespaceReference(indexName = "ambiguousItemName", referencedIndexName = "name", lazy = true)
+		private TestItem ambiguousItem;
+
+		@Transient
 		@NamespaceReference(lookup = "select * from items where name = '#{ambiguousItemName}'")
 		private TestItem ambiguousItemLookup;
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemNames", referencedIndexName = "name", joinType = JoinType.LEFT)
+		private List<TestItem> joinedItemsByName;
 
 	}
 
