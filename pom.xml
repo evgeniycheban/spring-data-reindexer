@@ -49,10 +49,10 @@
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		<reindexer.version>1.32</reindexer.version>
-		<spring.version>6.2.8</spring.version>
-		<spring-data-commons.version>3.5.1</spring-data-commons.version>
-		<spring-test.version>6.2.8</spring-test.version>
-		<junit.version>5.13.1</junit.version>
+		<spring.version>7.0.1</spring.version>
+		<spring-data-commons.version>4.0.0</spring-data-commons.version>
+		<spring-test.version>7.0.1</spring-test.version>
+		<junit.version>6.0.1</junit.version>
 		<slf4j.version>2.0.17</slf4j.version>
 		<logback.version>1.5.18</logback.version>
 		<testcontainers.version>1.21.2</testcontainers.version>

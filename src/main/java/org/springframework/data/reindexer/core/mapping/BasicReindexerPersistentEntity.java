@@ -17,10 +17,10 @@ package org.springframework.data.reindexer.core.mapping;
 
 import ru.rt.restream.reindexer.NamespaceOptions;
 
+import org.springframework.data.core.TypeInformation;
 import org.springframework.data.expression.ValueExpression;
 import org.springframework.data.expression.ValueExpressionParser;
 import org.springframework.data.mapping.model.BasicPersistentEntity;
-import org.springframework.data.util.TypeInformation;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;

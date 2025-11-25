@@ -19,10 +19,10 @@ import java.util.stream.Stream;
 
 import ru.rt.restream.reindexer.ResultIterator;
 
+import org.springframework.data.core.TypeInformation;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.geo.GeoResults;
 import org.springframework.data.repository.util.QueryExecutionConverters;
-import org.springframework.data.util.TypeInformation;
 import org.springframework.util.Assert;
 
 /**
