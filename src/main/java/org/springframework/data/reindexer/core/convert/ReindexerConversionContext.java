@@ -20,12 +20,12 @@ import java.util.List;
 
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.data.core.TypeInformation;
 import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.mapping.PersistentProperty;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
-import org.springframework.data.util.TypeInformation;
 import org.springframework.util.Assert;
 
 /**

@@ -17,9 +17,9 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.lang.reflect.Method;
 
+import org.springframework.data.core.TypeInformation;
 import org.springframework.data.repository.core.support.AnnotationRepositoryMetadata;
 import org.springframework.data.repository.util.ReactiveWrapperConverters;
-import org.springframework.data.util.TypeInformation;
 
 /**
  * {@link org.springframework.data.repository.core.RepositoryMetadata} implementation

@@ -15,11 +15,11 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import org.springframework.data.core.TypeInformation;
 import org.springframework.data.mapping.context.AbstractMappingContext;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.Property;
 import org.springframework.data.mapping.model.SimpleTypeHolder;
-import org.springframework.data.util.TypeInformation;
 
 /**
  * Default implementation of a {@link MappingContext} for Reindexer using
