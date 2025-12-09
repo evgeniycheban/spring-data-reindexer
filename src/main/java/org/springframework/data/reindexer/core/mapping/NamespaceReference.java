@@ -34,7 +34,10 @@ public @interface NamespaceReference {
 	/**
 	 * Represents a namespace name.
 	 * @return the namespace name to use
+	 * @deprecated as rx-connector does not support opening multiple namespaces within the
+	 * same domain type. Therefore, only {@link Namespace#name()} is considered.
 	 */
+	@Deprecated(since = "1.6")
 	String namespace() default "";
 
 	/**
