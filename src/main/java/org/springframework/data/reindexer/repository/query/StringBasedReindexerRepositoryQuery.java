@@ -146,9 +146,10 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		return resultProcessor.processResult(result);
 	}
 
-	private ProjectingResultIterator toIterator(ReindexerParameterAccessor parameters, ReturnedType returnedType) {
+	private ProjectingResultIterator<?, ?> toIterator(ReindexerParameterAccessor parameters,
+			ReturnedType returnedType) {
 		String preparedQuery = prepareQuery(parameters);
-		return new ProjectingResultIterator(this.namespace.execSql(preparedQuery), returnedType,
+		return new ProjectingResultIterator<>(this.namespace.execSql(preparedQuery), returnedType,
 				this.reindexerConverter);
 	}
 

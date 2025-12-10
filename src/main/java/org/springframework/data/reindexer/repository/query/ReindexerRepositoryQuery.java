@@ -93,8 +93,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 			}
 			if (method.isPageQuery()) {
 				return (creator) -> {
-					ProjectingResultIterator iterator = new ProjectingResultIterator(creator.createQuery().reqTotal(),
-							creator.getReturnedType(), reindexerConverter);
+					ProjectingResultIterator<?, ?> iterator = new ProjectingResultIterator<>(
+							creator.createQuery().reqTotal(), creator.getReturnedType(), reindexerConverter);
 					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
 							creator.getParameters().getPageable(), iterator::getTotalCount);
 				};
@@ -115,8 +115,8 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		});
 	}
 
-	private ProjectingResultIterator toIterator(ReindexerQueryCreator queryCreator) {
-		return new ProjectingResultIterator(queryCreator.createQuery(), queryCreator.getReturnedType(),
+	private ProjectingResultIterator<?, ?> toIterator(ReindexerQueryCreator queryCreator) {
+		return new ProjectingResultIterator<>(queryCreator.createQuery(), queryCreator.getReturnedType(),
 				this.reindexerConverter);
 	}
 

@@ -39,12 +39,16 @@ import org.springframework.data.repository.query.ReturnedType;
  * For internal use only, as this contract is likely to change.
  *
  * @author Evgeniy Cheban
+ * @param <M> the mapped type to use
+ * @param <D> the domain type to use
  */
-final class ProjectingResultIterator implements ResultIterator<Object> {
+public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 
-	private final ResultIterator<?> delegate;
+	private final ResultIterator<D> delegate;
 
-	private final ReturnedType projectionType;
+	private final Class<M> mappedType;
+
+	private final Class<D> domainType;
 
 	private final AggregationResult aggregationFacet;
 
@@ -58,14 +62,29 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 
 	private int aggregationPosition;
 
-	ProjectingResultIterator(Query<?> query, ReturnedType projectionType, ReindexerConverter reindexerConverter) {
+	ProjectingResultIterator(Query<D> query, ReturnedType projectionType, ReindexerConverter reindexerConverter) {
 		this(query.execute(), projectionType, reindexerConverter);
 	}
 
-	ProjectingResultIterator(ResultIterator<?> delegate, ReturnedType projectionType,
+	@SuppressWarnings("unchecked")
+	ProjectingResultIterator(ResultIterator<D> delegate, ReturnedType projectionType,
+			ReindexerConverter reindexerConverter) {
+		this(delegate, (Class<M>) projectionType.getReturnedType(), (Class<D>) projectionType.getDomainType(),
+				reindexerConverter);
+	}
+
+	/**
+	 * Creates an instance.
+	 * @param delegate the {@link ResultIterator} to use
+	 * @param mappedType the mapped type to use
+	 * @param domainType the domain type to use
+	 * @param reindexerConverter the {@link ReindexerConverter} to use
+	 */
+	public ProjectingResultIterator(ResultIterator<D> delegate, Class<M> mappedType, Class<D> domainType,
 			ReindexerConverter reindexerConverter) {
 		this.delegate = delegate;
-		this.projectionType = projectionType;
+		this.mappedType = mappedType;
+		this.domainType = domainType;
 		this.reindexerConverter = reindexerConverter;
 		this.conversionService = reindexerConverter.getConversionService();
 		this.aggregationFacet = getAggregationFacet();
@@ -106,31 +125,29 @@ final class ProjectingResultIterator implements ResultIterator<Object> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Object next() {
-		Object entity = nextEntity();
+	public M next() {
+		D entity = nextEntity();
 		if (entity == null) {
 			return null;
 		}
-		EntityProjection<Object, Object> descriptor = (EntityProjection<Object, Object>) this.reindexerConverter
-			.getProjectionIntrospector()
-			.introspect(this.projectionType.getReturnedType(), this.projectionType.getDomainType());
+		EntityProjection<M, D> descriptor = this.reindexerConverter.getProjectionIntrospector()
+			.introspect(this.mappedType, this.domainType);
 		return this.reindexerConverter.project(descriptor, entity);
 	}
 
-	private Object nextEntity() {
+	private D nextEntity() {
 		if (!this.distinct) {
 			return this.delegate.next();
 		}
-		Object entity;
+		D entity;
 		try {
-			entity = this.projectionType.getDomainType().getDeclaredConstructor().newInstance();
+			entity = this.domainType.getDeclaredConstructor().newInstance();
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 		ReindexerMappingContext mappingContext = this.reindexerConverter.getMappingContext();
-		ReindexerPersistentEntity<?> persistentEntity = mappingContext
-			.getRequiredPersistentEntity(this.projectionType.getDomainType());
+		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(this.domainType);
 		int aggregationPosition = this.aggregationPosition++;
 		List<String> fields = this.aggregationFacet.getFields();
 		for (int i = 0; i < fields.size(); i++) {
