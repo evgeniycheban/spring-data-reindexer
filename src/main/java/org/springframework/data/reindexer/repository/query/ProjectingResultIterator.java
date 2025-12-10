@@ -123,7 +123,6 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 				|| this.aggregationFacet != null && this.aggregationPosition < this.aggregationFacet.getFacets().size();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public M next() {
 		D entity = nextEntity();
