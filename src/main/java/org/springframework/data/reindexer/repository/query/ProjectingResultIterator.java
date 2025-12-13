@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.repository.query.ReturnedType;
+import org.springframework.util.CollectionUtils;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -59,6 +61,8 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 	private final ConversionService conversionService;
 
 	private final boolean distinct;
+
+	private final long size;
 
 	private int aggregationPosition;
 
@@ -90,6 +94,7 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 		this.aggregationFacet = getAggregationFacet();
 		this.distinctAggregationResults = getDistinctAggregationResults();
 		this.distinct = this.aggregationFacet != null && !this.distinctAggregationResults.isEmpty();
+		this.size = this.aggregationFacet != null ? this.aggregationFacet.getFacets().size() : delegate.size();
 	}
 
 	@Override
@@ -99,7 +104,7 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 
 	@Override
 	public long size() {
-		return this.delegate.size();
+		return this.size;
 	}
 
 	@Override
@@ -169,7 +174,9 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 		Map<String, Set<String>> result = new HashMap<>();
 		for (AggregationResult aggregationResult : aggResults()) {
 			if ("distinct".equals(aggregationResult.getType())) {
-				result.put(aggregationResult.getFields().get(0), new HashSet<>(aggregationResult.getDistincts()));
+				Set<String> distincts = CollectionUtils.isEmpty(aggregationResult.getDistincts())
+						? Collections.emptySet() : new HashSet<>(aggregationResult.getDistincts());
+				result.put(aggregationResult.getFields().get(0), distincts);
 			}
 		}
 		return result;
@@ -178,6 +185,9 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 	private AggregationResult getAggregationFacet() {
 		for (AggregationResult aggregationResult : aggResults()) {
 			if ("facet".equals(aggregationResult.getType())) {
+				if (aggregationResult.getFacets() == null) {
+					aggregationResult.setFacets(Collections.emptyList());
+				}
 				return aggregationResult;
 			}
 		}

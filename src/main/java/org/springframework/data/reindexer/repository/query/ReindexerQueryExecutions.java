@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
@@ -64,7 +65,7 @@ public final class ReindexerQueryExecutions {
 	 */
 	public static <E> Stream<E> toStream(ResultIterator<E> iterator) {
 		Spliterator<E> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
-		return StreamSupport.stream(spliterator, false).onClose(iterator::close);
+		return StreamSupport.stream(spliterator, false).filter(Objects::nonNull).onClose(iterator::close);
 	}
 
 	/**
