@@ -1243,6 +1243,31 @@ class ReindexerRepositoryTests {
 				"TestValue3");
 	}
 
+	// gh-86
+	@Test
+	public void streamDistinctNameValueRecordByIdIn() {
+		this.repository.save(new TestItem(1L, "TestName1", "TestValue2"));
+		this.repository.save(new TestItem(2L, "TestName2", "TestValue3"));
+		this.repository.save(new TestItem(3L, "TestName3", "TestValue3"));
+		try (Stream<TestItemNameValueRecord> stream = this.repository
+			.streamDistinctNameValueRecordByIdIn(List.of(1L, 2L, 3L))) {
+			List<TestItemNameValueRecord> foundItems = stream.toList();
+			assertThat(foundItems.stream().map(TestItemNameValueRecord::name).toList()).containsOnly("TestName1",
+					"TestName2");
+			assertThat(foundItems.stream().map(TestItemNameValueRecord::value).toList()).containsOnly("TestValue2",
+					"TestValue3");
+		}
+	}
+
+	// gh-86
+	@Test
+	public void streamDistinctNameValueRecordByIdInWhenEmpty() {
+		try (Stream<TestItemNameValueRecord> stream = this.repository
+			.streamDistinctNameValueRecordByIdIn(List.of(1L, 2L, 3L))) {
+			assertThat(stream).isEmpty();
+		}
+	}
+
 	@Test
 	public void findAllByIdBetween() {
 		for (long i = 0; i < 100; i++) {
@@ -2568,6 +2593,8 @@ class ReindexerRepositoryTests {
 		List<TestItemNameValueDto> findDistinctNameValueDtoByIdIn(List<Long> ids);
 
 		<T> List<T> findDistinctByIdIn(List<Long> ids, Class<T> type);
+
+		Stream<TestItemNameValueRecord> streamDistinctNameValueRecordByIdIn(List<Long> ids);
 
 		List<TestItem> findAllByIdBetween(Long start, Long end);
 
