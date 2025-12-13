@@ -16,10 +16,8 @@
 package org.springframework.data.reindexer.repository.query;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
@@ -32,9 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
-import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
-import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.data.repository.query.ParameterAccessor;
@@ -45,7 +41,6 @@ import org.springframework.data.repository.query.parser.Part.IgnoreCaseType;
 import org.springframework.data.repository.query.parser.Part.Type;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -177,7 +172,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria = this.namespace.query();
 		}
 		if (this.returnedType.needsCustomConstruction()) {
-			String[] fields = getSelectFields();
+			String[] fields = QueryUtils.getSelectFields(this.mappingContext, this.returnedType, this.tree.isDistinct())
+				.toArray(String[]::new);
 			if (this.tree.isDistinct()) {
 				for (String field : fields) {
 					criteria.aggregateDistinct(field);
@@ -219,32 +215,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria.limit(1);
 		}
 		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
-	}
-
-	private String[] getSelectFields() {
-		Set<String> inputProperties = new HashSet<>(this.returnedType.getInputProperties());
-		for (ReindexerPersistentProperty referenceProperty : this.entityInformation.getNamespaceReferences()) {
-			if (!inputProperties.remove(referenceProperty.getName())) {
-				continue;
-			}
-			NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
-			if (StringUtils.hasText(namespaceReference.lookup())) {
-				/*
-				 * The indexName is added to the input properties passively if a lookup
-				 * query contains SpEL expression and indexName, therefore indexName is
-				 * considered being used within the expression.
-				 */
-				if (namespaceReference.lookup().contains("#{") && StringUtils.hasText(namespaceReference.indexName())
-						&& namespaceReference.lookup().contains(namespaceReference.indexName())) {
-					inputProperties.add(namespaceReference.indexName());
-				}
-				continue;
-			}
-			if (namespaceReference.lazy() || this.tree.isDistinct()) {
-				inputProperties.add(namespaceReference.indexName());
-			}
-		}
-		return inputProperties.toArray(String[]::new);
 	}
 
 }

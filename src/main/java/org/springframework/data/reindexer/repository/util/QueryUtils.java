@@ -15,6 +15,10 @@
  */
 package org.springframework.data.reindexer.repository.util;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -25,6 +29,7 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.util.StringUtils;
 
 /**
@@ -75,6 +80,41 @@ public final class QueryUtils {
 			}
 		}
 		return criteria;
+	}
+
+	/**
+	 * Returns field names to use in a select clause.
+	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param returnedType the {@link ReturnedType} to use
+	 * @param distinct whether the fields are used in a distinct clause
+	 * @return the field names to use
+	 */
+	public static Collection<String> getSelectFields(ReindexerMappingContext mappingContext, ReturnedType returnedType,
+			boolean distinct) {
+		ReindexerPersistentEntity<?> entity = mappingContext.getRequiredPersistentEntity(returnedType.getDomainType());
+		Set<String> result = new LinkedHashSet<>(returnedType.getInputProperties());
+		for (ReindexerPersistentProperty referenceProperty : entity.getPersistentProperties(NamespaceReference.class)) {
+			if (!result.remove(referenceProperty.getName())) {
+				continue;
+			}
+			NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
+			if (StringUtils.hasText(namespaceReference.lookup())) {
+				/*
+				 * The indexName is added to the input properties passively if a lookup
+				 * query contains SpEL expression and indexName, therefore, indexName is
+				 * considered being used within the expression.
+				 */
+				if (namespaceReference.lookup().contains("#{") && StringUtils.hasText(namespaceReference.indexName())
+						&& namespaceReference.lookup().contains(namespaceReference.indexName())) {
+					result.add(namespaceReference.indexName());
+				}
+				continue;
+			}
+			if (namespaceReference.lazy() || distinct) {
+				result.add(namespaceReference.indexName());
+			}
+		}
+		return result;
 	}
 
 }
