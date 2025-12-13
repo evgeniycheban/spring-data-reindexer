@@ -15,32 +15,22 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import ru.rt.restream.reindexer.FieldType;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 
-import org.springframework.core.convert.ConversionService;
 import org.springframework.data.core.PropertyPath;
-import org.springframework.data.convert.CustomConversions;
-import org.springframework.data.convert.PropertyValueConverter;
-import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
-import org.springframework.data.mapping.PersistentPropertyPath;
-import org.springframework.data.reindexer.core.convert.ReindexerConversionContext;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
@@ -75,13 +65,11 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final ReindexerMappingContext mappingContext;
 
-	private final ReindexerConverter reindexerConverter;
-
 	private final ParameterAccessor parameters;
 
 	private final ReturnedType returnedType;
 
-	private final Map<String, ReindexerIndex> indexes;
+	private final QueryParameterMapper queryParameterMapper;
 
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
@@ -95,8 +83,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		this.mappingContext = mappingContext;
 		this.parameters = parameters;
 		this.returnedType = returnedType;
-		this.indexes = indexes;
-		this.reindexerConverter = reindexerConverter;
+		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), indexes, mappingContext,
+				reindexerConverter);
 	}
 
 	ParameterAccessor getParameters() {
@@ -146,7 +134,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 						: base.like(indexName, value.toString());
 			}
 			case BETWEEN -> base.where(indexName, Condition.RANGE,
-					getParameterValues(indexName, parameters.next(), parameters.next()));
+					this.queryParameterMapper.mapParameterValues(indexName, parameters.next(), parameters.next()));
 			case TRUE -> base.where(indexName, Condition.EQ, true);
 			case FALSE -> base.where(indexName, Condition.EQ, false);
 			case LIKE, NOT_LIKE, STARTING_WITH, ENDING_WITH, CONTAINING, NOT_CONTAINING -> {
@@ -171,68 +159,11 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 	}
 
 	private Query<?> where(Query<?> base, String indexName, Condition condition, Iterator<Object> parameters) {
-		Object value = getParameterValue(indexName, parameters.next());
+		Object value = this.queryParameterMapper.mapParameterValue(indexName, parameters.next());
 		if (value instanceof Collection<?> values) {
 			return base.where(indexName, condition, values);
 		}
 		return base.where(indexName, condition, value);
-	}
-
-	private Object[] getParameterValues(String indexName, Object... values) {
-		Object[] result = new Object[values.length];
-		for (int i = 0; i < values.length; i++) {
-			result[i] = getParameterValue(indexName, values[i]);
-		}
-		return result;
-	}
-
-	private Object getParameterValue(String indexName, Object value) {
-		if (value == null) {
-			return null;
-		}
-		PersistentPropertyPath<ReindexerPersistentProperty> propertyPath = this.mappingContext
-			.getPersistentPropertyPath(indexName, this.entityInformation.getJavaType());
-		ReindexerPersistentProperty property = propertyPath.getLeafProperty();
-		CustomConversions conversions = this.reindexerConverter.getCustomConversions();
-		if (conversions.hasValueConverter(property)) {
-			ReindexerConversionContext conversionContext = new ReindexerConversionContext(this.reindexerConverter,
-					property, this.reindexerConverter.getConversionService(), conversions);
-			PropertyValueConverter<Object, ?, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = conversions
-				.getPropertyValueConversions()
-				.getValueConverter(property);
-			return valueConverter.write(value, conversionContext);
-		}
-		if (conversions.hasCustomWriteTarget(value.getClass())) {
-			Class<?> customTarget = conversions.getCustomWriteTarget(property.getActualType()).get();
-			ConversionService conversionService = this.reindexerConverter.getConversionService();
-			if (conversionService.canConvert(value.getClass(), customTarget)) {
-				return conversionService.convert(value, customTarget);
-			}
-		}
-		if (value instanceof Enum<?>) {
-			ReindexerIndex index = this.indexes.get(indexName);
-			Assert.notNull(index, () -> "Index not found: " + indexName);
-			if (index.getFieldType() == FieldType.STRING) {
-				return ((Enum<?>) value).name();
-			}
-			return ((Enum<?>) value).ordinal();
-		}
-		if (value instanceof Collection<?> values) {
-			List<Object> result = new ArrayList<>(values.size());
-			for (Object object : values) {
-				result.add(getParameterValue(indexName, object));
-			}
-			return result;
-		}
-		if (value.getClass().isArray()) {
-			int length = Array.getLength(value);
-			List<Object> result = new ArrayList<>(length);
-			for (int i = 0; i < length; i++) {
-				result.add(getParameterValue(indexName, Array.get(value, i)));
-			}
-			return result;
-		}
-		return value;
 	}
 
 	@Override
