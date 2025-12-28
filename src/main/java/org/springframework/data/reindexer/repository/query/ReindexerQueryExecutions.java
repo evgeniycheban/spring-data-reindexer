@@ -24,6 +24,9 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import ru.rt.restream.reindexer.ResultIterator;
 
 import org.springframework.core.CollectionFactory;
@@ -33,6 +36,7 @@ import org.springframework.dao.IncorrectResultSizeDataAccessException;
  * For internal use only, as this contract is likely to change.
  *
  * @author Evgeniy Cheban
+ * @author Daniil Cheban
  */
 public final class ReindexerQueryExecutions {
 
@@ -85,6 +89,32 @@ public final class ReindexerQueryExecutions {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Produces a {@link Slice} of entities from the given {@link ResultIterator} and
+	 * {@link Pageable}.
+	 * @param iterator the {@link ResultIterator} to use
+	 * @param pageable the {@link Pageable} to use
+	 * @param <E> the entity type to use
+	 * @return the {@link Slice} of entities to use
+	 */
+	public static <E> Slice<E> toSlice(ResultIterator<E> iterator, Pageable pageable) {
+		try (iterator) {
+			if (pageable.isUnpaged()) {
+				List<E> result = toList(iterator);
+				return new SliceImpl<>(result, pageable, false);
+			}
+			List<E> result = new ArrayList<>();
+			while (iterator.hasNext() && result.size() < pageable.getPageSize()) {
+				E next = iterator.next();
+				if (next != null) {
+					result.add(next);
+				}
+			}
+			boolean hasNext = iterator.size() > pageable.getPageSize();
+			return new SliceImpl<>(result, pageable, hasNext);
+		}
 	}
 
 	/**

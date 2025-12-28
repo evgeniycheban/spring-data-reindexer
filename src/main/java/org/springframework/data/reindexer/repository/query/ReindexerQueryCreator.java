@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.springframework.data.domain.Slice;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -66,10 +67,12 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final QueryParameterMapper queryParameterMapper;
 
+	private final ReindexerQueryMethod method;
+
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
 			Map<String, ReindexerIndex> indexes, ReindexerConverter reindexerConverter, ParameterAccessor parameters,
-			ReturnedType returnedType) {
+			ReturnedType returnedType, ReindexerQueryMethod method) {
 		super(tree, parameters);
 		this.tree = tree;
 		this.reindexer = reindexer;
@@ -80,6 +83,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		this.returnedType = returnedType;
 		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), indexes, mappingContext,
 				reindexerConverter);
+		this.method = method;
 	}
 
 	ParameterAccessor getParameters() {
@@ -189,7 +193,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		Pageable pageable = this.parameters.getPageable();
 		if (pageable.isPaged()) {
-			criteria.limit(pageable.getPageSize()).offset(PageableUtils.getOffsetAsInteger(pageable));
+			int limit = this.method.isSliceQuery() ? pageable.getPageSize() + 1 : pageable.getPageSize();
+			criteria.limit(limit).offset(PageableUtils.getOffsetAsInteger(pageable));
 		}
 		if (sort.isSorted()) {
 			for (Order order : sort) {
