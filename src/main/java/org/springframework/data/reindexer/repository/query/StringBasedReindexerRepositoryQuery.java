@@ -51,6 +51,7 @@ import org.springframework.util.Assert;
  * A string-based {@link RepositoryQuery} implementation for Reindexer.
  *
  * @author Evgeniy Cheban
+ * @author Daniil Cheban
  */
 public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
@@ -103,6 +104,10 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
 							parameters.getPageable(), iterator::getTotalCount);
 				};
+			}
+			if (method.isSliceQuery()) {
+				return (parameters, type) -> ReindexerQueryExecutions.toSlice(toIterator(parameters, type),
+						parameters.getPageable());
 			}
 			if (method.isStreamQuery()) {
 				return (parameters, type) -> ReindexerQueryExecutions.toStream(toIterator(parameters, type));
@@ -217,7 +222,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				maxResults = Integer.parseInt(limitMatcher.group(1));
 			}
 			else {
-				maxResults = pageable.getPageSize();
+				maxResults = method.isSliceQuery() ? pageable.getPageSize() + 1 : pageable.getPageSize();
 				result.append(" limit ").append(maxResults);
 			}
 			if (result.indexOf("offset") == -1) {
