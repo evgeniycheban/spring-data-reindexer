@@ -2423,6 +2423,47 @@ class ReindexerRepositoryTests {
 		assertTrue(foundItems.hasNext());
 	}
 
+	@Test
+	public void findAllSliceSql() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		this.repository.save(TestItem.builder().id(4L).build());
+		this.repository.save(TestItem.builder().id(5L).build());
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllSliceSql(pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertTrue(foundItems.hasNext());
+	}
+
+	@Test
+	public void findAllSliceSqlWhenNoMorePages() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllSliceSql(pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertFalse(foundItems.hasNext());
+	}
+
+	@Test
+	public void fildAllByIdInSliceSql() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		this.repository.save(TestItem.builder().id(4L).build());
+		this.repository.save(TestItem.builder().id(5L).build());
+		List<Long> ids = List.of(1L, 2L, 3L, 4L, 5L);
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllByIdInSliceSql(ids, pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertTrue(foundItems.hasNext());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -2701,6 +2742,12 @@ class ReindexerRepositoryTests {
 		Slice<TestItem> findAllBy(Pageable pageable);
 
 		Slice<TestItem> findAllByIdIn(List<Long> ids, Pageable pageable);
+
+		@Query("SELECT * FROM items")
+		Slice<TestItem> findAllSliceSql(Pageable pageable);
+
+		@Query("SELECT * FROM items WHERE id IN :ids")
+		Slice<TestItem> findAllByIdInSliceSql(List<Long> ids, Pageable pageable);
 
 	}
 
