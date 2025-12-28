@@ -37,6 +37,7 @@ import org.springframework.data.util.Lazy;
  * A {@link RepositoryQuery} implementation for Reindexer.
  *
  * @author Evgeniy Cheban
+ * @author Daniil Cheban
  */
 public class ReindexerRepositoryQuery implements RepositoryQuery {
 
@@ -99,6 +100,10 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 							creator.getParameters().getPageable(), iterator::getTotalCount);
 				};
 			}
+			if (method.isSliceQuery()) {
+				return (creator) -> ReindexerQueryExecutions.toSlice(toIterator(creator),
+						creator.getParameters().getPageable());
+			}
 			if (this.tree.isCountProjection()) {
 				return (creator) -> creator.createQuery().count();
 			}
@@ -127,7 +132,7 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
 		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace,
 				this.entityInformation, this.mappingContext, this.indexes, this.reindexerConverter, parameterAccessor,
-				resultProcessor.getReturnedType());
+				resultProcessor.getReturnedType(), this.method);
 		Object result = this.queryExecution.get().apply(queryCreator);
 		return resultProcessor.processResult(result);
 	}

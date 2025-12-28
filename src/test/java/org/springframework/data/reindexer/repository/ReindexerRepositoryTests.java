@@ -62,6 +62,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.reindexer.LazyLoadingException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -2381,6 +2382,47 @@ class ReindexerRepositoryTests {
 			.containsExactlyInAnyOrder("TestName1", "TestName2");
 	}
 
+	@Test
+	public void findAllSlice() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		this.repository.save(TestItem.builder().id(4L).build());
+		this.repository.save(TestItem.builder().id(5L).build());
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllBy(pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertTrue(foundItems.hasNext());
+	}
+
+	@Test
+	public void findAllSliceWhenNoMorePages() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllBy(pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertFalse(foundItems.hasNext());
+	}
+
+	@Test
+	public void findAllByIdInSlice() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		this.repository.save(TestItem.builder().id(4L).build());
+		this.repository.save(TestItem.builder().id(5L).build());
+		List<Long> ids = List.of(1L, 2L, 3L, 4L, 5L);
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllByIdIn(ids, pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertTrue(foundItems.hasNext());
+	}
+
 	@Configuration
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -2655,6 +2697,10 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByCustomDate(LocalDate date);
 
 		Optional<TestItem> findByCustomDateTime(LocalDateTime dateTime);
+
+		Slice<TestItem> findAllBy(Pageable pageable);
+
+		Slice<TestItem> findAllByIdIn(List<Long> ids, Pageable pageable);
 
 	}
 
