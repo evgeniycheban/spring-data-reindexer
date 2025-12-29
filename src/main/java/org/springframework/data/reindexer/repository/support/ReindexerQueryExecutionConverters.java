@@ -30,12 +30,12 @@ import org.springframework.util.Assert;
  *
  * @author Evgeniy Cheban
  */
-final class ReindexerQueryExecutionConverters {
+public final class ReindexerQueryExecutionConverters {
 
 	private ReindexerQueryExecutionConverters() {
 	}
 
-	static TypeInformation<?> unwrapWrapperTypes(TypeInformation<?> type, TypeInformation<?> reference) {
+	public static TypeInformation<?> unwrapWrapperTypes(TypeInformation<?> type, TypeInformation<?> reference) {
 		Assert.notNull(type, "type must not be null");
 		if (reference.isAssignableFrom(type)) {
 			return type;

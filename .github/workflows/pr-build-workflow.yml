@@ -21,7 +21,9 @@ jobs:
       #          echo 'deb https://repo.reindexer.io/ubuntu-bionic /' | sudo tee -a /etc/apt/sources.list
       #          sudo apt-get update
       #          sudo apt-get install reindexer-dev
+      - name: Build spring-data-reindexer in AOT mode
+        run: mvn --batch-mode --update-snapshots verify -Paot
       - name: Build spring-data-reindexer
-        run: mvn --batch-mode --update-snapshots install
+        run: mvn --batch-mode --update-snapshots clean install
       - name: Build spring-boot-starter-data-reindexer
         run: mvn --batch-mode --update-snapshots -f spring-boot-starter-data-reindexer/pom.xml verify

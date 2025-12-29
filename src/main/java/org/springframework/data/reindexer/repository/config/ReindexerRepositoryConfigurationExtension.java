@@ -19,14 +19,24 @@ import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.beans.factory.aot.BeanRegistrationAotProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.core.annotation.AnnotationAttributes;
+import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.Namespace;
+import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
+import org.springframework.data.reindexer.repository.aot.ReindexerRepositoryContributor;
 import org.springframework.data.reindexer.repository.support.ReindexerRepositoryFactoryBean;
+import org.springframework.data.repository.aot.generate.RepositoryContributor;
 import org.springframework.data.repository.config.AnnotationRepositoryConfigurationSource;
+import org.springframework.data.repository.config.AotRepositoryContext;
 import org.springframework.data.repository.config.RepositoryConfigurationExtension;
 import org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport;
+import org.springframework.data.repository.config.RepositoryRegistrationAotProcessor;
 
 /**
  * A {@link RepositoryConfigurationExtension} for Reindexer.
@@ -66,6 +76,35 @@ public class ReindexerRepositoryConfigurationExtension extends RepositoryConfigu
 		builder.addPropertyReference("reindexer", attributes.getString("reindexerRef"));
 		builder.addPropertyReference("mappingContext", "reindexerMappingContext");
 		builder.addPropertyReference("reindexerConverter", "reindexerConverter");
+	}
+
+	@Override
+	public Class<? extends BeanRegistrationAotProcessor> getRepositoryAotProcessor() {
+		return ReindexerRepositoryRegistrationAotProcessor.class;
+	}
+
+	public static class ReindexerRepositoryRegistrationAotProcessor extends RepositoryRegistrationAotProcessor {
+
+		private static final String REINDEXER_MODULE_NAME = "reindexer";
+
+		@Override
+		protected @Nullable RepositoryContributor contributeAotRepository(AotRepositoryContext repositoryContext) {
+			if (!repositoryContext.isGeneratedRepositoriesEnabled(REINDEXER_MODULE_NAME)) {
+				return null;
+			}
+			ConfigurableListableBeanFactory beanFactory = repositoryContext.getBeanFactory();
+			ReindexerMappingContext context = beanFactory.getBeanProvider(ReindexerMappingContext.class)
+				.getIfAvailable(() -> {
+					ReindexerCustomConversions conversions = beanFactory
+						.getBeanProvider(ReindexerCustomConversions.class)
+						.getIfAvailable(ReindexerCustomConversions::new);
+					ReindexerMappingContext mappingContext = new ReindexerMappingContext();
+					mappingContext.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
+					return mappingContext;
+				});
+			return new ReindexerRepositoryContributor(repositoryContext, context);
+		}
+
 	}
 
 }
