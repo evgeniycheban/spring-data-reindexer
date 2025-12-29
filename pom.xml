@@ -89,6 +89,66 @@
 				</plugins>
 			</build>
 		</profile>
+		<profile>
+			<id>default</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<spring.aot.enabled>false</spring.aot.enabled>
+			</properties>
+		</profile>
+		<profile>
+			<id>aot</id>
+			<properties>
+				<spring.aot.enabled>true</spring.aot.enabled>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>3.6.3</version>
+						<executions>
+							<execution>
+								<id>generate-aot-test-sources</id>
+								<phase>generate-test-sources</phase>
+								<goals>
+									<goal>java</goal>
+								</goals>
+								<configuration>
+									<mainClass>org.springframework.data.reindexer.aot.ReindexerTestContextAotGeneratorMain</mainClass>
+									<arguments>
+										<argument>${project.build.directory}/generated-test-sources/aot</argument>
+										<argument>org.springframework.data.reindexer.repository.ReindexerRepositoryTests</argument>
+									</arguments>
+									<classpathScope>test</classpathScope>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>build-helper-maven-plugin</artifactId>
+						<version>3.6.1</version>
+						<executions>
+							<execution>
+								<id>add-aot-test-sources</id>
+								<phase>process-test-sources</phase>
+								<goals>
+									<goal>add-test-source</goal>
+								</goals>
+								<configuration>
+									<sources>
+										<source>${project.build.directory}/generated-test-sources/aot</source>
+									</sources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 	</profiles>
 
 	<build>
@@ -109,6 +169,15 @@
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
+				<executions>
+					<execution>
+						<id>compile-aot-test-sources</id>
+						<phase>generate-test-sources</phase>
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -143,6 +212,9 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M5</version>
 				<configuration>
+					<systemPropertyVariables>
+						<spring.aot.enabled>${spring.aot.enabled}</spring.aot.enabled>
+					</systemPropertyVariables>
 					<!-- Activate the use of TCP to transmit events to the plugin. -->
 					<forkNode implementation="org.apache.maven.plugin.surefire.extensions.SurefireForkNodeFactory" />
 				</configuration>

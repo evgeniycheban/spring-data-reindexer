@@ -2464,7 +2464,7 @@ class ReindexerRepositoryTests {
 		assertTrue(foundItems.hasNext());
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
 	@EnableTransactionManagement
@@ -2623,9 +2623,9 @@ class ReindexerRepositoryTests {
 
 		boolean existsByName(String name);
 
-		int countByValue(String value);
+		long countByValue(String value);
 
-		int countByIdIn(List<Long> ids);
+		long countByIdIn(List<Long> ids);
 
 		void deleteByName(String name);
 
