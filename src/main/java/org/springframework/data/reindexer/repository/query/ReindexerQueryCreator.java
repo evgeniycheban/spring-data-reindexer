@@ -19,7 +19,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.springframework.data.domain.Slice;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -69,6 +68,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final ReindexerQueryMethod method;
 
+	private Query<?> base;
+
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
 			Map<String, ReindexerIndex> indexes, ReindexerConverter reindexerConverter, ParameterAccessor parameters,
@@ -96,7 +97,21 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	@Override
 	protected Query<?> create(Part part, Iterator<Object> parameters) {
-		return and(part, this.namespace.query(), parameters);
+		if (this.base == null) {
+			this.base = this.namespace.query();
+		}
+		else {
+			/*
+			 * If base query already exists, this is the next PartTree.OrPart iteration
+			 * and the OR operator is applied. Note that we need to open bracket to ensure
+			 * correct handling of certain OR conditions.
+			 *
+			 * For example, in `findByNameOrValueNot`, the NOT part must be wrapped in
+			 * brackets to produce correct results.
+			 */
+			this.base.or().openBracket();
+		}
+		return and(part, this.base, parameters);
 	}
 
 	@Override
@@ -167,7 +182,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	@Override
 	protected Query<?> or(Query<?> base, Query<?> criteria) {
-		return criteria.or();
+		// Close the bracket opened in this PartTree.OrPart iteration.
+		return base.closeBracket();
 	}
 
 	@Override

@@ -242,6 +242,39 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getValue(), item.getValue());
 	}
 
+	// gh-96
+	@Test
+	public void findByNameOrValueWhenFirstOrMatches() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.findByNameOrValue("TestName", "TestValue").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	// gh-96
+	@Test
+	public void findByNameOrValueNot() {
+		TestItem testItem = this.repository.save(new TestItem(1L, null, "TestValue"));
+		TestItem item = this.repository.findByNameOrValueNot("TestName", "TestValueNot").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	// gh-96
+	@Test
+	public void findByNameOrValueNotWhenFirstOrMatches() {
+		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
+		TestItem item = this.repository.findByNameOrValueNot("TestName", "TestValueNot").orElse(null);
+		assertNotNull(item);
+		assertEquals(testItem.getId(), item.getId());
+		assertEquals(testItem.getName(), item.getName());
+		assertEquals(testItem.getValue(), item.getValue());
+	}
+
 	@Test
 	public void findByTestEnumString() {
 		TestItem testItem = this.repository
@@ -2540,6 +2573,8 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findByNameAndValue(String name, String value);
 
 		Optional<TestItem> findByNameOrValue(String name, String value);
+
+		Optional<TestItem> findByNameOrValueNot(String name, String value);
 
 		Optional<TestItem> findByTestEnumString(TestEnum testEnum);
 
