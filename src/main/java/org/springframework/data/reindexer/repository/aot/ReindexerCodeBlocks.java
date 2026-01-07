@@ -152,19 +152,35 @@ final class ReindexerCodeBlocks {
 
 		private CodeBlock createWhereCodeBlock(Iterator<String> allParameterNames) {
 			CodeBlock.Builder builder = CodeBlock.builder();
-			for (Iterator<PartTree.OrPart> iterator = this.tree.iterator(); iterator.hasNext();) {
-				PartTree.OrPart node = iterator.next();
+			PartTree.OrPart first = null;
+			for (PartTree.OrPart node : this.tree) {
+				if (first == null) {
+					first = node;
+				}
 				Iterator<Part> parts = node.iterator();
 				if (!parts.hasNext()) {
 					throw new IllegalStateException(String.format("No part found in PartTree %s", this.tree));
+				}
+				boolean groupedOr = node != first;
+				if (groupedOr) {
+					/*
+					 * If this is the next PartTree.OrPart iteration, the OR operator is
+					 * applied. Note that we need to open bracket to ensure correct
+					 * handling of certain OR conditions.
+					 *
+					 * For example, in `findByNameOrValueNot`, the NOT part must be
+					 * wrapped in brackets to produce correct results.
+					 */
+					builder.add(".or().openBracket()");
 				}
 				CodeBlock criteria = createWhereCodeBlock(parts.next(), allParameterNames);
 				builder.add(criteria);
 				while (parts.hasNext()) {
 					builder.add(createWhereCodeBlock(parts.next(), allParameterNames));
 				}
-				if (iterator.hasNext()) {
-					builder.add(".or()");
+				if (groupedOr) {
+					// Close the bracket opened in this PartTree.OrPart iteration.
+					builder.add(".closeBracket()");
 				}
 			}
 			return builder.build();
