@@ -165,7 +165,7 @@ final class ReindexerCodeBlocks {
 				if (groupedOr) {
 					/*
 					 * If this is the next PartTree.OrPart iteration, the OR operator is
-					 * applied. Note that we need to open bracket to ensure correct
+					 * applied. Note that we need to open the bracket to ensure correct
 					 * handling of certain OR conditions.
 					 *
 					 * For example, in `findByNameOrValueNot`, the NOT part must be

@@ -102,9 +102,9 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		else {
 			/*
-			 * If base query already exists, this is the next PartTree.OrPart iteration
-			 * and the OR operator is applied. Note that we need to open bracket to ensure
-			 * correct handling of certain OR conditions.
+			 * If the base query already exists, this is the next PartTree.OrPart
+			 * iteration, and the OR operator is applied. Note that we need to open the
+			 * bracket to ensure correct handling of certain OR conditions.
 			 *
 			 * For example, in `findByNameOrValueNot`, the NOT part must be wrapped in
 			 * brackets to produce correct results.
