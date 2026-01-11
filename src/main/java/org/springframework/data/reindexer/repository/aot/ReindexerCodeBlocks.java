@@ -54,8 +54,9 @@ import org.springframework.util.StringUtils;
 final class ReindexerCodeBlocks {
 
 	static DerivedQueryCodeBlockBuilder derivedQueryCodeBlockBuilder(PartTree tree,
-			AotQueryMethodGenerationContext context, ReindexerMappingContext mappingContext) {
-		return new DerivedQueryCodeBlockBuilder(tree, context, mappingContext);
+			AotQueryMethodGenerationContext context, ReindexerMappingContext mappingContext,
+			ReindexerQueryMethod queryMethod) {
+		return new DerivedQueryCodeBlockBuilder(tree, context, mappingContext, queryMethod);
 	}
 
 	static DerivedExecutionCodeBlockBuilder derivedExecutionCodeBlockBuilder(PartTree tree,
@@ -67,23 +68,34 @@ final class ReindexerCodeBlocks {
 	@NullUnmarked
 	static final class DerivedQueryCodeBlockBuilder {
 
+		private final StringQueryBuilder stringQueryBuilder = new StringQueryBuilder();
+
 		private final PartTree tree;
 
 		private final AotQueryMethodGenerationContext context;
 
 		private final ReindexerMappingContext mappingContext;
 
+		private final ReindexerQueryMethod queryMethod;
+
 		DerivedQueryCodeBlockBuilder(PartTree tree, AotQueryMethodGenerationContext context,
-				ReindexerMappingContext mappingContext) {
+				ReindexerMappingContext mappingContext, ReindexerQueryMethod queryMethod) {
 			this.tree = tree;
 			this.context = context;
 			this.mappingContext = mappingContext;
+			this.queryMethod = queryMethod;
 		}
 
-		CodeBlock build() {
+		AotQuery build() {
+			this.stringQueryBuilder
+				.type(this.tree.isDelete() ? StringQueryBuilder.QueryType.DELETE : StringQueryBuilder.QueryType.SELECT);
+			if (this.queryMethod.isPageQuery()) {
+				this.stringQueryBuilder.reqTotal();
+			}
 			CodeBlock.Builder builder = CodeBlock.builder();
 			ReindexerPersistentEntity<?> entity = this.mappingContext
 				.getRequiredPersistentEntity(this.context.getDomainType());
+			this.stringQueryBuilder.namespace(entity.getNamespace());
 			Iterator<String> allParameterNames = this.context.getBindableParameterNames().iterator();
 			if (allParameterNames.hasNext()) {
 				builder.addStatement("$1T $2L = getParameterMapper()", QueryParameterMapper.class,
@@ -95,13 +107,15 @@ final class ReindexerCodeBlocks {
 				builder.add(createSelectCodeBlock());
 			}
 			else if (this.tree.isExistsProjection()) {
-				builder.add(".select($S)", entity.getRequiredIdProperty().getName());
+				String idPropertyName = entity.getRequiredIdProperty().getName();
+				builder.add(".select($S)", idPropertyName);
+				this.stringQueryBuilder.select(idPropertyName);
 			}
 			builder.add(createJoinCodeBlock(entity));
 			builder.add(createWhereCodeBlock(allParameterNames));
 			builder.add(createSortCodeBlock());
 			builder.add(createLimitCodeBlock());
-			return builder.build();
+			return new AotQuery(this.stringQueryBuilder.getSql(), builder.build());
 		}
 
 		private CodeBlock createSelectCodeBlock() {
@@ -111,10 +125,14 @@ final class ReindexerCodeBlocks {
 			if (this.tree.isDistinct()) {
 				for (String field : inputProperties) {
 					builder.add(".aggregateDistinct($S)", field);
+					this.stringQueryBuilder.aggregate(StringQueryBuilder.AggregateType.DISTINCT, field);
 				}
+				this.stringQueryBuilder.aggregate(StringQueryBuilder.AggregateType.FACET,
+						inputProperties.toArray(String[]::new));
 			}
 			else {
 				builder.add(".select($L)", createParameterArray(inputProperties));
+				inputProperties.forEach(this.stringQueryBuilder::select);
 			}
 			return builder.build();
 		}
@@ -140,6 +158,11 @@ final class ReindexerCodeBlocks {
 				CodeBlock onCodeBlock = CodeBlock.of("query($1T.class).on($2S, $3T.$4L, $5S)",
 						referencedEntity.getType(), namespaceReference.indexName(), Query.Condition.class, condition,
 						indexName);
+				StringQueryBuilder joinStringQueryBuilder = new StringQueryBuilder();
+				joinStringQueryBuilder.namespace(referencedEntity.getNamespace());
+				joinStringQueryBuilder.on(StringQueryBuilder.Operation.AND, namespaceReference.indexName(), condition,
+						indexName);
+				this.stringQueryBuilder.join(joinStringQueryBuilder, namespaceReference.joinType());
 				if (namespaceReference.joinType() == JoinType.LEFT) {
 					builder.add(".leftJoin($1L, $2S)", onCodeBlock, persistentProperty.getName());
 				}
@@ -172,49 +195,62 @@ final class ReindexerCodeBlocks {
 					 * wrapped in brackets to produce correct results.
 					 */
 					builder.add(".or().openBracket()");
+					this.stringQueryBuilder.openBracket(StringQueryBuilder.Operation.OR);
 				}
-				CodeBlock criteria = createWhereCodeBlock(parts.next(), allParameterNames);
+				CodeBlock criteria = createWhereCodeBlock(StringQueryBuilder.Operation.OR, parts.next(),
+						allParameterNames);
 				builder.add(criteria);
 				while (parts.hasNext()) {
-					builder.add(createWhereCodeBlock(parts.next(), allParameterNames));
+					builder
+						.add(createWhereCodeBlock(StringQueryBuilder.Operation.AND, parts.next(), allParameterNames));
 				}
 				if (groupedOr) {
 					// Close the bracket opened in this PartTree.OrPart iteration.
 					builder.add(".closeBracket()");
+					this.stringQueryBuilder.closeBracket();
 				}
 			}
 			return builder.build();
 		}
 
-		private CodeBlock createWhereCodeBlock(Part part, Iterator<String> allParameterNames) {
+		private CodeBlock createWhereCodeBlock(StringQueryBuilder.Operation operation, Part part,
+				Iterator<String> allParameterNames) {
 			String indexName = part.getProperty().toDotPath();
 			return switch (part.getType()) {
-				case GREATER_THAN, AFTER -> createWhereCodeBlock(indexName, Query.Condition.GT, allParameterNames);
-				case GREATER_THAN_EQUAL -> createWhereCodeBlock(indexName, Query.Condition.GE, allParameterNames);
-				case LESS_THAN, BEFORE -> createWhereCodeBlock(indexName, Query.Condition.LT, allParameterNames);
-				case LESS_THAN_EQUAL -> createWhereCodeBlock(indexName, Query.Condition.LE, allParameterNames);
+				case GREATER_THAN, AFTER ->
+					createWhereCodeBlock(operation, indexName, Query.Condition.GT, false, allParameterNames);
+				case GREATER_THAN_EQUAL ->
+					createWhereCodeBlock(operation, indexName, Query.Condition.GE, false, allParameterNames);
+				case LESS_THAN, BEFORE ->
+					createWhereCodeBlock(operation, indexName, Query.Condition.LT, false, allParameterNames);
+				case LESS_THAN_EQUAL ->
+					createWhereCodeBlock(operation, indexName, Query.Condition.LE, false, allParameterNames);
 				case NOT_IN, IN -> {
 					CodeBlock.Builder builder = CodeBlock.builder();
-					if (part.getType() == Part.Type.NOT_IN) {
+					boolean negated = part.getType() == Part.Type.NOT_IN;
+					if (negated) {
 						builder.add(".not()");
 					}
-					builder.add(createWhereCodeBlock(indexName, Query.Condition.SET, allParameterNames));
+					builder.add(createWhereCodeBlock(operation, indexName, Query.Condition.SET, negated,
+							allParameterNames));
 					yield builder.build();
 				}
 				case IS_NOT_NULL -> CodeBlock.of(".isNotNull", Query.class, indexName);
 				case IS_NULL -> CodeBlock.of(".isNull", Query.class, indexName);
 				case NEGATING_SIMPLE_PROPERTY, SIMPLE_PROPERTY -> {
+					CodeBlock.Builder builder = CodeBlock.builder();
+					boolean negated = part.getType() == Part.Type.NEGATING_SIMPLE_PROPERTY;
+					if (negated) {
+						builder.add(".not()");
+					}
 					boolean isSimpleComparison = switch (part.shouldIgnoreCase()) {
 						case NEVER -> true;
 						case WHEN_POSSIBLE -> part.getProperty().getType() != String.class;
 						case ALWAYS -> false;
 					};
 					if (isSimpleComparison) {
-						CodeBlock.Builder builder = CodeBlock.builder();
-						if (part.getType() == Part.Type.NEGATING_SIMPLE_PROPERTY) {
-							builder.add(".not()");
-						}
-						builder.add(createWhereCodeBlock(indexName, Query.Condition.EQ, allParameterNames));
+						builder.add(createWhereCodeBlock(operation, indexName, Query.Condition.EQ, negated,
+								allParameterNames));
 						yield builder.build();
 					}
 					PropertyPath path = part.getProperty().getLeafProperty();
@@ -222,16 +258,20 @@ final class ReindexerCodeBlocks {
 						Assert.isTrue(part.getProperty().getType() == String.class,
 								() -> "Property '" + indexName + "' must be of type String but was " + path.getType());
 					}
-					CodeBlock.Builder builder = CodeBlock.builder();
-					if (part.getType() == Part.Type.NEGATING_SIMPLE_PROPERTY) {
-						builder.add(".not()");
-					}
-					builder.add(".like($1S, $2L)", indexName, allParameterNames.next());
+					String parameterName = allParameterNames.next();
+					builder.add(".like($1S, $2L)", indexName, parameterName);
+					this.stringQueryBuilder.where(operation, indexName, Query.Condition.LIKE, negated,
+							":" + parameterName);
 					yield builder.build();
 				}
-				case BETWEEN -> CodeBlock.of(".where($1S, $2T.$3L, parameterMapper.mapParameterValues($1S, $4L, $5L))",
-						indexName, Query.Condition.class, Query.Condition.RANGE, allParameterNames.next(),
-						allParameterNames.next());
+				case BETWEEN -> {
+					String left = allParameterNames.next();
+					String right = allParameterNames.next();
+					this.stringQueryBuilder.where(operation, indexName, Query.Condition.RANGE, false, ":" + left,
+							":" + right);
+					yield CodeBlock.of(".where($1S, $2T.$3L, parameterMapper.mapParameterValues($1S, $4L, $5L))",
+							indexName, Query.Condition.class, Query.Condition.RANGE, left, right);
+				}
 				case TRUE ->
 					CodeBlock.of(".where($1S, $2T.$3L, true)", indexName, Query.Condition.class, Query.Condition.EQ);
 				case FALSE ->
@@ -239,22 +279,25 @@ final class ReindexerCodeBlocks {
 				case LIKE, NOT_LIKE, STARTING_WITH, ENDING_WITH, CONTAINING, NOT_CONTAINING -> {
 					if (part.getProperty().getLeafProperty().isCollection()) {
 						CodeBlock.Builder builder = CodeBlock.builder();
-						if (part.getType() == Part.Type.NOT_CONTAINING) {
+						boolean negated = part.getType() == Part.Type.NOT_CONTAINING;
+						if (negated) {
 							builder.add(".not()");
 						}
-						builder.add(createWhereCodeBlock(indexName, Query.Condition.SET, allParameterNames));
+						builder.add(createWhereCodeBlock(operation, indexName, Query.Condition.SET, negated,
+								allParameterNames));
 						yield builder.build();
 					}
 					Assert.isAssignable(String.class, part.getProperty().getLeafType(),
 							() -> "Value of '" + part.getType() + "' expression must be String");
-					yield createLikeCodeBlock(part, indexName, allParameterNames);
+					yield createLikeCodeBlock(operation, part, indexName, allParameterNames);
 				}
 				default -> throw new IllegalArgumentException("Unsupported part type: " + part.getType());
 			};
 
 		}
 
-		private CodeBlock createLikeCodeBlock(Part part, String indexName, Iterator<String> allParameterNames) {
+		private CodeBlock createLikeCodeBlock(StringQueryBuilder.Operation operation, Part part, String indexName,
+				Iterator<String> allParameterNames) {
 			String parameterName = allParameterNames.next();
 			String expression = switch (part.getType()) {
 				case STARTING_WITH -> parameterName + " + \"%\"";
@@ -263,19 +306,28 @@ final class ReindexerCodeBlocks {
 				default -> parameterName;
 			};
 			CodeBlock.Builder builder = CodeBlock.builder();
-			if (part.getType() == Part.Type.NOT_LIKE || part.getType() == Part.Type.NOT_CONTAINING) {
+			boolean negated = part.getType() == Part.Type.NOT_LIKE || part.getType() == Part.Type.NOT_CONTAINING;
+			if (negated) {
 				builder.add(".not()");
 			}
+			this.stringQueryBuilder.where(operation, indexName, Query.Condition.LIKE, negated, switch (part.getType()) {
+				case STARTING_WITH -> ":" + parameterName + "%";
+				case ENDING_WITH -> "%:" + parameterName;
+				case CONTAINING, NOT_CONTAINING -> "%:" + parameterName + "%";
+				default -> ":" + parameterName;
+			});
 			builder.add(".like($1S, $2L)", indexName, expression);
 			return builder.build();
 		}
 
-		private CodeBlock createWhereCodeBlock(String indexName, Query.Condition condition,
-				Iterator<String> allParameterNames) {
+		private CodeBlock createWhereCodeBlock(StringQueryBuilder.Operation operation, String indexName,
+				Query.Condition condition, boolean negated, Iterator<String> allParameterNames) {
 			String parameterName = allParameterNames.next();
 			MethodParameter methodParameter = this.context.getMethodParameter(parameterName);
-			if (methodParameter.getParameterType().isArray()
-					|| Collection.class.isAssignableFrom(methodParameter.getParameterType())) {
+			boolean isCollectionLike = methodParameter.getParameterType().isArray()
+					|| Collection.class.isAssignableFrom(methodParameter.getParameterType());
+			this.stringQueryBuilder.where(operation, indexName, condition, negated, ":" + parameterName);
+			if (isCollectionLike) {
 				return CodeBlock.of(".where($1S, $2T.$3L, ($4T) parameterMapper.mapParameterValue($1S, $5L))",
 						indexName, Query.Condition.class, condition, Collection.class, parameterName);
 			}
@@ -289,6 +341,7 @@ final class ReindexerCodeBlocks {
 			if (sort.isSorted()) {
 				for (Sort.Order order : sort) {
 					builder.add(".sort($1S, $2L)", order.getProperty(), order.isDescending());
+					this.stringQueryBuilder.sort(order.getProperty(), order.isDescending());
 				}
 			}
 			return builder.build();
@@ -298,11 +351,13 @@ final class ReindexerCodeBlocks {
 			CodeBlock.Builder builder = CodeBlock.builder();
 			if (this.tree.isExistsProjection()) {
 				builder.add(".limit(1)");
+				this.stringQueryBuilder.limit(1);
 			}
 			else {
 				Integer maxResults = this.tree.getMaxResults();
 				if (maxResults != null) {
 					builder.add(".limit($L)", maxResults);
+					this.stringQueryBuilder.limit(maxResults);
 				}
 			}
 			return builder.build();

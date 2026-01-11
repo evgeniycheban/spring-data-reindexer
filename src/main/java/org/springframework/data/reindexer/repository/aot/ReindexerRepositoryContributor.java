@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository.aot;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -103,15 +104,20 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 			// TODO: To be implemented in gh-93
 			return null;
 		}
-		QueryMetadata queryMetadata = Map::of;
+		Map<String, String> metadata = new HashMap<>();
+		QueryMetadata queryMetadata = () -> Map.copyOf(metadata);
 		return MethodContributor.forQueryMethod(queryMethod).withMetadata(queryMetadata).contribute(context -> {
 			CodeBlock.Builder body = CodeBlock.builder();
 			PartTree tree = new PartTree(queryMethod.getName(), queryMethod.getDomainClass());
-			body.add(ReindexerCodeBlocks.derivedQueryCodeBlockBuilder(tree, context, this.mappingContext).build());
+			AotQuery aotQuery = ReindexerCodeBlocks
+				.derivedQueryCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
+				.build();
+			body.add(aotQuery.codeBlockQuery());
 			body.add(";\n");
 			body.add(ReindexerCodeBlocks
 				.derivedExecutionCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
 				.build());
+			metadata.put("query", aotQuery.stringQuery());
 			return body.build();
 		});
 	}
