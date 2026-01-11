@@ -104,8 +104,8 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 			// TODO: To be implemented in gh-93
 			return null;
 		}
-		Map<String, String> metadata = new HashMap<>();
-		QueryMetadata queryMetadata = () -> Map.copyOf(metadata);
+		Map<String, Object> serialized = new HashMap<>();
+		QueryMetadata queryMetadata = () -> serialized;
 		return MethodContributor.forQueryMethod(queryMethod).withMetadata(queryMetadata).contribute(context -> {
 			CodeBlock.Builder body = CodeBlock.builder();
 			PartTree tree = new PartTree(queryMethod.getName(), queryMethod.getDomainClass());
@@ -117,7 +117,7 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 			body.add(ReindexerCodeBlocks
 				.derivedExecutionCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
 				.build());
-			metadata.put("query", aotQuery.stringQuery());
+			serialized.put("query", aotQuery.stringQuery());
 			return body.build();
 		});
 	}
