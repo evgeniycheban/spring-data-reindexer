@@ -2280,6 +2280,34 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findByDefaultTimeSql() {
+		TestItem expectedItem = TestItem.builder().id(1L).defaultTime(LocalTime.of(15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByDefaultTimeSql(LocalTime.of(15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getDefaultTime()).isEqualTo(expectedItem.getDefaultTime());
+	}
+
+	@Test
+	public void findByDefaultDateSql() {
+		TestItem expectedItem = TestItem.builder().id(1L).defaultDate(LocalDate.of(2020, 1, 1)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByDefaultDateSql(LocalDate.of(2020, 1, 1)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getDefaultDate()).isEqualTo(expectedItem.getDefaultDate());
+	}
+
+	@Test
+	public void findByDefaultDateTimeSql() {
+		TestItem expectedItem = TestItem.builder().id(1L).defaultDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByDefaultDateTimeSql(LocalDateTime.of(2020, 1, 1, 15, 30))
+			.orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getDefaultDateTime()).isEqualTo(expectedItem.getDefaultDateTime());
+	}
+
+	@Test
 	public void findAllByDefaultDateBetween() {
 		AtomicLong id = new AtomicLong(1);
 		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
@@ -2288,6 +2316,25 @@ class ReindexerRepositoryTests {
 			.map(this.repository::save)
 			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
 		List<TestItem> foundItems = this.repository.findAllByDefaultDateBetween(LocalDate.of(2020, 1, 1),
+				LocalDate.of(2020, 6, 1));
+		assertThat(foundItems).hasSize(expectedItems.size());
+		for (TestItem foundItem : foundItems) {
+			TestItem expectedItem = expectedItems.remove(foundItem.getId());
+			assertThat(expectedItem).isNotNull();
+			assertThat(expectedItem.getDefaultDate()).isEqualTo(foundItem.getDefaultDate());
+		}
+		assertThat(expectedItems).isEmpty();
+	}
+
+	@Test
+	public void findAllByDefaultDateBetweenSql() {
+		AtomicLong id = new AtomicLong(1);
+		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
+			.datesUntil(LocalDate.of(2020, 6, 1))
+			.map(date -> TestItem.builder().id(id.getAndIncrement()).defaultDate(date).build())
+			.map(this.repository::save)
+			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
+		List<TestItem> foundItems = this.repository.findAllByDefaultDateBetweenSql(LocalDate.of(2020, 1, 1),
 				LocalDate.of(2020, 6, 1));
 		assertThat(foundItems).hasSize(expectedItems.size());
 		for (TestItem foundItem : foundItems) {
@@ -2321,6 +2368,33 @@ class ReindexerRepositoryTests {
 		TestItem expectedItem = TestItem.builder().id(1L).customDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).build();
 		this.repository.save(expectedItem);
 		TestItem foundItem = this.repository.findByCustomDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomDateTime()).isEqualTo(expectedItem.getCustomDateTime());
+	}
+
+	@Test
+	public void findByCustomTimeSql() {
+		TestItem expectedItem = TestItem.builder().id(1L).customTime(LocalTime.of(15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByCustomTimeSql(LocalTime.of(15, 30)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomTime()).isEqualTo(expectedItem.getCustomTime());
+	}
+
+	@Test
+	public void findByCustomDateSql() {
+		TestItem expectedItem = TestItem.builder().id(1L).customDate(LocalDate.of(2020, 1, 1)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByCustomDateSql(LocalDate.of(2020, 1, 1)).orElse(null);
+		assertThat(foundItem).isNotNull();
+		assertThat(foundItem.getCustomDate()).isEqualTo(expectedItem.getCustomDate());
+	}
+
+	@Test
+	public void findByCustomDateTimeSql() {
+		TestItem expectedItem = TestItem.builder().id(1L).customDateTime(LocalDateTime.of(2020, 1, 1, 15, 30)).build();
+		this.repository.save(expectedItem);
+		TestItem foundItem = this.repository.findByCustomDateTimeSql(LocalDateTime.of(2020, 1, 1, 15, 30)).orElse(null);
 		assertThat(foundItem).isNotNull();
 		assertThat(foundItem.getCustomDateTime()).isEqualTo(expectedItem.getCustomDateTime());
 	}
@@ -2762,17 +2836,38 @@ class ReindexerRepositoryTests {
 
 		List<TestItem> findAllByDefaultDateBetween(LocalDate start, LocalDate end);
 
+		@Query("SELECT * FROM items WHERE defaultDate RANGE (:start, :end)")
+		List<TestItem> findAllByDefaultDateBetweenSql(LocalDate start, LocalDate end);
+
 		Optional<TestItem> findByDefaultTime(LocalTime time);
 
 		Optional<TestItem> findByDefaultDate(LocalDate date);
 
 		Optional<TestItem> findByDefaultDateTime(LocalDateTime dateTime);
 
+		@Query("SELECT * FROM items WHERE defaultTime = :time")
+		Optional<TestItem> findByDefaultTimeSql(LocalTime time);
+
+		@Query("SELECT * FROM items WHERE defaultDate = :date")
+		Optional<TestItem> findByDefaultDateSql(LocalDate date);
+
+		@Query("SELECT * FROM items WHERE defaultDateTime = :dateTime")
+		Optional<TestItem> findByDefaultDateTimeSql(LocalDateTime dateTime);
+
 		Optional<TestItem> findByCustomTime(LocalTime time);
 
 		Optional<TestItem> findByCustomDate(LocalDate date);
 
 		Optional<TestItem> findByCustomDateTime(LocalDateTime dateTime);
+
+		@Query("SELECT * FROM items WHERE customTime = :time")
+		Optional<TestItem> findByCustomTimeSql(LocalTime time);
+
+		@Query("SELECT * FROM items WHERE customDate = :date")
+		Optional<TestItem> findByCustomDateSql(LocalDate date);
+
+		@Query("SELECT * FROM items WHERE customDateTime = :dateTime")
+		Optional<TestItem> findByCustomDateTimeSql(LocalDateTime dateTime);
 
 		Slice<TestItem> findAllBy(Pageable pageable);
 

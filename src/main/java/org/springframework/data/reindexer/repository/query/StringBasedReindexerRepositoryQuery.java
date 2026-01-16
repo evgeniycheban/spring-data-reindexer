@@ -25,8 +25,8 @@ import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import ru.rt.restream.reindexer.Namespace;
-import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Pageable;
@@ -59,11 +59,15 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private static final Pattern LIMIT_PATTERN = Pattern.compile("(?i)\\bLIMIT\\s+(\\d+)");
 
+	private static final String[] OPERATORS = new String[] { "range", "in", "like", "is", "<", ">", "=" };
+
 	private final ReindexerQueryMethod method;
 
 	private final Namespace<?> namespace;
 
 	private final QueryExpressionEvaluator queryEvaluator;
+
+	private final QueryParameterMapper queryParameterMapper;
 
 	private final Map<String, Integer> namedParameters;
 
@@ -74,20 +78,20 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	/**
 	 * Creates an instance.
 	 * @param method the {@link ReindexerQueryMethod} to use
-	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param accessor the {@link QueryMethodValueEvaluationContextAccessor} to use
-	 * @param reindexer the {@link Reindexer} to use
+	 * @param namespace the {@link Namespace} to use
+	 * @param queryParameterMapper the {@link QueryParameterMapper} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
 	public StringBasedReindexerRepositoryQuery(ReindexerQueryMethod method,
-			ReindexerEntityInformation<?, ?> entityInformation, QueryMethodValueEvaluationContextAccessor accessor,
-			Reindexer reindexer, ReindexerConverter reindexerConverter) {
+			QueryMethodValueEvaluationContextAccessor accessor, Namespace<?> namespace,
+			QueryParameterMapper queryParameterMapper, ReindexerConverter reindexerConverter) {
 		validate(method);
 		this.method = method;
 		this.reindexerConverter = reindexerConverter;
-		this.namespace = reindexer.openNamespace(entityInformation.getNamespaceName(),
-				entityInformation.getNamespaceOptions(), entityInformation.getJavaType());
+		this.namespace = namespace;
 		this.queryEvaluator = createQueryExpressionEvaluator(method, accessor);
+		this.queryParameterMapper = queryParameterMapper;
 		this.namedParameters = new HashMap<>();
 		for (Parameter parameter : method.getParameters()) {
 			if (parameter.isNamedParameter()) {
@@ -100,7 +104,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 			}
 			if (method.isPageQuery()) {
 				return (parameters, type) -> {
-					ProjectingResultIterator iterator = toIterator(parameters, type);
+					ProjectingResultIterator<?, ?> iterator = toIterator(parameters, type);
 					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
 							parameters.getPageable(), iterator::getTotalCount);
 				};
@@ -160,7 +164,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private String prepareQuery(ReindexerParameterAccessor parameters) {
 		Map<String, Object> parameterMap = this.queryEvaluator.evaluate(parameters.getValues());
-		StringBuilder result = new StringBuilder(this.queryEvaluator.getQueryString().toLowerCase());
+		StringBuilder result = new StringBuilder(this.queryEvaluator.getQueryString());
 		char[] queryParts = this.queryEvaluator.getQueryString().toCharArray();
 		int offset = 0;
 		for (int i = 1; i < queryParts.length; i++) {
@@ -169,7 +173,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				case ':', '?' -> {
 					StringBuilder sb = new StringBuilder();
 					for (int j = i; j < queryParts.length; j++) {
-						if (Character.isWhitespace(queryParts[j])) {
+						if (!Character.isJavaIdentifierPart(queryParts[j])) {
 							break;
 						}
 						sb.append(queryParts[j]);
@@ -194,14 +198,27 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 							value = parameters.getBindableValue(index - 1);
 						}
 					}
-					String valueString = getParameterValuePart(value);
+					int operatorIndex = -1;
+					for (String operator : OPERATORS) {
+						// Find the closest operator for this parameter reference.
+						int found = StringUtils.lastIndexOfIgnoreCase(result, operator, i + offset - 1);
+						if (found > operatorIndex) {
+							operatorIndex = found;
+						}
+					}
+					Assert.isTrue(operatorIndex != -1,
+							() -> "Could not find conditional operator for parameter reference: " + parameterReference);
+					// Find the index name before the conditional operator.
+					String indexName = findIndexName(result, operatorIndex - 1);
+					String valueString = getParameterValuePart(
+							this.queryParameterMapper.mapParameterValue(indexName, value));
 					result.replace(offset + i - 1, offset + i + parameterReference.length(), valueString);
 					offset += valueString.length() - parameterReference.length() - 1;
 					i += parameterReference.length();
 				}
 			}
 		}
-		if (result.indexOf("order by") == -1) {
+		if (StringUtils.indexOfIgnoreCase(result, "order by") == -1) {
 			Sort sort = parameters.getSort();
 			if (sort.isSorted()) {
 				result.append(" order by ");
@@ -225,7 +242,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				maxResults = method.isSliceQuery() ? pageable.getPageSize() + 1 : pageable.getPageSize();
 				result.append(" limit ").append(maxResults);
 			}
-			if (result.indexOf("offset") == -1) {
+			if (StringUtils.indexOfIgnoreCase("offset", result) == -1) {
 				int firstResult = PageableUtils.getOffsetAsInteger(pageable);
 				if (firstResult > 0) {
 					/*
@@ -243,6 +260,23 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 			}
 		}
 		return result.toString();
+	}
+
+	private String findIndexName(CharSequence charSequence, int start) {
+		StringBuilder result = new StringBuilder();
+		for (int j = start; j >= 0; j--) {
+			char c = charSequence.charAt(j);
+			if (Character.isJavaIdentifierPart(c)) {
+				result.insert(0, c);
+			}
+			else {
+				if (result.isEmpty()) {
+					continue;
+				}
+				return result.toString();
+			}
+		}
+		throw new IllegalArgumentException("Could not find index name starting at: " + start);
 	}
 
 	private String getParameterValuePart(Object value) {

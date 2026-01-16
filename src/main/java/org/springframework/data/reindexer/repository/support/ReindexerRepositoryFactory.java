@@ -17,9 +17,14 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.ReindexerIndex;
+import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
@@ -27,6 +32,7 @@ import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
+import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 import org.springframework.data.reindexer.repository.query.ReindexerQueryMethod;
 import org.springframework.data.reindexer.repository.query.ReindexerRepositoryQuery;
@@ -113,15 +119,24 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 		public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata, ProjectionFactory factory,
 				NamedQueries namedQueries) {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
+			ReindexerEntityInformation<?, ?> entityInformation = getEntityInformation(metadata.getDomainType());
+			ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(
+					entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
+					entityInformation.getJavaType());
+			Map<String, ReindexerIndex> mappedIndexes = namespace.getIndexes()
+				.stream()
+				.collect(Collectors.toMap(ReindexerIndex::getName, Function.identity()));
+			QueryParameterMapper queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(),
+					mappedIndexes, ReindexerRepositoryFactory.this.mappingContext,
+					ReindexerRepositoryFactory.this.reindexerConverter);
 			if (queryMethod.hasQueryAnnotation()) {
 				return new StringBasedReindexerRepositoryQuery(queryMethod,
-						getEntityInformation(metadata.getDomainType()),
-						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx),
-						ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.reindexerConverter);
+						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx), namespace,
+						queryParameterMapper, ReindexerRepositoryFactory.this.reindexerConverter);
 			}
-			return new ReindexerRepositoryQuery(queryMethod, getEntityInformation(metadata.getDomainType()),
+			return new ReindexerRepositoryQuery(queryMethod, entityInformation,
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer,
-					ReindexerRepositoryFactory.this.reindexerConverter);
+					queryParameterMapper, ReindexerRepositoryFactory.this.reindexerConverter);
 		}
 
 	}
