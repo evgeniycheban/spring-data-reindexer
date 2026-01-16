@@ -17,19 +17,16 @@ package org.springframework.data.reindexer.repository.query;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
-import ru.rt.restream.reindexer.ReindexerIndex;
 
 import org.springframework.data.core.PropertyPath;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
-import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
@@ -72,18 +69,17 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
-			Map<String, ReindexerIndex> indexes, ReindexerConverter reindexerConverter, ParameterAccessor parameters,
-			ReturnedType returnedType, ReindexerQueryMethod method) {
+			QueryParameterMapper queryParameterMapper, ParameterAccessor parameters, ReturnedType returnedType,
+			ReindexerQueryMethod method) {
 		super(tree, parameters);
 		this.tree = tree;
 		this.reindexer = reindexer;
 		this.namespace = namespace;
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
+		this.queryParameterMapper = queryParameterMapper;
 		this.parameters = parameters;
 		this.returnedType = returnedType;
-		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), indexes, mappingContext,
-				reindexerConverter);
 		this.method = method;
 	}
 
