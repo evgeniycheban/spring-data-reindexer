@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.StringJoiner;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,7 +40,6 @@ import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
-import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
 import org.springframework.data.support.PageableExecutionUtils;
@@ -73,7 +72,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final ReindexerConverter reindexerConverter;
 
-	private final Lazy<BiFunction<ReindexerParameterAccessor, ReturnedType, Object>> queryExecution;
+	private final Lazy<Function<ReindexerParameterAccessor, Object>> queryExecution;
 
 	/**
 	 * Creates an instance.
@@ -100,32 +99,32 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		}
 		this.queryExecution = Lazy.of(() -> {
 			if (method.isCollectionQuery()) {
-				return (parameters, type) -> ReindexerQueryExecutions.toList(toIterator(parameters, type));
+				return (parameters) -> ReindexerQueryExecutions.toList(toIterator(parameters));
 			}
 			if (method.isPageQuery()) {
-				return (parameters, type) -> {
-					ProjectingResultIterator<?, ?> iterator = toIterator(parameters, type);
+				return (parameters) -> {
+					ProjectingResultIterator<?, ?> iterator = toIterator(parameters);
 					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
 							parameters.getPageable(), iterator::getTotalCount);
 				};
 			}
 			if (method.isSliceQuery()) {
-				return (parameters, type) -> ReindexerQueryExecutions.toSlice(toIterator(parameters, type),
+				return (parameters) -> ReindexerQueryExecutions.toSlice(toIterator(parameters),
 						parameters.getPageable());
 			}
 			if (method.isStreamQuery()) {
-				return (parameters, type) -> ReindexerQueryExecutions.toStream(toIterator(parameters, type));
+				return (parameters) -> ReindexerQueryExecutions.toStream(toIterator(parameters));
 			}
 			if (method.isIteratorQuery()) {
 				return this::toIterator;
 			}
 			if (this.method.isModifyingQuery()) {
-				return (parameters, type) -> {
+				return (parameters) -> {
 					this.namespace.updateSql(prepareQuery(parameters));
 					return null;
 				};
 			}
-			return (parameters, type) -> ReindexerQueryExecutions.toEntity(toIterator(parameters, type));
+			return (parameters) -> ReindexerQueryExecutions.toEntity(toIterator(parameters));
 		});
 	}
 
@@ -151,14 +150,14 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(),
 				parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
-		Object result = this.queryExecution.get().apply(parameterAccessor, resultProcessor.getReturnedType());
+		Object result = this.queryExecution.get().apply(parameterAccessor);
 		return resultProcessor.processResult(result);
 	}
 
-	private ProjectingResultIterator<?, ?> toIterator(ReindexerParameterAccessor parameters,
-			ReturnedType returnedType) {
+	private ProjectingResultIterator<?, ?> toIterator(ReindexerParameterAccessor parameters) {
 		String preparedQuery = prepareQuery(parameters);
-		return new ProjectingResultIterator<>(this.namespace.execSql(preparedQuery), returnedType,
+		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameters);
+		return new ProjectingResultIterator<>(this.namespace.execSql(preparedQuery), resultProcessor.getReturnedType(),
 				this.reindexerConverter);
 	}
 
