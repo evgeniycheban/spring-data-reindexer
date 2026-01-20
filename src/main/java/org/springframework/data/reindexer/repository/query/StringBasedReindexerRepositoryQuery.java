@@ -268,10 +268,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 			if (Character.isJavaIdentifierPart(c)) {
 				result.insert(0, c);
 			}
-			else {
-				if (result.isEmpty()) {
-					continue;
-				}
+			else if (!result.isEmpty()) {
 				return result.toString();
 			}
 		}
