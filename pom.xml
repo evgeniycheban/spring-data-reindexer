@@ -54,7 +54,7 @@
 		<reindexer.version>1.32</reindexer.version>
 		<spring-data-commons.version>4.0.2</spring-data-commons.version>
 		<httpclient.version>5.6</httpclient.version>
-		<lombok.version>1.18.38</lombok.version>
+		<lombok.version>1.18.42</lombok.version>
 	</properties>
 
 	<profiles>
