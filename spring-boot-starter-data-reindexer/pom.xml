@@ -38,7 +38,7 @@
 		<java.version>17</java.version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
-		<spring-boot.version>4.0.0</spring-boot.version>
+		<spring-boot.version>4.0.2</spring-boot.version>
 		<spring-data-reindexer.version>1.6-SNAPSHOT</spring-data-reindexer.version>
 		<httpclient.version>5.6</httpclient.version>
 		<testcontainers.version>1.21.2</testcontainers.version>
