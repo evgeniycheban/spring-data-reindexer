@@ -52,7 +52,7 @@
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 		<reindexer.version>1.32</reindexer.version>
-		<spring-data-commons.version>4.0.0</spring-data-commons.version>
+		<spring-data-commons.version>4.0.2</spring-data-commons.version>
 		<httpclient.version>5.5</httpclient.version>
 		<lombok.version>1.18.38</lombok.version>
 	</properties>
