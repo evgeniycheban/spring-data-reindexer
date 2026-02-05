@@ -1,7 +1,9 @@
 version: 2
 updates:
   - package-ecosystem: "maven"
-    directory: "/"
+    directories:
+      - "/"
+      - "/spring-boot-starter-data-reindexer"
     schedule:
       interval: "weekly"
     labels:
