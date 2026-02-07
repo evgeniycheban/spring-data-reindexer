@@ -25,7 +25,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import ru.rt.restream.reindexer.Namespace;
 
 import org.springframework.dao.InvalidDataAccessApiUsageException;
@@ -200,7 +200,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 					int operatorIndex = -1;
 					for (String operator : OPERATORS) {
 						// Find the closest operator for this parameter reference.
-						int found = StringUtils.lastIndexOfIgnoreCase(result, operator, i + offset - 1);
+						int found = Strings.CI.lastIndexOf(result, operator, i + offset - 1);
 						if (found > operatorIndex) {
 							operatorIndex = found;
 						}
@@ -217,7 +217,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				}
 			}
 		}
-		if (StringUtils.indexOfIgnoreCase(result, "order by") == -1) {
+		if (Strings.CI.indexOf(result, "order by") == -1) {
 			Sort sort = parameters.getSort();
 			if (sort.isSorted()) {
 				result.append(" order by ");
@@ -241,7 +241,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				maxResults = method.isSliceQuery() ? pageable.getPageSize() + 1 : pageable.getPageSize();
 				result.append(" limit ").append(maxResults);
 			}
-			if (StringUtils.indexOfIgnoreCase("offset", result) == -1) {
+			if (Strings.CI.indexOf("offset", result) == -1) {
 				int firstResult = PageableUtils.getOffsetAsInteger(pageable);
 				if (firstResult > 0) {
 					/*
