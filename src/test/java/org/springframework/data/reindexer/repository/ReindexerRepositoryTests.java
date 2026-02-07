@@ -1384,6 +1384,17 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllItemRecordByIdNotIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItemRecord> foundItems = this.repository
+			.findAllItemRecordByIdNotIn(expectedItems.stream().map(TestItem::getId).toList());
+		assertThat(foundItems).isEmpty();
+	}
+
+	@Test
 	public void findAllCountByIdInPageable() {
 		Set<TestItem> expectedItems = new HashSet<>();
 		for (long i = 0; i < 100; i++) {
@@ -2802,6 +2813,9 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT id, name FROM items WHERE id IN :ids")
 		List<TestItemRecord> findAllItemRecordByIdIn(List<Long> ids);
+
+		@Query("SELECT id, name FROM items WHERE NOT id IN :ids")
+		List<TestItemRecord> findAllItemRecordByIdNotIn(List<Long> ids);
 
 		@Query("SELECT *, COUNT(*) FROM items WHERE id IN :ids")
 		Page<TestItem> findAllCountByIdIn(List<Long> ids, Pageable pageable);

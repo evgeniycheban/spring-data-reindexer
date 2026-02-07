@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -59,6 +60,8 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	private static final Pattern LIMIT_PATTERN = Pattern.compile("(?i)\\bLIMIT\\s+(\\d+)");
 
 	private static final String[] OPERATORS = new String[] { "range", "in", "like", "is", "<", ">", "=" };
+
+	private final Map<Integer, String> parsedIndexNames = new ConcurrentHashMap<>();
 
 	private final ReindexerQueryMethod method;
 
@@ -197,18 +200,8 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 							value = parameters.getBindableValue(index - 1);
 						}
 					}
-					int operatorIndex = -1;
-					for (String operator : OPERATORS) {
-						// Find the closest operator for this parameter reference.
-						int found = Strings.CI.lastIndexOf(result, operator, i + offset - 1);
-						if (found > operatorIndex) {
-							operatorIndex = found;
-						}
-					}
-					Assert.isTrue(operatorIndex != -1,
-							() -> "Could not find conditional operator for parameter reference: " + parameterReference);
-					// Find the index name before the conditional operator.
-					String indexName = findIndexName(result, operatorIndex - 1);
+					String indexName = this.parsedIndexNames.computeIfAbsent(i + offset - 1,
+							start -> findIndexName(result, start));
 					String valueString = getParameterValuePart(
 							this.queryParameterMapper.mapParameterValue(indexName, value));
 					result.replace(offset + i - 1, offset + i + parameterReference.length(), valueString);
@@ -262,8 +255,18 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 	}
 
 	private String findIndexName(CharSequence charSequence, int start) {
+		int operatorIndex = -1;
+		for (String operator : OPERATORS) {
+			// Find the closest operator for this parameter reference.
+			int found = Strings.CI.lastIndexOf(charSequence, operator, start);
+			if (found > operatorIndex) {
+				operatorIndex = found;
+			}
+		}
+		Assert.isTrue(operatorIndex != -1, () -> "Could not find conditional operator starting at: " + start);
+		// Find the index name before the conditional operator.
 		StringBuilder result = new StringBuilder();
-		for (int j = start; j >= 0; j--) {
+		for (int j = operatorIndex - 1; j >= 0; j--) {
 			char c = charSequence.charAt(j);
 			if (Character.isJavaIdentifierPart(c)) {
 				result.insert(0, c);
@@ -272,7 +275,7 @@ public class StringBasedReindexerRepositoryQuery implements RepositoryQuery {
 				return result.toString();
 			}
 		}
-		throw new IllegalArgumentException("Could not find index name starting at: " + start);
+		throw new IllegalArgumentException("Could not find index name starting at: " + operatorIndex);
 	}
 
 	private String getParameterValuePart(Object value) {
