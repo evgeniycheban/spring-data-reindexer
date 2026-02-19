@@ -111,6 +111,9 @@ final class ReindexerCodeBlocks {
 				builder.add(".select($S)", idPropertyName);
 				this.stringQueryBuilder.select(idPropertyName);
 			}
+			else {
+				builder.add(".selectAllFields()");
+			}
 			builder.add(createJoinCodeBlock(entity));
 			builder.add(createWhereCodeBlock(allParameterNames));
 			builder.add(createSortCodeBlock());
@@ -290,6 +293,21 @@ final class ReindexerCodeBlocks {
 					Assert.isAssignable(String.class, part.getProperty().getLeafType(),
 							() -> "Value of '" + part.getType() + "' expression must be String");
 					yield createLikeCodeBlock(operation, part, indexName, allParameterNames);
+				}
+				case NEAR, WITHIN -> {
+					String vectorParameterName = this.context.getVectorParameterName();
+					Assert.notNull(vectorParameterName,
+							() -> "Near/Within query needs to have a Vector parameter; Offending method: %s"
+								.formatted(this.queryMethod));
+					String knnSearchParamParameterName = this.context
+						.getParameterName(this.queryMethod.getParameters().getKnnSearchParamIndex());
+					Assert.notNull(knnSearchParamParameterName,
+							() -> "Near/Within query needs to have a KnnSearchParam parameter; Offending method: %s"
+								.formatted(this.queryMethod));
+					this.stringQueryBuilder.whereKnn(operation, indexName, "[:" + vectorParameterName + "]",
+							":" + knnSearchParamParameterName);
+					yield CodeBlock.of(".whereKnn($1S, $2L.toFloatArray(), $3L)", indexName, vectorParameterName,
+							knnSearchParamParameterName);
 				}
 				default -> throw new IllegalArgumentException("Unsupported part type: " + part.getType());
 			};

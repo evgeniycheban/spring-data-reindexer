@@ -18,6 +18,8 @@ package org.springframework.data.reindexer.repository.query;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 
+import org.jspecify.annotations.NonNull;
+
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.repository.core.RepositoryMetadata;
@@ -43,7 +45,7 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	 * @param factory must not be {@literal null}.
 	 */
 	public ReindexerQueryMethod(Method method, RepositoryMetadata metadata, ProjectionFactory factory) {
-		super(method, metadata, factory);
+		super(method, metadata, factory, ReindexerParameters::new);
 		this.isIteratorQuery = Lazy.of(() -> Iterator.class.isAssignableFrom(method.getReturnType()));
 		this.queryAnnotationExtractor = Lazy.of(() -> method.getAnnotation(Query.class));
 	}
@@ -89,6 +91,16 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	@Override
 	public Class<?> getDomainClass() {
 		return super.getDomainClass();
+	}
+
+	/**
+	 * Returns a {@link ReindexerParameters} to access Reindexer-specific parameters.
+	 * @return the {@link ReindexerParameters} to use
+	 * @since 1.6
+	 */
+	@Override
+	public @NonNull ReindexerParameters getParameters() {
+		return (ReindexerParameters) super.getParameters();
 	}
 
 }

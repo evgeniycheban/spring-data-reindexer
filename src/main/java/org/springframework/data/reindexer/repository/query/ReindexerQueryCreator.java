@@ -22,9 +22,11 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.data.core.PropertyPath;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Vector;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
@@ -57,7 +59,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final ReindexerMappingContext mappingContext;
 
-	private final ParameterAccessor parameters;
+	private final ReindexerParameterAccessor parameters;
 
 	private final ReturnedType returnedType;
 
@@ -69,7 +71,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
 			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
-			QueryParameterMapper queryParameterMapper, ParameterAccessor parameters, ReturnedType returnedType,
+			QueryParameterMapper queryParameterMapper, ReindexerParameterAccessor parameters, ReturnedType returnedType,
 			ReindexerQueryMethod method) {
 		super(tree, parameters);
 		this.tree = tree;
@@ -164,6 +166,13 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 				yield part.getType() == Type.NOT_LIKE || part.getType() == Type.NOT_CONTAINING
 						? base.not().like(indexName, expression) : base.like(indexName, expression);
 			}
+			case NEAR, WITHIN -> {
+				Vector vector = this.parameters.getVector();
+				Assert.notNull(vector, "Near/Within query needs to have a Vector parameter");
+				KnnSearchParam knnSearchParam = this.parameters.getKnnSearchParam();
+				Assert.notNull(knnSearchParam, () -> "Near/Within query needs to have a KnnSearchParam parameter");
+				yield base.whereKnn(indexName, vector.toFloatArray(), knnSearchParam);
+			}
 			default -> throw new IllegalArgumentException("Unsupported keyword!");
 		};
 	}
@@ -202,6 +211,9 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		else if (this.tree.isExistsProjection()) {
 			criteria.select(this.entityInformation.getIdFieldName());
+		}
+		else {
+			criteria.selectAllFields();
 		}
 		Pageable pageable = this.parameters.getPageable();
 		if (pageable.isPaged()) {

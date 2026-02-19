@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.google.gson.FieldNamingPolicy;
@@ -63,6 +64,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Vector;
 import org.springframework.data.reindexer.LazyLoadingException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -78,6 +80,10 @@ import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.annotations.Enumerated;
 import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.annotations.Transient;
+import ru.rt.restream.reindexer.annotations.Hnsw;
+import ru.rt.restream.reindexer.annotations.Metric;
+import ru.rt.restream.reindexer.vector.params.KnnParams;
+import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -176,6 +182,9 @@ class ReindexerRepositoryTests {
 
 	@Autowired
 	TestItemContainerRepository itemContainerRepository;
+
+	@Autowired
+	TestItemFloatVectorRepository itemFloatVectorRepository;
 
 	@Autowired
 	TestItemTransactionalService service;
@@ -2582,6 +2591,118 @@ class ReindexerRepositoryTests {
 		assertTrue(foundItems.hasNext());
 	}
 
+	@Test
+	public void findAllByEmbeddingHnswNear() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+			.map(this.itemFloatVectorRepository::save)
+			.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+			.mapToObj(entities::get)
+			.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingHnswNear(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllByEmbeddingHnswWithin() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingHnswWithin(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllRecordByEmbeddingHnswNear() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+			.map(this.itemFloatVectorRepository::save)
+			.toList();
+		List<TestItemFloatVectorRecord> expected = IntStream.rangeClosed(1, 4)
+			.mapToObj(entities::get)
+			.map(it -> new TestItemFloatVectorRecord(it.getId(), it.getEmbeddingHnsw()))
+			.toList();
+		// @formatter:on
+		List<TestItemFloatVectorRecord> actual = this.itemFloatVectorRepository.findAllRecordByEmbeddingHnswNear(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllByEmbeddingHnswNearAndIdIn() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 3)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingHnswNearAndIdIn(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5), List.of(1L, 2L, 3L));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	private static Stream<TestItemFloatVector> getTestItemFloatVectors() {
+		// @formatter:off
+		return Stream.of(
+			TestItemFloatVector.builder()
+				.id(0L)
+				.embeddingHnsw(Vector.of(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(1L)
+				.embeddingHnsw(Vector.of(0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.1f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(2L)
+				.embeddingHnsw(Vector.of(0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(3L)
+				.embeddingHnsw(Vector.of(0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(4L)
+				.embeddingHnsw(Vector.of(0.4f, 0.4f, 0.4f, 0.4f, 0.4f, 0.4f, 0.4f, 0.4f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(5L)
+				.embeddingHnsw(Vector.of(0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(6L)
+				.embeddingHnsw(Vector.of(0.6f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(7L)
+				.embeddingHnsw(Vector.of(0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f, 0.7f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(8L)
+				.embeddingHnsw(Vector.of(0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f))
+				.build(),
+			TestItemFloatVector.builder()
+				.id(9L)
+				.embeddingHnsw(Vector.of(0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f, 0.9f))
+				.build()
+		);
+		// @formatter:on
+	}
+
 	@Configuration(proxyBeanMethods = false)
 	@EnableReindexerRepositories(basePackageClasses = TestItemReindexerRepository.class,
 			considerNestedRepositories = true)
@@ -2904,6 +3025,20 @@ class ReindexerRepositoryTests {
 
 	@Repository
 	interface TestItemContainerRepository extends ReindexerRepository<TestItemContainer, Long> {
+
+	}
+
+	@Repository
+	interface TestItemFloatVectorRepository extends ReindexerRepository<TestItemFloatVector, Long> {
+
+		List<TestItemFloatVector> findAllByEmbeddingHnswNear(Vector vector, KnnSearchParam knnSearchParam);
+
+		List<TestItemFloatVector> findAllByEmbeddingHnswWithin(Vector vector, KnnSearchParam knnSearchParam);
+
+		List<TestItemFloatVectorRecord> findAllRecordByEmbeddingHnswNear(Vector vector, KnnSearchParam knnSearchParam);
+
+		List<TestItemFloatVector> findAllByEmbeddingHnswNearAndIdIn(Vector vector, KnnSearchParam knnSearchParam,
+				List<Long> ids);
 
 	}
 
@@ -3235,6 +3370,26 @@ class ReindexerRepositoryTests {
 		@Transient
 		@NamespaceReference(indexName = "joinedItemNames", referencedIndexName = "name", joinType = JoinType.LEFT)
 		private List<TestItem> joinedItemsByName;
+
+	}
+
+	@Data
+	@NoArgsConstructor
+	@AllArgsConstructor
+	@Builder
+	@Namespace(name = "test_item_float_vectors")
+	public static class TestItemFloatVector {
+
+		@Reindex(name = "id", isPrimaryKey = true)
+		private Long id;
+
+		@Reindex(name = "embeddingHnsw")
+		@Hnsw(metric = Metric.L2, dimension = 8)
+		private Vector embeddingHnsw;
+
+	}
+
+	public record TestItemFloatVectorRecord(Long id, Vector embeddingHnsw) {
 
 	}
 
