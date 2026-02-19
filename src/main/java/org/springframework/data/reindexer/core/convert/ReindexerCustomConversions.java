@@ -43,6 +43,7 @@ import org.springframework.data.convert.PropertyValueConverter;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.convert.WritingConverter;
+import org.springframework.data.domain.Vector;
 import org.springframework.data.mapping.PropertyHandler;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
@@ -111,6 +112,21 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 						.getValueConverter(property);
 					registry.registerFieldConverter(entity.getType(), property.getName(),
 							new PropertyValueConverterToFieldConverterAdapter(property, valueConverter));
+				}
+				else if (Vector.class.isAssignableFrom(property.getType())) {
+					// Vectors are always serialized as float arrays.
+					registry.registerFieldConverter(entity.getType(), property.getName(),
+							new FieldConverter<Vector, float[]>() {
+								@Override
+								public Vector convertToFieldType(float[] dbData) {
+									return Vector.of(dbData);
+								}
+
+								@Override
+								public float[] convertToDatabaseType(Vector field) {
+									return field != null ? field.toFloatArray() : null;
+								}
+							});
 				}
 				else {
 					registry.registerFieldConverter(entity.getType(), property.getName(),

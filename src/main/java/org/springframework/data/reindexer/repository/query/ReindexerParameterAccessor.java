@@ -15,7 +15,9 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
-import org.springframework.data.repository.query.Parameters;
+import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.data.repository.query.ParametersParameterAccessor;
 
 /**
@@ -25,13 +27,23 @@ import org.springframework.data.repository.query.ParametersParameterAccessor;
  */
 final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 
+	private final ReindexerParameters parameters;
+
 	/**
 	 * Creates a new {@link ParametersParameterAccessor}.
 	 * @param parameters must not be {@literal null}.
 	 * @param values must not be {@literal null}.
 	 */
-	ReindexerParameterAccessor(Parameters<?, ?> parameters, Object[] values) {
+	ReindexerParameterAccessor(ReindexerParameters parameters, Object[] values) {
 		super(parameters, values);
+		this.parameters = parameters;
+	}
+
+	@Nullable KnnSearchParam getKnnSearchParam() {
+		if (this.parameters.hasKnnSearchParam()) {
+			return getValue(this.parameters.getKnnSearchParamIndex());
+		}
+		return null;
 	}
 
 	/**

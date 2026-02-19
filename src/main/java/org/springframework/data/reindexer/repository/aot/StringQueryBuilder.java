@@ -121,6 +121,21 @@ final class StringQueryBuilder {
 		}
 	}
 
+	void whereKnn(Operation operation, String field, String... parameterNames) {
+		QueryEntry queryEntry = new QueryEntry();
+		queryEntry.knn = true;
+		queryEntry.operation = operation;
+		queryEntry.field = field;
+		queryEntry.parameterNames.addAll(Arrays.asList(parameterNames));
+		if (!this.whereStack.isEmpty()) {
+			QueryEntry parent = this.whereStack.getLast();
+			parent.children.add(queryEntry);
+		}
+		else {
+			this.whereEntries.add(queryEntry);
+		}
+	}
+
 	void aggregate(AggregateType type, String... fields) {
 		AggregateEntry aggregateEntry = new AggregateEntry();
 		aggregateEntry.type = type;
@@ -254,6 +269,14 @@ final class StringQueryBuilder {
 				}
 				stringBuilder.append("(").append(getWherePart(whereEntry.children)).append(")");
 			}
+			else if (whereEntry.knn) {
+				stringBuilder.append("KNN(").append(whereEntry.field);
+				if (!whereEntry.parameterNames.isEmpty()) {
+					stringBuilder.append(", ");
+					stringBuilder.append(String.join(", ", whereEntry.parameterNames));
+				}
+				stringBuilder.append(")");
+			}
 			else {
 				if (whereEntry != whereEntries.get(0)) {
 					stringBuilder.append(" ").append(whereEntry.operation).append(" ");
@@ -359,6 +382,8 @@ final class StringQueryBuilder {
 		private String field;
 
 		private Query.Condition condition;
+
+		private boolean knn;
 
 		private boolean negated;
 
