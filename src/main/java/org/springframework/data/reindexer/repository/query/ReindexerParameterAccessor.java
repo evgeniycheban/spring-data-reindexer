@@ -54,4 +54,12 @@ final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 		return super.getValues();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected @Nullable <T> T getValue(int index) {
+		return super.getValue(index);
+	}
+
 }

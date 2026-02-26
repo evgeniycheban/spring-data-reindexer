@@ -15,11 +15,14 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.util.List;
 import java.util.function.Function;
 
 import org.jspecify.annotations.NonNull;
 import ru.rt.restream.reindexer.Query;
 
+import org.springframework.data.domain.SearchResult;
+import org.springframework.data.domain.SearchResults;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
@@ -65,6 +68,9 @@ abstract class AbstractReindexerQuery implements RepositoryQuery {
 	abstract ReindexerQuery createQuery(ReindexerParameterAccessor parameterAccessor, ReturnedType returnedType);
 
 	Function<ReindexerQuery, Object> getQueryExecution(ReindexerQueryMethod method) {
+		if (method.isSearchQuery()) {
+			return getSearchQueryExecution(method);
+		}
 		if (method.isCollectionQuery()) {
 			return (query) -> ReindexerQueryExecutions.toList(toResultAccessor(query));
 		}
@@ -93,6 +99,21 @@ abstract class AbstractReindexerQuery implements RepositoryQuery {
 	}
 
 	record ReindexerQuery(Query<?> criteria, ReturnedType returnedType, ReindexerParameterAccessor parameters) {
+	}
+
+	@SuppressWarnings("unchecked")
+	private Function<ReindexerQuery, Object> getSearchQueryExecution(ReindexerQueryMethod method) {
+		if (method.isStreamQuery()) {
+			return (query) -> {
+				ReindexerResultAccessor<?> it = toResultAccessor(query);
+				return ReindexerQueryExecutions.toStream(it).map((e) -> new SearchResult<>(e, it.getCurrentRank()));
+			};
+		}
+		if (method.isCollectionQuery()) {
+			return (query) -> ReindexerQueryExecutions.toSearchResults(toResultAccessor(query), List.class);
+		}
+		return (query) -> new SearchResults<>((List<? extends SearchResult<Object>>) ReindexerQueryExecutions
+			.toSearchResults(toResultAccessor(query), List.class));
 	}
 
 }

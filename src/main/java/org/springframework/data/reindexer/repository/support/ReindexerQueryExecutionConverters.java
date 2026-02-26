@@ -15,14 +15,9 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
-import java.util.stream.Stream;
-
 import ru.rt.restream.reindexer.ResultIterator;
 
 import org.springframework.data.core.TypeInformation;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.geo.GeoResults;
-import org.springframework.data.repository.util.QueryExecutionConverters;
 import org.springframework.util.Assert;
 
 /**
@@ -41,10 +36,7 @@ public final class ReindexerQueryExecutionConverters {
 			return type;
 		}
 		Class<?> rawType = type.getType();
-		boolean needToUnwrap = type.isCollectionLike() || Slice.class.isAssignableFrom(rawType)
-				|| GeoResults.class.isAssignableFrom(rawType) || rawType.isArray()
-				|| QueryExecutionConverters.supports(rawType) || Stream.class.isAssignableFrom(rawType)
-				|| ResultIterator.class.isAssignableFrom(rawType);
+		boolean needToUnwrap = ResultIterator.class.isAssignableFrom(rawType);
 		return needToUnwrap ? unwrapWrapperTypes(type.getRequiredComponentType(), reference) : type;
 	}
 

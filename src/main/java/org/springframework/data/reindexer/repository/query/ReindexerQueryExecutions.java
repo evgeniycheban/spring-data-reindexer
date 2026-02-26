@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.SearchResult;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 import ru.rt.restream.reindexer.ResultIterator;
@@ -131,6 +132,30 @@ public final class ReindexerQueryExecutions {
 				E next = iterator.next();
 				if (next != null) {
 					result.add(next);
+				}
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Produces a {@link Collection} of {@link SearchResult}s from the given
+	 * {@link ResultIterator}.
+	 * @param iterator the {@link ResultIterator} to use
+	 * @param collectionType the collection type to use
+	 * @param <E> the entity type to use
+	 * @return the {@link Collection} of {@link SearchResult}s to use
+	 * @since 1.6
+	 */
+	public static <E> Collection<? extends SearchResult<E>> toSearchResults(ResultIterator<E> iterator,
+			Class<?> collectionType) {
+		Collection<SearchResult<E>> result = CollectionFactory.createCollection(collectionType,
+				Math.toIntExact(iterator.size()));
+		try (iterator) {
+			while (iterator.hasNext()) {
+				E next = iterator.next();
+				if (next != null) {
+					result.add(new SearchResult<>(next, iterator.getCurrentRank()));
 				}
 			}
 		}

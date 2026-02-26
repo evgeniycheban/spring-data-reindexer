@@ -19,7 +19,6 @@ import java.lang.reflect.Method;
 
 import org.springframework.data.core.TypeInformation;
 import org.springframework.data.repository.core.support.DefaultRepositoryMetadata;
-import org.springframework.data.repository.util.ReactiveWrapperConverters;
 
 /**
  * Default implementation of
@@ -41,11 +40,9 @@ public class ReindexerDefaultRepositoryMetadata extends DefaultRepositoryMetadat
 	}
 
 	@Override
-	public Class<?> getReturnedDomainClass(Method method) {
-		TypeInformation<?> returnType = getReturnType(method);
-		returnType = ReactiveWrapperConverters.unwrapWrapperTypes(returnType);
-		return ReindexerQueryExecutionConverters.unwrapWrapperTypes(returnType, getDomainTypeInformation()).getType();
-
+	public TypeInformation<?> getReturnedDomainTypeInformation(Method method) {
+		TypeInformation<?> returnedType = super.getReturnedDomainTypeInformation(method);
+		return ReindexerQueryExecutionConverters.unwrapWrapperTypes(returnedType, getDomainTypeInformation());
 	}
 
 }

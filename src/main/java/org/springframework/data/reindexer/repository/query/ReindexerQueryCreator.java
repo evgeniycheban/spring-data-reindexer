@@ -237,6 +237,10 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		if (this.method.isPageQuery()) {
 			criteria.reqTotal();
 		}
+		if (this.method.isSearchQuery()) {
+			// Include ranks to the query output.
+			criteria.withRank();
+		}
 		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
 	}
 

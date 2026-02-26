@@ -72,17 +72,18 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.domain.Vector;
 import org.springframework.data.expression.ValueExpressionParser;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
-import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
@@ -187,10 +188,20 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private Map<String, Integer> getNamedParameters(ReindexerQueryMethod method) {
 		Map<String, Integer> namedParameters = new HashMap<>();
-		for (Parameter parameter : method.getParameters()) {
+		for (ReindexerParameter parameter : method.getParameters()) {
 			if (parameter.isNamedParameter()) {
 				parameter.getName().ifPresent(name -> namedParameters.put(name, parameter.getIndex()));
 			}
+		}
+		// Add Vector and KnnSearchParam parameters to named parameters.
+		if (method.getParameters().hasVectorParameter()) {
+			ReindexerParameter parameter = method.getParameters().getParameter(method.getParameters().getVectorIndex());
+			parameter.getName().ifPresent(name -> namedParameters.put(name, parameter.getIndex()));
+		}
+		if (method.getParameters().hasKnnSearchParam()) {
+			ReindexerParameter parameter = method.getParameters()
+				.getParameter(method.getParameters().getKnnSearchParamIndex());
+			parameter.getName().ifPresent(name -> namedParameters.put(name, parameter.getIndex()));
 		}
 		return Collections.unmodifiableMap(namedParameters);
 	}
@@ -481,6 +492,16 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 					}
 					continue;
 				}
+				// Add vectors() to fetch Vector fields.
+				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "vectors") != null) {
+					fields.add("vectors()");
+					continue;
+				}
+				// Apply withRank to include ranks in the result.
+				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "rank") != null) {
+					root.withRank();
+					continue;
+				}
 				Column column = COLUMN_RESOLVING_VISITOR.resolveColumn(expr);
 				if (column != null) {
 					fields.add(column.getColumnName());
@@ -702,10 +723,21 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		public <S> Query<?> visit(net.sf.jsqlparser.expression.Function function, S ctx) {
 			return switch (function.getName().toUpperCase()) {
 				case "RANGE" -> {
-					Assert.isTrue(function.getParameters().size() == 3,
+					Assert.isTrue(function.getParameters() != null && function.getParameters().size() == 3,
 							() -> "Expected exactly 3 parameters for: " + function);
 					yield buildRangeCondition(function.getParameters().get(0), function.getParameters().get(1),
 							function.getParameters().get(2), ctx);
+				}
+				case "KNN" -> {
+					Assert.isTrue(function.getParameters() != null && function.getParameters().size() == 3,
+							() -> "Expected exactly 3 parameters for: " + function);
+					String indexName = COLUMN_RESOLVING_VISITOR
+						.resolveRequiredIndexName(function.getParameters().get(0));
+					ReindexerValueResolvingExpressionVisitor valueResolvingVisitor = this.valueResolvingVisitor.get();
+					float[] vector = valueResolvingVisitor.resolveVector(function.getParameters().get(1));
+					KnnSearchParam knnSearchParam = valueResolvingVisitor
+						.resolveKnnSearchParam(function.getParameters().get(2));
+					yield this.criteria.whereKnn(indexName, vector, knnSearchParam);
 				}
 				default -> super.visit(function, ctx);
 			};
@@ -884,7 +916,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		@Override
 		public <S> Column visit(net.sf.jsqlparser.expression.Function function, S context) {
-			if (function.getParameters().size() == 1) {
+			if (function.getParameters() != null && function.getParameters().size() == 1) {
 				return function.getParameters().get(0).accept(this, context);
 			}
 			throw new InvalidDataAccessApiUsageException("Expected exactly one parameter for function: " + function);
@@ -953,6 +985,31 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			return value.getValue();
 		}
 
+		private float[] resolveVector(Expression expr) {
+			Object value = resolveValue(expr);
+			if (value instanceof float[] vector) {
+				return vector;
+			}
+			if (value instanceof Vector vector) {
+				return vector.toFloatArray();
+			}
+			throw new InvalidDataAccessApiUsageException("""
+					Invalid Vector expression: %s;
+					Could not resolve Vector or float[] from: %s
+					""".formatted(expr, value));
+		}
+
+		private KnnSearchParam resolveKnnSearchParam(Expression expr) {
+			Object value = resolveValue(expr);
+			if (value instanceof KnnSearchParam knnSearchParam) {
+				return knnSearchParam;
+			}
+			throw new InvalidDataAccessApiUsageException("""
+					Invalid KNN params expression: %s;
+					Could not resolve KnnSearchParam from: %s
+					""".formatted(expr, value));
+		}
+
 		private Number resolveNumberValue(Expression expr) {
 			Object value = resolveValue(expr);
 			Assert.isInstanceOf(Number.class, value, () -> "Expected Number value for expression: " + expr);
@@ -989,11 +1046,11 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			}
 			Integer index = StringBasedReindexerQuery.this.namedParameters.get().get(name);
 			Assert.notNull(index, () -> "Could not resolve parameter: " + name);
-			return this.parameterAccessor.getBindableValue(index);
+			return this.parameterAccessor.getValue(index);
 		}
 
 		private Object resolveIndexed(int index) {
-			return this.parameterAccessor.getBindableValue(index);
+			return this.parameterAccessor.getValue(index);
 		}
 
 	}
