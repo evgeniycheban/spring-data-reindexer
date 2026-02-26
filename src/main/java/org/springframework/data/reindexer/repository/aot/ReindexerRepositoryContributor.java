@@ -26,11 +26,10 @@ import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.core.annotation.MergedAnnotation;
-import org.springframework.data.core.TypeInformation;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.query.ReindexerQueryMethod;
-import org.springframework.data.reindexer.repository.support.ReindexerQueryExecutionConverters;
+import org.springframework.data.reindexer.repository.support.ReindexerDefaultRepositoryMetadata;
 import org.springframework.data.repository.aot.generate.AotRepositoryClassBuilder;
 import org.springframework.data.repository.aot.generate.AotRepositoryConstructorBuilder;
 import org.springframework.data.repository.aot.generate.MethodContributor;
@@ -43,7 +42,7 @@ import org.springframework.data.repository.config.RepositoryConfigurationSource;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.parser.PartTree;
-import org.springframework.data.repository.util.ReactiveWrapperConverters;
+import org.springframework.data.util.Lazy;
 import org.springframework.javapoet.CodeBlock;
 import org.springframework.javapoet.TypeName;
 import org.springframework.util.StringUtils;
@@ -126,12 +125,18 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 
 		private final AotRepositoryContext delegate;
 
-		private final ReindexerAotRepositoryInformation repositoryInformation;
+		private final Lazy<AotRepositoryInformation> repositoryInformation;
 
 		private ReindexerAotRepositoryContextSupport(AotRepositoryContext delegate) {
 			super(delegate);
 			this.delegate = delegate;
-			this.repositoryInformation = new ReindexerAotRepositoryInformation(delegate.getRepositoryInformation());
+			this.repositoryInformation = Lazy.of(() -> {
+				RepositoryInformation information = delegate.getRepositoryInformation();
+				ReindexerDefaultRepositoryMetadata metadata = new ReindexerDefaultRepositoryMetadata(
+						information.getRepositoryInterface());
+				return new AotRepositoryInformation(metadata, information.getRepositoryBaseClass(),
+						information.getFragments());
+			});
 		}
 
 		@Override
@@ -161,23 +166,7 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 
 		@Override
 		public RepositoryInformation getRepositoryInformation() {
-			return this.repositoryInformation;
-		}
-
-	}
-
-	private static final class ReindexerAotRepositoryInformation extends AotRepositoryInformation {
-
-		private ReindexerAotRepositoryInformation(RepositoryInformation information) {
-			super(information, information.getRepositoryBaseClass(), information.getFragments());
-		}
-
-		@Override
-		public Class<?> getReturnedDomainClass(Method method) {
-			TypeInformation<?> returnType = getReturnType(method);
-			returnType = ReactiveWrapperConverters.unwrapWrapperTypes(returnType);
-			return ReindexerQueryExecutionConverters.unwrapWrapperTypes(returnType, getDomainTypeInformation())
-				.getType();
+			return this.repositoryInformation.get();
 		}
 
 	}

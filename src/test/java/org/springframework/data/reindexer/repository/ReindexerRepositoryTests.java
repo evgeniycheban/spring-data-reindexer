@@ -63,6 +63,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.data.domain.SearchResult;
+import org.springframework.data.domain.SearchResults;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Vector;
 import org.springframework.data.reindexer.LazyLoadingException;
@@ -2930,6 +2932,60 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllRankedByEmbeddingHnswNear() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<SearchResult<TestItemFloatVector>> actual = this.itemFloatVectorRepository
+			.findAllRankedByEmbeddingHnswNear(Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+					KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+	}
+
+	@Test
+	public void findAllResultsByEmbeddingHnswNear() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		SearchResults<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllResultsByEmbeddingHnswNear(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+	}
+
+	@Test
+	public void streamAllByEmbeddingHnswNear() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		Stream<SearchResult<TestItemFloatVector>> stream = this.itemFloatVectorRepository.streamAllByEmbeddingHnswNear(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		try (stream) {
+			List<SearchResult<TestItemFloatVector>> actual = stream.toList();
+			assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+			assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+		}
+	}
+
+	@Test
 	public void findAllByEmbeddingHnswWithin() {
 		// @formatter:off
 		List<TestItemFloatVector> entities = getTestItemFloatVectors()
@@ -2976,6 +3032,92 @@ class ReindexerRepositoryTests {
 				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
 				KnnParams.hnsw(KnnParams.radius(0.4f), 5), List.of(1L, 2L, 3L));
 		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllByEmbeddingHnswSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingHnswSql(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllByEmbeddingFloatArrayHnswSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingFloatArrayHnswSql(
+				new float[] { 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f },
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllRankedByEmbeddingHnswSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<SearchResult<TestItemFloatVector>> actual = this.itemFloatVectorRepository.findAllRankedByEmbeddingHnswSql(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+	}
+
+	@Test
+	public void findAllResultsByEmbeddingHnswSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		SearchResults<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllResultsByEmbeddingHnswSql(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+	}
+
+	@Test
+	public void streamAllByEmbeddingHnswSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		Stream<SearchResult<TestItemFloatVector>> stream = this.itemFloatVectorRepository.streamAllByEmbeddingHnswSql(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		try (stream) {
+			List<SearchResult<TestItemFloatVector>> actual = stream.toList();
+			assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+			assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+		}
 	}
 
 	private static Stream<TestItemFloatVector> getTestItemFloatVectors() {
@@ -3431,12 +3573,39 @@ class ReindexerRepositoryTests {
 
 		List<TestItemFloatVector> findAllByEmbeddingHnswNear(Vector vector, KnnSearchParam knnSearchParam);
 
+		List<SearchResult<TestItemFloatVector>> findAllRankedByEmbeddingHnswNear(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		SearchResults<TestItemFloatVector> findAllResultsByEmbeddingHnswNear(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		Stream<SearchResult<TestItemFloatVector>> streamAllByEmbeddingHnswNear(Vector vector,
+				KnnSearchParam knnSearchParam);
+
 		List<TestItemFloatVector> findAllByEmbeddingHnswWithin(Vector vector, KnnSearchParam knnSearchParam);
 
 		List<TestItemFloatVectorRecord> findAllRecordByEmbeddingHnswNear(Vector vector, KnnSearchParam knnSearchParam);
 
 		List<TestItemFloatVector> findAllByEmbeddingHnswNearAndIdIn(Vector vector, KnnSearchParam knnSearchParam,
 				List<Long> ids);
+
+		@Query("select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)")
+		List<TestItemFloatVector> findAllByEmbeddingHnswSql(Vector vector, KnnSearchParam knnSearchParam);
+
+		@Query("select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)")
+		List<TestItemFloatVector> findAllByEmbeddingFloatArrayHnswSql(float[] vector, KnnSearchParam knnSearchParam);
+
+		@Query("select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)")
+		List<SearchResult<TestItemFloatVector>> findAllRankedByEmbeddingHnswSql(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		@Query("select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)")
+		SearchResults<TestItemFloatVector> findAllResultsByEmbeddingHnswSql(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		@Query("select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)")
+		Stream<SearchResult<TestItemFloatVector>> streamAllByEmbeddingHnswSql(Vector vector,
+				KnnSearchParam knnSearchParam);
 
 	}
 

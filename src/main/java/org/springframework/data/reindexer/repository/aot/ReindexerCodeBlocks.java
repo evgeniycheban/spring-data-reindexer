@@ -17,6 +17,7 @@ package org.springframework.data.reindexer.repository.aot;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 
 import ru.rt.restream.reindexer.Query;
@@ -25,6 +26,8 @@ import org.jspecify.annotations.NullUnmarked;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.data.core.PropertyPath;
+import org.springframework.data.domain.SearchResult;
+import org.springframework.data.domain.SearchResults;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
@@ -113,6 +116,10 @@ final class ReindexerCodeBlocks {
 			}
 			else {
 				builder.add(".selectAllFields()");
+			}
+			if (this.queryMethod.isSearchQuery()) {
+				// Include ranks to the query output.
+				builder.add(".withRank()");
 			}
 			builder.add(createJoinCodeBlock(entity));
 			builder.add(createWhereCodeBlock(allParameterNames));
@@ -452,6 +459,24 @@ final class ReindexerCodeBlocks {
 					dynamicProjectionParameterName != null ? dynamicProjectionParameterName
 							: mappedType.getReturnedType(),
 					mappedType.getReturnedType(), this.context.getDomainType(), "getReindexerConverter()");
+			if (this.queryMethod.isSearchQuery()) {
+				if (this.queryMethod.isStreamQuery()) {
+					return builder
+						.addStatement("return $1T.toStream($2L).map(($3L) -> new $4T<>($3L, $2L.getCurrentRank()))",
+								ReindexerQueryExecutions.class, it, this.context.localVariable("e"), SearchResult.class)
+						.build();
+				}
+				if (this.queryMethod.isCollectionQuery()) {
+					return builder
+						.addStatement("return ($1T) $2T.toSearchResults($3L, $1T.class)",
+								this.context.getMethodReturn().toClass(), ReindexerQueryExecutions.class, it)
+						.build();
+				}
+				return builder
+					.addStatement("return new $1T<>(($2T) $3T.toSearchResults($4L, $2T.class))", SearchResults.class,
+							List.class, ReindexerQueryExecutions.class, it)
+					.build();
+			}
 			if (this.queryMethod.isPageQuery()) {
 				return builder
 					.addStatement("return $1T.getPage($2T.toList($3L), $4L, $3L::getTotalCount)",

@@ -19,7 +19,6 @@ import java.lang.reflect.Method;
 
 import org.springframework.data.core.TypeInformation;
 import org.springframework.data.repository.core.support.AnnotationRepositoryMetadata;
-import org.springframework.data.repository.util.ReactiveWrapperConverters;
 
 /**
  * {@link org.springframework.data.repository.core.RepositoryMetadata} implementation
@@ -41,10 +40,9 @@ public class ReindexerAnnotationRepositoryMetadata extends AnnotationRepositoryM
 	}
 
 	@Override
-	public Class<?> getReturnedDomainClass(Method method) {
-		TypeInformation<?> returnType = getReturnType(method);
-		returnType = ReactiveWrapperConverters.unwrapWrapperTypes(returnType);
-		return ReindexerQueryExecutionConverters.unwrapWrapperTypes(returnType, getDomainTypeInformation()).getType();
+	public TypeInformation<?> getReturnedDomainTypeInformation(Method method) {
+		TypeInformation<?> returnType = super.getReturnedDomainTypeInformation(method);
+		return ReindexerQueryExecutionConverters.unwrapWrapperTypes(returnType, getDomainTypeInformation());
 	}
 
 }
