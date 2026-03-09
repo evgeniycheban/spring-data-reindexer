@@ -15,11 +15,19 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.jspecify.annotations.NonNull;
+
 import org.springframework.data.core.TypeInformation;
+import org.springframework.data.mapping.MappingException;
 import org.springframework.data.mapping.context.AbstractMappingContext;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.Property;
 import org.springframework.data.mapping.model.SimpleTypeHolder;
+import org.springframework.util.Assert;
 
 /**
  * Default implementation of a {@link MappingContext} for Reindexer using
@@ -31,6 +39,33 @@ import org.springframework.data.mapping.model.SimpleTypeHolder;
  */
 public class ReindexerMappingContext
 		extends AbstractMappingContext<ReindexerPersistentEntity<?>, ReindexerPersistentProperty> {
+
+	private final Map<String, ReindexerPersistentEntity<?>> namespaceEntityMap = new ConcurrentHashMap<>();
+
+	/**
+	 * Returns a {@link ReindexerPersistentEntity} for the given {@code namespaceName}.
+	 * @param namespaceName the namespace name to use, must not be empty
+	 * @return the {@link ReindexerPersistentEntity} to use
+	 * @throws MappingException if there is no {@code ReindexerPersistentEntity}
+	 * associated with the given {@code namespaceName}
+	 * @since 1.6
+	 */
+	public final ReindexerPersistentEntity<?> getRequiredPersistentEntity(String namespaceName) {
+		Assert.hasText(namespaceName, "namespaceName must not be empty");
+		ReindexerPersistentEntity<?> entity = this.namespaceEntityMap.get(namespaceName);
+		if (entity == null) {
+			throw new MappingException("Unknown persistent entity: " + namespaceName);
+		}
+		return entity;
+	}
+
+	@Override
+	protected @NonNull Optional<ReindexerPersistentEntity<?>> addPersistentEntity(
+			@NonNull TypeInformation<?> typeInformation) {
+		Optional<ReindexerPersistentEntity<?>> entity = super.addPersistentEntity(typeInformation);
+		entity.ifPresent((e) -> this.namespaceEntityMap.putIfAbsent(e.getNamespace(), e));
+		return entity;
+	}
 
 	@Override
 	protected <T> ReindexerPersistentEntity<?> createPersistentEntity(TypeInformation<T> typeInformation) {

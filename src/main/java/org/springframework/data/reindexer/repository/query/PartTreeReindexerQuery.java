@@ -25,10 +25,8 @@ import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.repository.query.RepositoryQuery;
-import org.springframework.data.repository.query.ResultProcessor;
+import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.PartTree;
-import org.springframework.data.support.PageableExecutionUtils;
-import org.springframework.data.util.Lazy;
 
 /**
  * A {@link RepositoryQuery} implementation for Reindexer.
@@ -36,7 +34,7 @@ import org.springframework.data.util.Lazy;
  * @author Evgeniy Cheban
  * @author Daniil Cheban
  */
-public class ReindexerRepositoryQuery implements RepositoryQuery {
+public class PartTreeReindexerQuery extends AbstractReindexerQuery {
 
 	private final ReindexerQueryMethod method;
 
@@ -52,10 +50,6 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 
 	private final QueryParameterMapper queryParameterMapper;
 
-	private final ReindexerConverter reindexerConverter;
-
-	private final Lazy<Function<ReindexerQueryCreator, Object>> queryExecution;
-
 	/**
 	 * Creates an instance.
 	 * @param method the {@link ReindexerQueryMethod} to use
@@ -65,78 +59,45 @@ public class ReindexerRepositoryQuery implements RepositoryQuery {
 	 * @param queryParameterMapper the {@link QueryParameterMapper} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
-	public ReindexerRepositoryQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
+	public PartTreeReindexerQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
 			ReindexerMappingContext mappingContext, Reindexer reindexer, QueryParameterMapper queryParameterMapper,
 			ReindexerConverter reindexerConverter) {
+		super(method, reindexerConverter);
 		this.method = method;
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
 		this.reindexer = reindexer;
 		this.queryParameterMapper = queryParameterMapper;
-		this.reindexerConverter = reindexerConverter;
 		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(
 				entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 				entityInformation.getJavaType());
 		this.namespace = new TransactionalNamespace<>(namespace);
 		this.tree = new PartTree(method.getName(), entityInformation.getJavaType());
-		this.queryExecution = Lazy.of(() -> {
-			if (method.isCollectionQuery()) {
-				return (creator) -> ReindexerQueryExecutions.toList(toIterator(creator));
-			}
-			if (method.isStreamQuery()) {
-				return (creator) -> ReindexerQueryExecutions.toStream(toIterator(creator));
-			}
-			if (method.isIteratorQuery()) {
-				return this::toIterator;
-			}
-			if (method.isPageQuery()) {
-				return (creator) -> {
-					ProjectingResultIterator<?, ?> iterator = new ProjectingResultIterator<>(
-							creator.createQuery().reqTotal(), creator.getReturnedType(), reindexerConverter);
-					return PageableExecutionUtils.getPage(ReindexerQueryExecutions.toList(iterator),
-							creator.getParameters().getPageable(), iterator::getTotalCount);
-				};
-			}
-			if (method.isSliceQuery()) {
-				return (creator) -> ReindexerQueryExecutions.toSlice(toIterator(creator),
-						creator.getParameters().getPageable());
-			}
-			if (this.tree.isCountProjection()) {
-				return (creator) -> creator.createQuery().count();
-			}
-			if (this.tree.isExistsProjection()) {
-				return (creator) -> creator.createQuery().exists();
-			}
-			if (this.tree.isDelete()) {
-				return (creator) -> {
-					creator.createQuery().delete();
-					return null;
-				};
-			}
-			return (creator) -> ReindexerQueryExecutions.toEntity(toIterator(creator));
-		});
-	}
-
-	private ProjectingResultIterator<?, ?> toIterator(ReindexerQueryCreator queryCreator) {
-		return new ProjectingResultIterator<>(queryCreator.createQuery(), queryCreator.getReturnedType(),
-				this.reindexerConverter);
 	}
 
 	@Override
-	public Object execute(Object[] parameters) {
-		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(),
-				parameters);
-		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
+	ReindexerQuery createQuery(ReindexerParameterAccessor parameterAccessor, ReturnedType returnedType) {
 		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace,
-				this.entityInformation, this.mappingContext, this.queryParameterMapper, parameterAccessor,
-				resultProcessor.getReturnedType(), this.method);
-		Object result = this.queryExecution.get().apply(queryCreator);
-		return resultProcessor.processResult(result);
+				this.entityInformation, this.mappingContext, this.queryParameterMapper, parameterAccessor, returnedType,
+				this.method);
+		return new ReindexerQuery(queryCreator.createQuery(), returnedType, parameterAccessor);
 	}
 
 	@Override
-	public ReindexerQueryMethod getQueryMethod() {
-		return this.method;
+	Function<ReindexerQuery, Object> getQueryExecution(ReindexerQueryMethod method) {
+		if (this.tree.isCountProjection()) {
+			return (query) -> query.criteria().count();
+		}
+		if (this.tree.isExistsProjection()) {
+			return (query) -> query.criteria().exists();
+		}
+		if (this.tree.isDelete()) {
+			return (query) -> {
+				query.criteria().delete();
+				return null;
+			};
+		}
+		return super.getQueryExecution(method);
 	}
 
 }

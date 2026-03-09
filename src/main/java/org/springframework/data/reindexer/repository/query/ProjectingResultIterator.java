@@ -35,6 +35,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.repository.query.ReturnedType;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -44,7 +45,7 @@ import org.springframework.util.CollectionUtils;
  * @param <M> the mapped type to use
  * @param <D> the domain type to use
  */
-public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
+public final class ProjectingResultIterator<M, D> implements ReindexerResultAccessor<M> {
 
 	private final ResultIterator<D> delegate;
 
@@ -95,6 +96,18 @@ public final class ProjectingResultIterator<M, D> implements ResultIterator<M> {
 		this.distinctAggregationResults = getDistinctAggregationResults();
 		this.distinct = this.aggregationFacet != null && !this.distinctAggregationResults.isEmpty();
 		this.size = this.aggregationFacet != null ? this.aggregationFacet.getFacets().size() : delegate.size();
+	}
+
+	@Override
+	public AggregationResult aggregationResult(String type, String field) {
+		Assert.hasText(type, "type must not be empty");
+		Assert.hasText(field, "field must not be empty");
+		for (AggregationResult result : aggResults()) {
+			if (type.equals(result.getType()) && result.getFields().contains(field)) {
+				return result;
+			}
+		}
+		return null;
 	}
 
 	@Override

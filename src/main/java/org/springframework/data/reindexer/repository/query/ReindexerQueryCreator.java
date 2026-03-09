@@ -32,7 +32,6 @@ import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
-import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.AbstractQueryCreator;
 import org.springframework.data.repository.query.parser.Part;
@@ -83,14 +82,6 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		this.parameters = parameters;
 		this.returnedType = returnedType;
 		this.method = method;
-	}
-
-	ParameterAccessor getParameters() {
-		return this.parameters;
-	}
-
-	ReturnedType getReturnedType() {
-		return this.returnedType;
 	}
 
 	@Override
@@ -242,6 +233,9 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		if (this.tree.isExistsProjection()) {
 			criteria.limit(1);
+		}
+		if (this.method.isPageQuery()) {
+			criteria.reqTotal();
 		}
 		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
 	}
