@@ -40,7 +40,7 @@ final class SortUtils {
 	 * Case-insensitive, supports new-lined queries (i.e. pretty-printed query strings).
 	 */
 	private static final Pattern ORDER_BY_PATTERN = Pattern.compile(
-			"ORDER\\s+BY\\s+(.*?)(?=\\s+LIMIT|\\s+OFFSET|\\s+LEFT|\\s+INNER|\\s+JOIN|\\s+MERGE|\\s+WHERE|$)",
+			"\\bORDER\\s+BY\\s+(.*?)(?=\\s+LIMIT|\\s+OFFSET|\\s+LEFT|\\s+INNER|\\s+JOIN|\\s+MERGE|\\s+WHERE|$)",
 			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	private static final ConcurrentLruCache<String, Sort> SORT_CACHE = new ConcurrentLruCache<>(64,

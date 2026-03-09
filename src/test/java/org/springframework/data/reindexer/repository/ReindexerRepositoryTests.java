@@ -72,6 +72,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
+import ru.rt.restream.reindexer.AggregationResult;
+import ru.rt.restream.reindexer.AggregationResult.Facet;
 import ru.rt.restream.reindexer.EnumType;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
@@ -117,6 +119,7 @@ import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
+import org.springframework.data.reindexer.repository.query.ReindexerResultAccessor;
 import org.springframework.data.repository.query.FluentQuery;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -359,6 +362,105 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void countSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		long count = this.repository.countSqlByName("TestName");
+		assertThat(count).isEqualTo(2);
+	}
+
+	@Test
+	public void sumSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		long sum = this.repository.sumSqlByName("TestName");
+		assertThat(sum).isEqualTo(6L);
+	}
+
+	@Test
+	public void minSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		long min = this.repository.minSqlByName("TestName");
+		assertThat(min).isEqualTo(1L);
+	}
+
+	@Test
+	public void maxSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		long max = this.repository.maxSqlByName("TestName");
+		assertThat(max).isEqualTo(3L);
+	}
+
+	@Test
+	public void avgSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		long avg = this.repository.avgSqlByName("TestName");
+		assertThat(avg).isEqualTo(2L);
+	}
+
+	@Test
+	public void facetOrderByIdDescSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		ReindexerResultAccessor<TestItem> accessor = this.repository.facetOrderByIdDescSqlByName("TestName");
+		try (accessor) {
+			AggregationResult result = accessor.aggregationResult("facet", "id");
+			assertThat(result).isNotNull();
+			assertThat(result.getFacets()).hasSize(3);
+			assertThat(result.getFacets()).flatMap(Facet::getValues)
+				.containsExactly("3", "TestName", "2", "TestName", "1", "TestName");
+		}
+	}
+
+	@Test
+	public void findOneSqlByIdGreaterThan() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		List<TestItem> found = this.repository.findOneSqlByIdGreaterThan(1L);
+		assertThat(found).hasSize(2);
+		assertThat(found).extracting(TestItem::getId).containsExactly(2L, 3L);
+	}
+
+	@Test
+	public void findOneSqlByIdGreaterEqualThan() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		List<TestItem> found = this.repository.findOneSqlByIdGreaterEqualThan(1L);
+		assertThat(found).hasSize(3);
+		assertThat(found).extracting(TestItem::getId).containsExactly(1L, 2L, 3L);
+	}
+
+	@Test
+	public void findOneSqlByIdLessThan() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		List<TestItem> found = this.repository.findOneSqlByIdLessThan(3L);
+		assertThat(found).hasSize(2);
+		assertThat(found).extracting(TestItem::getId).containsExactly(1L, 2L);
+	}
+
+	@Test
+	public void findOneSqlByIdLessEqualThan() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
+		List<TestItem> found = this.repository.findOneSqlByIdLessEqualThan(3L);
+		assertThat(found).hasSize(3);
+		assertThat(found).extracting(TestItem::getId).containsExactly(1L, 2L, 3L);
+	}
+
+	@Test
 	public void getOneSqlByName() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
 		TestItem item = this.repository.getOneSqlByName("TestName");
@@ -384,6 +486,172 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneByNameNotNull() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		TestItem found = this.repository.findOneSqlByNameNotNull().orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+	}
+
+	@Test
+	public void findOneByNameNull() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		TestItem found = this.repository.findOneSqlByNameNull().orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isNull();
+	}
+
+	@Test
+	public void findOneSqlByNameEqValue() {
+		this.repository.save(TestItem.builder().id(1L).name("TestNameValue").value("TestNameValue").build());
+		TestItem found = this.repository.findOneSqlByNameEqValue("TestNameValue").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestNameValue");
+		assertThat(found.getValue()).isEqualTo("TestNameValue");
+	}
+
+	@Test
+	public void findAllBySubQueryName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestLeftName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestRightName").build());
+		TestItem found = this.repository.findAllBySubQueryName("TestLeftName", "TestRightName").orElse(null);
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestLeftName");
+	}
+
+	@Test
+	public void findAllSqlByMergeQueryName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestLeftName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestRightName").build());
+		List<TestItem> found = this.repository.findAllSqlByMergeQueryName("TestLeftName", "TestRightName");
+		assertThat(found).hasSize(2);
+		assertThat(found).element(0).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(1L);
+			assertThat(it.getName()).isEqualTo("TestLeftName");
+		});
+		assertThat(found).element(1).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(2L);
+			assertThat(it.getName()).isEqualTo("TestRightName");
+		});
+	}
+
+	@Test
+	public void findAllSqlByMergeQueryNameQuotedString() {
+		this.repository
+			.save(TestItem.builder().id(1L).name("MERGE(SELECT * FROM items WHERE name = :rightName)").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestRightName").build());
+		List<TestItem> found = this.repository.findAllSqlByMergeQueryNameQuotedString("TestRightName");
+		assertThat(found).hasSize(2);
+		assertThat(found).element(0).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(1L);
+			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :rightName)");
+		});
+		assertThat(found).element(1).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(2L);
+			assertThat(it.getName()).isEqualTo("TestRightName");
+		});
+	}
+
+	@Test
+	public void findOneWithSimpleJoinAliasSqlByName() {
+		this.joinedItemRepository.save(new TestJoinedItem(1L, "TestJoinedName"));
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(1L).build());
+		TestItem found = this.repository.findOneWithSimpleJoinAliasSqlByName("TestName").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+		assertThat(found.getJoinedItemId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem()).isNotNull();
+		assertThat(found.getJoinedItem().getId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem().getName()).isEqualTo("TestJoinedName");
+	}
+
+	@Test
+	public void findOneWithSimpleJoinFullNameSqlByName() {
+		this.joinedItemRepository.save(new TestJoinedItem(1L, "TestJoinedName"));
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(1L).build());
+		TestItem found = this.repository.findOneWithSimpleJoinFullNameSqlByName("TestName").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+		assertThat(found.getJoinedItemId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem()).isNotNull();
+		assertThat(found.getJoinedItem().getId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem().getName()).isEqualTo("TestJoinedName");
+	}
+
+	@Test
+	public void findOneWithConditionalJoinSqlByName() {
+		this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(1L).build());
+		TestItem found = this.repository.findOneWithConditionalJoinSqlByName("TestName").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+		assertThat(found.getJoinedItemId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem()).isNotNull();
+		assertThat(found.getJoinedItem().getId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem().getName()).isEqualTo("TestName");
+	}
+
+	@Test
+	public void findOneWithMultipleOnJoinSqlByName() {
+		this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(1L).build());
+		TestItem found = this.repository.findOneWithMultipleOnJoinSqlByName("TestName").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+		assertThat(found.getJoinedItemId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem()).isNotNull();
+		assertThat(found.getJoinedItem().getId()).isEqualTo(1L);
+		assertThat(found.getJoinedItem().getName()).isEqualTo("TestName");
+	}
+
+	@Test
+	public void findOneWithSimpleJoinInSqlByName() {
+		this.joinedItemRepository.save(new TestJoinedItem(1L, "TestJoinedName1"));
+		this.joinedItemRepository.save(new TestJoinedItem(2L, "TestJoinedName2"));
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemIds(List.of(1L, 2L)).build());
+		TestItem found = this.repository.findOneWithSimpleJoinInSqlByName("TestName").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+		assertThat(found.getJoinedItemIds()).hasSize(2);
+		assertThat(found.getJoinedItems()).element(0).satisfies((joined) -> {
+			assertThat(joined.getId()).isEqualTo(1L);
+			assertThat(joined.getName()).isEqualTo("TestJoinedName1");
+		});
+		assertThat(found.getJoinedItems()).element(1).satisfies((joined) -> {
+			assertThat(joined.getId()).isEqualTo(2L);
+			assertThat(joined.getName()).isEqualTo("TestJoinedName2");
+		});
+	}
+
+	@Test
+	public void findOneWithConditionalJoinInSqlByName() {
+		this.joinedItemRepository.save(new TestJoinedItem(1L, "TestName"));
+		this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName"));
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemIds(List.of(1L, 2L)).build());
+		TestItem found = this.repository.findOneWithConditionalJoinInSqlByName("TestName").orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		assertThat(found.getName()).isEqualTo("TestName");
+		assertThat(found.getJoinedItemIds()).hasSize(2);
+		assertThat(found.getJoinedItems()).element(0).satisfies((joined) -> {
+			assertThat(joined.getId()).isEqualTo(1L);
+			assertThat(joined.getName()).isEqualTo("TestName");
+		});
+		assertThat(found.getJoinedItems()).element(1).satisfies((joined) -> {
+			assertThat(joined.getId()).isEqualTo(2L);
+			assertThat(joined.getName()).isEqualTo("TestName");
+		});
 	}
 
 	@Test
@@ -492,6 +760,13 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals("TestNameUpdated", item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void deleteByNameAndValueSql() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		this.repository.deleteByNameAndValueSql("TestName", "TestValue");
+		assertThat(this.repository.existsById(1L)).isFalse();
 	}
 
 	@Test
@@ -1365,7 +1640,7 @@ class ReindexerRepositoryTests {
 			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
 		}
 		List<TestItemDto> foundItems = this.repository
-			.findAllItemDtoByIdIn(expectedItems.stream().map(TestItem::getId).toList(), Sort.by(Direction.ASC, "id"));
+			.findAllItemDtoByIdIn(expectedItems.stream().map(TestItem::getId).toList(), Sort.by(Direction.ASC, "name"));
 		assertThat(foundItems).hasSameSizeAs(expectedItems);
 		for (int i = 0; i < foundItems.size(); i++) {
 			TestItemDto foundItem = foundItems.get(i);
@@ -2366,6 +2641,30 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllByDefaultDateBetweenQuotedStringSql() {
+		AtomicLong id = new AtomicLong(1);
+		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
+			.datesUntil(LocalDate.of(2020, 6, 1))
+			.map(date -> TestItem.builder()
+				.id(id.getAndIncrement())
+				.name("defaultDate RANGE (:start, :end)")
+				.defaultDate(date)
+				.build())
+			.map(this.repository::save)
+			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
+		List<TestItem> foundItems = this.repository.findAllByDefaultDateBetweenQuotedStringSql(LocalDate.of(2020, 1, 1),
+				LocalDate.of(2020, 6, 1));
+		assertThat(foundItems).hasSize(expectedItems.size());
+		for (TestItem foundItem : foundItems) {
+			TestItem expectedItem = expectedItems.remove(foundItem.getId());
+			assertThat(expectedItem).isNotNull();
+			assertThat(expectedItem.getName()).isEqualTo("defaultDate RANGE (:start, :end)");
+			assertThat(expectedItem.getDefaultDate()).isEqualTo(foundItem.getDefaultDate());
+		}
+		assertThat(expectedItems).isEmpty();
+	}
+
+	@Test
 	public void findByCustomTime() {
 		TestItem expectedItem = TestItem.builder().id(1L).customTime(LocalTime.of(15, 30)).build();
 		this.repository.save(expectedItem);
@@ -2800,10 +3099,79 @@ class ReindexerRepositoryTests {
 		@Query(value = "UPDATE items SET name = :name WHERE id = :id", update = true)
 		void updateNameSqlParam(@Param("name") String name, @Param("id") Long id);
 
+		@Query("DELETE FROM items WHERE name = :name AND value = :value")
+		void deleteByNameAndValueSql(String name, String value);
+
 		TestItem getByName(String name);
+
+		@Query("SELECT COUNT(*) from items WHERE name = ?1")
+		long countSqlByName(String name);
+
+		@Query("SELECT SUM(id) from items WHERE name = ?1")
+		long sumSqlByName(String name);
+
+		@Query("SELECT MIN(id) from items WHERE name = ?1")
+		long minSqlByName(String name);
+
+		@Query("SELECT MAX(id) from items WHERE name = ?1")
+		long maxSqlByName(String name);
+
+		@Query("SELECT AVG(id) from items WHERE name = ?1")
+		long avgSqlByName(String name);
+
+		@Query("SELECT FACET(id, name ORDER BY id DESC) from items WHERE name = ?1")
+		ReindexerResultAccessor<TestItem> facetOrderByIdDescSqlByName(String name);
+
+		@Query("SELECT * FROM items WHERE id > ?1")
+		List<TestItem> findOneSqlByIdGreaterThan(Long id);
+
+		@Query("SELECT * FROM items WHERE id >= ?1")
+		List<TestItem> findOneSqlByIdGreaterEqualThan(Long id);
+
+		@Query("SELECT * FROM items WHERE id < ?1")
+		List<TestItem> findOneSqlByIdLessThan(Long id);
+
+		@Query("SELECT * FROM items WHERE id <= ?1")
+		List<TestItem> findOneSqlByIdLessEqualThan(Long id);
 
 		@Query("SELECT * FROM items WHERE name = ?1")
 		Optional<TestItem> findOneSqlByName(String name);
+
+		@Query("SELECT * FROM items WHERE name IS NOT NULL")
+		Optional<TestItem> findOneSqlByNameNotNull();
+
+		@Query("SELECT * FROM items WHERE name IS NULL")
+		Optional<TestItem> findOneSqlByNameNull();
+
+		@Query("SELECT * FROM items WHERE name = :name and name = value")
+		Optional<TestItem> findOneSqlByNameEqValue(String name);
+
+		@Query("SELECT * FROM items WHERE name = :leftName AND (SELECT * FROM items WHERE name = :rightName) IS NOT NULL")
+		Optional<TestItem> findAllBySubQueryName(String leftName, String rightName);
+
+		@Query("SELECT * FROM items WHERE name = :leftName MERGE(SELECT * FROM items WHERE name = :rightName)")
+		List<TestItem> findAllSqlByMergeQueryName(String leftName, String rightName);
+
+		@Query("SELECT * FROM items WHERE name = 'MERGE(SELECT * FROM items WHERE name = :rightName)' MERGE(SELECT * FROM items WHERE name = :rightName)")
+		List<TestItem> findAllSqlByMergeQueryNameQuotedString(String rightName);
+
+		@Query("SELECT * FROM items LEFT JOIN test_joined_items joinedItem ON ((joinedItem.id)) = (items.joinedItemId) WHERE name = ?1")
+		Optional<TestItem> findOneWithSimpleJoinAliasSqlByName(String name);
+
+		@Query("SELECT * FROM items LEFT JOIN test_joined_items joinedItem ON test_joined_items.id = items.joinedItemId WHERE name = ?1")
+		Optional<TestItem> findOneWithSimpleJoinFullNameSqlByName(String name);
+
+		@Query("SELECT * FROM items INNER JOIN test_joined_items joinedItem ON items.joinedItemId = joinedItem.id AND joinedItem.name = ?1 WHERE name = ?1")
+		Optional<TestItem> findOneWithConditionalJoinSqlByName(String name);
+
+		@Query("SELECT * FROM items INNER JOIN test_joined_items joinedItem ON joinedItem.id = items.joinedItemId ON items.value = test_joined_items.value WHERE name = ?1")
+		Optional<TestItem> findOneWithMultipleOnJoinSqlByName(String name);
+
+		@Query("SELECT * FROM items it INNER JOIN test_joined_items joinedItems ON joinedItems.id IN it.joinedItemIds WHERE it.name = ?1")
+		Optional<TestItem> findOneWithSimpleJoinInSqlByName(String name);
+
+		@Query("SELECT * FROM items it INNER JOIN test_joined_items joinedItems ON (joinedItems.id IN it.joinedItemIds) AND joinedItems.name = it.name WHERE it.name = ?1")
+		Optional<TestItem> findOneWithConditionalJoinInSqlByName(String name);
 
 		@Query("SELECT * FROM items WHERE name = :name")
 		Optional<TestItem> findOneSqlByNameParam(@Param("name") String name);
@@ -2974,6 +3342,9 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE defaultDate RANGE (:start, :end)")
 		List<TestItem> findAllByDefaultDateBetweenSql(LocalDate start, LocalDate end);
 
+		@Query("SELECT * FROM items WHERE name = 'defaultDate RANGE (:start, :end)' AND defaultDate RANGE (:start, :end)")
+		List<TestItem> findAllByDefaultDateBetweenQuotedStringSql(LocalDate start, LocalDate end);
+
 		Optional<TestItem> findByDefaultTime(LocalTime time);
 
 		Optional<TestItem> findByDefaultDate(LocalDate date);
@@ -3052,7 +3423,7 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "id", isPrimaryKey = true)
 		private Long id;
 
-		@Reindex(name = "name")
+		@Reindex(name = "name", isSparse = true)
 		private String name;
 
 		@Reindex(name = "value")
