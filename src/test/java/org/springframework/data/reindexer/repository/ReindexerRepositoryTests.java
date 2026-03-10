@@ -212,7 +212,7 @@ class ReindexerRepositoryTests {
 	}
 
 	private static void request(String method, String path, Object body) throws IOException {
-		String url = "http://localhost:" + reindexer.getMappedPort(REST_API_PORT) + "/api/v1" + path;
+		String url = "http://" + reindexer.getHost() + ":" + reindexer.getMappedPort(REST_API_PORT) + "/api/v1" + path;
 		Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).create();
 		String json = gson.toJson(body);
 		ClassicHttpRequest request = ClassicRequestBuilder.create(method)
@@ -3035,7 +3035,8 @@ class ReindexerRepositoryTests {
 		@Bean
 		Reindexer reindexer(ReindexerCustomConversions conversions, ReindexerMappingContext context) {
 			return ReindexerConfiguration.builder()
-				.url("cproto://localhost:" + toxiproxy.getMappedPort(PROXY_RPC_PORT) + "/" + DATABASE_NAME)
+				.url("cproto://" + toxiproxy.getHost() + ":" + toxiproxy.getMappedPort(PROXY_RPC_PORT) + "/"
+						+ DATABASE_NAME)
 				.requestTimeout(Duration.ofSeconds(5))
 				.fieldConverterRegistry(registry -> conversions.registerCustomConversions(registry, context))
 				.getReindexer();

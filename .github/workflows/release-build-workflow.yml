@@ -44,7 +44,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          mvn --batch-mode release:prepare -Psign-artifacts
+          ./mvnw --batch-mode release:prepare -Psign-artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -59,7 +59,7 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Perform release
-        run: mvn --batch-mode release:perform -Psign-artifacts -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
+        run: ./mvnw --batch-mode release:perform -Psign-artifacts -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
