@@ -543,18 +543,41 @@ class ReindexerRepositoryTests {
 
 	@Test
 	public void findAllSqlByMergeQueryNameQuotedString() {
-		this.repository
-			.save(TestItem.builder().id(1L).name("MERGE(SELECT * FROM items WHERE name = :rightName)").build());
-		this.repository.save(TestItem.builder().id(2L).name("TestRightName").build());
-		List<TestItem> found = this.repository.findAllSqlByMergeQueryNameQuotedString("TestRightName");
+		this.repository.save(TestItem.builder().id(1L).name("MERGE(SELECT * FROM items WHERE name = :name)").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		List<TestItem> found = this.repository.findAllSqlByMergeQueryNameQuotedString("TestName");
 		assertThat(found).hasSize(2);
 		assertThat(found).element(0).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(1L);
-			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :rightName)");
+			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :name)");
 		});
 		assertThat(found).element(1).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(2L);
-			assertThat(it.getName()).isEqualTo("TestRightName");
+			assertThat(it.getName()).isEqualTo("TestName");
+		});
+	}
+
+	@Test
+	public void findAllSqlByMergeQueryNameQuotedParenthesisString() {
+		this.repository.save(TestItem.builder().id(1L).name("MERGE(SELECT * FROM items WHERE name = :name)").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
+		List<TestItem> found = this.repository.findAllSqlByMergeQueryNameQuotedParenthesisString("TestName");
+		assertThat(found).hasSize(4);
+		assertThat(found).element(0).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(1L);
+			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :name)");
+		});
+		assertThat(found).element(1).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(2L);
+			assertThat(it.getName()).isEqualTo("TestName");
+		});
+		assertThat(found).element(2).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(1L);
+			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :name)");
+		});
+		assertThat(found).element(3).satisfies(it -> {
+			assertThat(it.getId()).isEqualTo(2L);
+			assertThat(it.getName()).isEqualTo("TestName");
 		});
 	}
 
@@ -3152,8 +3175,11 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE name = :leftName MERGE(SELECT * FROM items WHERE name = :rightName)")
 		List<TestItem> findAllSqlByMergeQueryName(String leftName, String rightName);
 
-		@Query("SELECT * FROM items WHERE name = 'MERGE(SELECT * FROM items WHERE name = :rightName)' MERGE(SELECT * FROM items WHERE name = :rightName)")
-		List<TestItem> findAllSqlByMergeQueryNameQuotedString(String rightName);
+		@Query("SELECT * FROM items WHERE name = 'MERGE(SELECT * FROM items WHERE name = :name)' MERGE(SELECT * FROM items WHERE name = :name)")
+		List<TestItem> findAllSqlByMergeQueryNameQuotedString(String name);
+
+		@Query("SELECT * FROM items MERGE(SELECT * FROM items WHERE name = :name or name = 'MERGE(SELECT * FROM items WHERE name = :name)')")
+		List<TestItem> findAllSqlByMergeQueryNameQuotedParenthesisString(String name);
 
 		@Query("SELECT * FROM items LEFT JOIN test_joined_items joinedItem ON ((joinedItem.id)) = (items.joinedItemId) WHERE name = ?1")
 		Optional<TestItem> findOneWithSimpleJoinAliasSqlByName(String name);

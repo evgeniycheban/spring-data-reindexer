@@ -104,7 +104,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	// @formatter:off
 	private static final Lazy<UnaryOperator<String>> QUERY_REWRITER = Lazy.of(() -> PatternMatchingQueryRewriter.compose(
 			PatternMatchingQueryRewriter.of("(?i)([\\w.]+)\\s+RANGE\\s*\\(", (matcher) -> "RANGE(" + matcher.group(1) + ","),
-			PatternMatchingQueryRewriter.of("(?i)\\bMERGE\\s*\\((.*?)\\)", (matcher) -> "UNION ALL " + matcher.group(1))
+			PatternMatchingQueryRewriter.of("(?i)\\bMERGE\\s*\\(", (matcher) -> "UNION ALL(")
 	));
 	// @formatter:on
 
