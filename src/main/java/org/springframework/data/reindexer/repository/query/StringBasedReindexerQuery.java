@@ -23,10 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.BinaryExpression;
@@ -90,7 +86,6 @@ import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
-import org.springframework.util.ConcurrentLruCache;
 
 /**
  * A visitor-based implementation that uses {@link net.sf.jsqlparser.parser.CCJSqlParser}
@@ -102,19 +97,9 @@ import org.springframework.util.ConcurrentLruCache;
  */
 public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
-	// @formatter:off
-	private static final Lazy<UnaryOperator<String>> QUERY_REWRITER = Lazy.of(() -> PatternMatchingQueryRewriter.compose(
-			PatternMatchingQueryRewriter.of("(?i)([\\w.]+)\\s+RANGE\\s*\\(", (matcher) -> "RANGE(" + matcher.group(1) + ","),
-			PatternMatchingQueryRewriter.of("(?i)\\bMERGE\\s*\\(", (matcher) -> "UNION ALL(")
-	));
-	// @formatter:on
-
 	private static final ReindexerFunctionResolvingExpressionVisitor FUNCTION_RESOLVING_VISITOR = new ReindexerFunctionResolvingExpressionVisitor();
 
 	private static final ReindexerColumnResolvingExpressionVisitor COLUMN_RESOLVING_VISITOR = new ReindexerColumnResolvingExpressionVisitor();
-
-	private static final ConcurrentLruCache<String, Statement> CACHE = new ConcurrentLruCache<>(64,
-			StringBasedReindexerQuery::parseStatement);
 
 	private final ReindexerQueryMethod method;
 
@@ -124,9 +109,11 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private final QueryParameterMapper queryParameterMapper;
 
-	private final Lazy<QueryExpressionEvaluator> queryEvaluator;
+	private final QueryExpressionEvaluator queryEvaluator;
 
-	private final Lazy<Map<String, Integer>> namedParameters;
+	private final Statement statement;
+
+	private final Map<String, Integer> namedParameters;
 
 	/**
 	 * Creates an instance.
@@ -145,44 +132,30 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
 		this.queryParameterMapper = queryParameterMapper;
-		this.queryEvaluator = Lazy.of(() -> createQueryEvaluator(method, accessor));
-		this.namedParameters = Lazy.of(() -> getNamedParameters(method));
+		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter.of(ValueExpressionParser.create(),
+				(index, expression) -> "__$synthetic$__" + index, (prefix, name) -> ":" + name);
+		this.queryEvaluator = queryRewriter.withEvaluationContextAccessor(accessor)
+			.parse(method.getQuery(), method.getParameters());
+		this.statement = parseStatement(this.queryEvaluator.getQueryString());
+		this.namedParameters = getNamedParameters(method);
 	}
 
 	ReindexerQuery createQuery(ReindexerParameterAccessor parameterAccessor, ReturnedType returnedType) {
-		Statement statement = CACHE.get(this.queryEvaluator.get().getQueryString());
 		ReindexerStatementVisitor statementVisitor = new ReindexerStatementVisitor(parameterAccessor);
-		Query<?> criteria = statement.accept(statementVisitor, null);
+		Query<?> criteria = this.statement.accept(statementVisitor, null);
 		return new ReindexerQuery(criteria, returnedType, parameterAccessor);
 	}
 
 	@Override
 	Function<ReindexerQuery, Object> getQueryExecution(ReindexerQueryMethod method) {
-		Statement statement = CACHE.get(this.queryEvaluator.get().getQueryString());
 		ReindexerQueryExecutionResolvingVisitor visitor = new ReindexerQueryExecutionResolvingVisitor();
-		return statement.accept(visitor, null);
-	}
-
-	private QueryExpressionEvaluator createQueryEvaluator(ReindexerQueryMethod method,
-			QueryMethodValueEvaluationContextAccessor accessor) {
-		String query = QUERY_REWRITER.get().apply(method.getQuery());
-		return PatternMatchingQueryRewriter.REWRITER.withEvaluationContextAccessor(accessor)
-			.parse(query, method.getParameters());
-	}
-
-	private ReindexerValueResolvingExpressionVisitor createValueResolvingVisitor(QueryExpressionEvaluator evaluator,
-			ReindexerParameterAccessor parameterAccessor) {
-		Map<String, Object> resolvedParameters = evaluator.evaluate(parameterAccessor.getValues());
-		ReindexerParameterResolver parameterResolver = new ReindexerParameterResolver(resolvedParameters,
-				parameterAccessor);
-		return new ReindexerValueResolvingExpressionVisitor(parameterResolver);
+		return this.statement.accept(visitor, null);
 	}
 
 	private Query<?> createQuery(String namespaceName) {
-		ReindexerPersistentEntity<?> entity = StringBasedReindexerQuery.this.mappingContext
-			.getRequiredPersistentEntity(namespaceName);
-		Namespace<?> namespace = StringBasedReindexerQuery.this.reindexer.openNamespace(entity.getNamespace(),
-				entity.getNamespaceOptions(), entity.getType());
+		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(namespaceName);
+		Namespace<?> namespace = this.reindexer.openNamespace(entity.getNamespace(), entity.getNamespaceOptions(),
+				entity.getType());
 		return namespace.query();
 	}
 
@@ -213,53 +186,6 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		catch (JSQLParserException e) {
 			throw new RuntimeException(e.getMessage(), e);
 		}
-	}
-
-	private static final class PatternMatchingQueryRewriter implements UnaryOperator<String> {
-
-		private static final String EXPRESSION_PARAMETER_KEY_PREFIX = "__$synthetic$__";
-
-		private static final String EXPRESSION_PARAMETER_NAME_PREFIX = ":";
-
-		private static final ValueExpressionQueryRewriter REWRITER = ValueExpressionQueryRewriter.of(
-				ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_KEY_PREFIX + index,
-				(prefix, name) -> EXPRESSION_PARAMETER_NAME_PREFIX + name);
-
-		private static UnaryOperator<String> of(String pattern, Function<Matcher, String> replacementFunction) {
-			return new PatternMatchingQueryRewriter(pattern, replacementFunction);
-		}
-
-		@SafeVarargs
-		private static UnaryOperator<String> compose(UnaryOperator<String>... delegates) {
-			return Stream.of(delegates)
-				.reduce(UnaryOperator.identity(), (identity, next) -> (query) -> next.apply(identity.apply(query)));
-		}
-
-		private final Pattern pattern;
-
-		private final Function<Matcher, String> replacementFunction;
-
-		private PatternMatchingQueryRewriter(String pattern, Function<Matcher, String> replacementFunction) {
-			this.pattern = Pattern.compile(pattern);
-			this.replacementFunction = replacementFunction;
-		}
-
-		@Override
-		public String apply(String query) {
-			ValueExpressionQueryRewriter.ParsedQuery parsedQuery = REWRITER.parse(query);
-			StringBuilder result = new StringBuilder();
-			Matcher matcher = this.pattern.matcher(query);
-			while (matcher.find()) {
-				if (parsedQuery.isQuoted(matcher.start())) {
-					matcher.appendReplacement(result, matcher.group());
-					continue;
-				}
-				matcher.appendReplacement(result, Matcher.quoteReplacement(this.replacementFunction.apply(matcher)));
-			}
-			matcher.appendTail(result);
-			return result.toString();
-		}
-
 	}
 
 	private final class ReindexerQueryExecutionResolvingVisitor
@@ -342,8 +268,13 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		private final Lazy<SelectVisitor<Query<?>>> selectVisitor;
 
 		private ReindexerStatementVisitor(ReindexerParameterAccessor parameterAccessor) {
-			this.valueResolvingVisitor = StringBasedReindexerQuery.this.queryEvaluator
-				.map((e) -> createValueResolvingVisitor(e, parameterAccessor));
+			this.valueResolvingVisitor = Lazy.of(() -> {
+				Map<String, Object> resolvedParameters = StringBasedReindexerQuery.this.queryEvaluator
+					.evaluate(parameterAccessor.getValues());
+				ReindexerParameterResolver parameterResolver = new ReindexerParameterResolver(resolvedParameters,
+						parameterAccessor);
+				return new ReindexerValueResolvingExpressionVisitor(parameterResolver);
+			});
 			this.selectVisitor = Lazy
 				.of(() -> new ReindexerSelectVisitor(parameterAccessor, this.valueResolvingVisitor));
 		}
@@ -1044,7 +975,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			if (this.resolvedParameters.containsKey(name)) {
 				return this.resolvedParameters.get(name);
 			}
-			Integer index = StringBasedReindexerQuery.this.namedParameters.get().get(name);
+			Integer index = StringBasedReindexerQuery.this.namedParameters.get(name);
 			Assert.notNull(index, () -> "Could not resolve parameter: " + name);
 			return this.parameterAccessor.getValue(index);
 		}

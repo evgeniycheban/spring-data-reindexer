@@ -3315,13 +3315,13 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE name = :leftName AND (SELECT * FROM items WHERE name = :rightName) IS NOT NULL")
 		Optional<TestItem> findAllBySubQueryName(String leftName, String rightName);
 
-		@Query("SELECT * FROM items WHERE name = :leftName MERGE(SELECT * FROM items WHERE name = :rightName)")
+		@Query("SELECT * FROM items WHERE name = :leftName UNION ALL(SELECT * FROM items WHERE name = :rightName)")
 		List<TestItem> findAllSqlByMergeQueryName(String leftName, String rightName);
 
-		@Query("SELECT * FROM items WHERE name = 'MERGE(SELECT * FROM items WHERE name = :name)' MERGE(SELECT * FROM items WHERE name = :name)")
+		@Query("SELECT * FROM items WHERE name = 'MERGE(SELECT * FROM items WHERE name = :name)' UNION ALL(SELECT * FROM items WHERE name = :name)")
 		List<TestItem> findAllSqlByMergeQueryNameQuotedString(String name);
 
-		@Query("SELECT * FROM items MERGE(SELECT * FROM items WHERE name = :name or name = 'MERGE(SELECT * FROM items WHERE name = :name)')")
+		@Query("SELECT * FROM items UNION ALL(SELECT * FROM items WHERE name = :name or name = 'MERGE(SELECT * FROM items WHERE name = :name)')")
 		List<TestItem> findAllSqlByMergeQueryNameQuotedParenthesisString(String name);
 
 		@Query("SELECT * FROM items LEFT JOIN test_joined_items joinedItem ON ((joinedItem.id)) = (items.joinedItemId) WHERE name = ?1")
@@ -3508,10 +3508,10 @@ class ReindexerRepositoryTests {
 
 		List<TestItem> findAllByDefaultDateBetween(LocalDate start, LocalDate end);
 
-		@Query("SELECT * FROM items WHERE defaultDate RANGE (:start, :end)")
+		@Query("SELECT * FROM items WHERE RANGE (defaultDate, :start, :end)")
 		List<TestItem> findAllByDefaultDateBetweenSql(LocalDate start, LocalDate end);
 
-		@Query("SELECT * FROM items WHERE name = 'defaultDate RANGE (:start, :end)' AND defaultDate RANGE (:start, :end)")
+		@Query("SELECT * FROM items WHERE name = 'defaultDate RANGE (:start, :end)' AND RANGE (defaultDate, :start, :end)")
 		List<TestItem> findAllByDefaultDateBetweenQuotedStringSql(LocalDate start, LocalDate end);
 
 		Optional<TestItem> findByDefaultTime(LocalTime time);

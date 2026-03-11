@@ -46,7 +46,6 @@ import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
-import org.springframework.util.ConcurrentLruCache;
 
 /**
  * A simple string-based {@link RepositoryQuery} implementation that provides only
@@ -58,24 +57,17 @@ import org.springframework.util.ConcurrentLruCache;
  */
 public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 
-	private static final String EXPRESSION_PARAMETER_KEY_PREFIX = "__$synthetic$__";
-
-	private static final ValueExpressionQueryRewriter QUERY_REWRITER = ValueExpressionQueryRewriter.of(
-			ValueExpressionParser.create(), (index, expression) -> EXPRESSION_PARAMETER_KEY_PREFIX + index,
-			String::concat);
-
-	private static final ConcurrentLruCache<String, ParsedQuery> CACHE = new ConcurrentLruCache<>(64,
-			QUERY_REWRITER::parse);
-
 	private final ReindexerQueryMethod method;
 
 	private final ReindexerConverter reindexerConverter;
 
 	private final Namespace<?> namespace;
 
-	private final Lazy<QueryExpressionEvaluator> queryEvaluator;
+	private final ParsedQuery parsedQuery;
 
-	private final Lazy<Map<String, Integer>> namedParameters;
+	private final QueryExpressionEvaluator queryEvaluator;
+
+	private final Map<String, Integer> namedParameters;
 
 	private final Lazy<BiFunction<ReindexerParameterAccessor, ReturnedType, Object>> queryExecution;
 
@@ -91,8 +83,12 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 		this.method = method;
 		this.reindexerConverter = reindexerConverter;
 		this.namespace = namespace;
-		this.queryEvaluator = Lazy.of(() -> createQueryEvaluator(method, accessor));
-		this.namedParameters = Lazy.of(() -> getNamedParameters(method));
+		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter.of(ValueExpressionParser.create(),
+				(index, expression) -> "__$synthetic$__" + index, String::concat);
+		this.parsedQuery = queryRewriter.parse(method.getQuery());
+		this.queryEvaluator = queryRewriter.new QueryExpressionEvaluator(accessor.create(method.getParameters()),
+				this.parsedQuery);
+		this.namedParameters = getNamedParameters(method);
 		this.queryExecution = Lazy.of(() -> getQueryExecution(method));
 	}
 
@@ -107,12 +103,6 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 	@Override
 	public @NonNull QueryMethod getQueryMethod() {
 		return this.method;
-	}
-
-	private QueryExpressionEvaluator createQueryEvaluator(ReindexerQueryMethod method,
-			QueryMethodValueEvaluationContextAccessor accessor) {
-		ParsedQuery parsedQuery = CACHE.get(method.getQuery());
-		return QUERY_REWRITER.new QueryExpressionEvaluator(accessor.create(method.getParameters()), parsedQuery);
 	}
 
 	private Map<String, Integer> getNamedParameters(ReindexerQueryMethod method) {
@@ -198,15 +188,13 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 	}
 
 	private String prepareQuery(ReindexerParameterAccessor parameters) {
-		QueryExpressionEvaluator queryEvaluator = this.queryEvaluator.get();
-		Map<String, Object> resolvedValues = queryEvaluator.evaluate(parameters.getValues());
-		ParsedQuery parsedQuery = CACHE.get(this.method.getQuery());
-		String queryString = parsedQuery.getQueryString();
+		Map<String, Object> resolvedValues = this.queryEvaluator.evaluate(parameters.getValues());
+		String queryString = this.parsedQuery.getQueryString();
 		StringBuilder result = new StringBuilder(queryString.length());
 		char[] queryParts = queryString.toCharArray();
 		int i = 0;
 		while (i < queryParts.length) {
-			if (parsedQuery.isQuoted(i)) {
+			if (this.parsedQuery.isQuoted(i)) {
 				result.append(queryParts[i++]);
 				continue;
 			}
@@ -224,7 +212,7 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 						value = resolvedValues.get(parameterReference);
 					}
 					else if (c == ':') {
-						Integer index = this.namedParameters.get().get(parameterReference);
+						Integer index = this.namedParameters.get(parameterReference);
 						Assert.notNull(index,
 								() -> "Could not resolve parameter: %s at: %d".formatted(parameterReference, start));
 						value = parameters.getValue(index);
