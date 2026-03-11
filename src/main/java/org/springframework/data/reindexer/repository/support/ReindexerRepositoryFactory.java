@@ -22,6 +22,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
@@ -57,6 +59,8 @@ import org.springframework.util.ClassUtils;
  * @author Evgeniy Cheban
  */
 public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
+
+	private static final Log LOG = LogFactory.getLog(ReindexerRepositoryFactory.class);
 
 	private static final boolean USE_VISITOR_BASED_QUERY = ClassUtils.isPresent("net.sf.jsqlparser.parser.CCJSqlParser",
 			ReindexerRepositoryFactory.class.getClassLoader());
@@ -137,7 +141,12 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 			if (queryMethod.hasQueryAnnotation()) {
 				QueryMethodValueEvaluationContextAccessor accessor = new QueryMethodValueEvaluationContextAccessor(
 						ReindexerRepositoryFactory.this.ctx);
-				// Use visitor-based implementation when JSQLParser is in the classpath.
+				// Use lightweight implementation when nativeQuery = true.
+				if (queryMethod.isNativeQuery()) {
+					return new SimpleStringBasedReindexerQuery(queryMethod,
+							ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
+				}
+				// Use visitor-based implementation when JSQLParser is on the classpath.
 				if (USE_VISITOR_BASED_QUERY) {
 					return new StringBasedReindexerQuery(queryMethod,
 							ReindexerRepositoryFactory.this.reindexerConverter,
@@ -145,6 +154,13 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 							queryParameterMapper, accessor);
 				}
 				// Fallbacks to a lightweight implementation.
+				if (LOG.isWarnEnabled()) {
+					LOG.warn("""
+							JSQLParser not found on the classpath. Falling back to %s for query method %s.
+							Only native Reindexer SQL is supported.
+							Add com.github.jsqlparser:jsqlparser or set `nativeQuery = true` on the query method."""
+						.formatted(SimpleStringBasedReindexerQuery.class.getName(), queryMethod));
+				}
 				return new SimpleStringBasedReindexerQuery(queryMethod,
 						ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
 			}

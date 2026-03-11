@@ -86,6 +86,16 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	}
 
 	/**
+	 * Returns {@literal true} if the query is a native Reindexer query.
+	 * @return true, if the query is a native Reindexer query
+	 * @since 1.6
+	 */
+	public boolean isNativeQuery() {
+		Query query = this.queryAnnotationExtractor.get();
+		return query.nativeQuery();
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	@Override

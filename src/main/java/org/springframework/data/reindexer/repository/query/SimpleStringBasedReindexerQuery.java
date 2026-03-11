@@ -35,6 +35,7 @@ import org.springframework.data.domain.SearchResults;
 import org.springframework.data.domain.Vector;
 import org.springframework.data.expression.ValueExpressionParser;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
+import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.ParsedQuery;
 import org.springframework.data.repository.query.QueryMethod;
@@ -50,7 +51,8 @@ import org.springframework.util.Assert;
 /**
  * A simple string-based {@link RepositoryQuery} implementation that provides only
  * parameter binding, with no support for parameter type conversion. This is mainly used
- * as a fallback when {@link StringBasedReindexerQuery} cannot be used by the application.
+ * as a fallback when {@link StringBasedReindexerQuery} cannot be used by the application
+ * or if the {@link Query#nativeQuery()} is explicitly set to {@literal true}.
  *
  * @author Evgeniy Cheban
  * @since 1.6

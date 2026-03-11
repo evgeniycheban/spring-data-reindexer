@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -342,6 +343,19 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findIteratorNativeSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		try (ResultIterator<TestItem> it = this.repository.findIteratorNativeSqlByName("TestName")) {
+			assertThat(it.hasNext()).isTrue();
+			TestItem item = it.next();
+			assertThat(item).isNotNull();
+			assertThat(item.getId()).isEqualTo(1L);
+			assertThat(item.getName()).isEqualTo("TestName");
+			assertThat(it.hasNext()).isFalse();
+		}
+	}
+
+	@Test
 	public void findIteratorSqlByNameParam() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
 		try (ResultIterator<TestItem> it = this.repository.findIteratorSqlByNameParam("TestName")) {
@@ -472,6 +486,15 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void getOneNativeSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		TestItem item = this.repository.getOneNativeSqlByName("TestName");
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo("TestName");
+	}
+
+	@Test
 	public void getOneSqlByNameParam() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", null));
 		TestItem item = this.repository.getOneSqlByNameParam("TestName");
@@ -488,6 +511,25 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneNativeSqlByName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
+		TestItem item = this.repository.findOneNativeSqlByName("TestName").orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo("TestName");
+	}
+
+	@Test
+	public void findOneNativeSqlByNameQuotedAndValue() {
+		this.repository.save(TestItem.builder().id(1L).name(":name").value("TestValue").build());
+		TestItem item = this.repository.findOneNativeSqlByNameQuotedAndValue("TestValue").orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo(":name");
+		assertThat(item.getValue()).isEqualTo("TestValue");
 	}
 
 	@Test
@@ -528,10 +570,10 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
-	public void findAllSqlByMergeQueryName() {
+	public void findAllNativeSqlByMergeQueryName() {
 		this.repository.save(TestItem.builder().id(1L).name("TestLeftName").build());
 		this.repository.save(TestItem.builder().id(2L).name("TestRightName").build());
-		List<TestItem> found = this.repository.findAllSqlByMergeQueryName("TestLeftName", "TestRightName");
+		List<TestItem> found = this.repository.findAllNativeSqlByMergeQueryName("TestLeftName", "TestRightName");
 		assertThat(found).hasSize(2);
 		assertThat(found).element(0).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(1L);
@@ -544,18 +586,18 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
-	public void findAllSqlByMergeQueryNameQuotedString() {
-		this.repository.save(TestItem.builder().id(1L).name("MERGE(SELECT * FROM items WHERE name = :name)").build());
-		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
-		List<TestItem> found = this.repository.findAllSqlByMergeQueryNameQuotedString("TestName");
+	public void findAllSqlByMergeQueryName() {
+		this.repository.save(TestItem.builder().id(1L).name("TestLeftName").build());
+		this.repository.save(TestItem.builder().id(2L).name("TestRightName").build());
+		List<TestItem> found = this.repository.findAllSqlByMergeQueryName("TestLeftName", "TestRightName");
 		assertThat(found).hasSize(2);
 		assertThat(found).element(0).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(1L);
-			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :name)");
+			assertThat(it.getName()).isEqualTo("TestLeftName");
 		});
 		assertThat(found).element(1).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(2L);
-			assertThat(it.getName()).isEqualTo("TestName");
+			assertThat(it.getName()).isEqualTo("TestRightName");
 		});
 	}
 
@@ -723,6 +765,17 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findOneNativeSqlByIdAndNameAndValueParam() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		TestItem item = this.repository.findOneNativeSqlByIdAndNameAndValueParam(1L, "TestName", "TestValue")
+			.orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo("TestName");
+		assertThat(item.getValue()).isEqualTo("TestValue");
+	}
+
+	@Test
 	public void findOneSqlSpelByItemIdAndNameAndValueParam() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		TestItem item = this.repository.findOneSqlSpelByItemIdAndNameAndValueParam(testItem).orElse(null);
@@ -730,6 +783,16 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneNativeSqlSpelByItemIdAndNameAndValueParam() {
+		TestItem testItem = this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		TestItem item = this.repository.findOneNativeSqlSpelByItemIdAndNameAndValueParam(testItem).orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo("TestName");
+		assertThat(item.getValue()).isEqualTo("TestValue");
 	}
 
 	@Test
@@ -741,6 +804,17 @@ class ReindexerRepositoryTests {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	public void findOneNativeSqlSpelByIdAndNameAndValueParam() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		TestItem item = this.repository.findOneNativeSqlSpelByIdAndNameAndValueParam(1L, "TestName", "TestValue")
+			.orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo("TestName");
+		assertThat(item.getValue()).isEqualTo("TestValue");
 	}
 
 	@Test
@@ -776,6 +850,17 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void updateNameNativeSql() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		this.repository.updateNameNativeSql("TestNameUpdated", 1L);
+		TestItem item = this.repository.findById(1L).orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getName()).isEqualTo("TestNameUpdated");
+		assertThat(item.getValue()).isEqualTo("TestValue");
+	}
+
+	@Test
 	public void updateNameSqlParam() {
 		TestItem testItem = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
 		assertNotNull(testItem);
@@ -791,6 +876,13 @@ class ReindexerRepositoryTests {
 	public void deleteByNameAndValueSql() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
 		this.repository.deleteByNameAndValueSql("TestName", "TestValue");
+		assertThat(this.repository.existsById(1L)).isFalse();
+	}
+
+	@Test
+	public void deleteByNameAndValueNativeSql() {
+		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		this.repository.deleteByNameAndValueNativeSql("TestName", "TestValue");
 		assertThat(this.repository.existsById(1L)).isFalse();
 	}
 
@@ -1723,6 +1815,25 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findPageByIdInNativeSql() {
+		Set<TestItem> expectedItems = new HashSet<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		Pageable pageable = PageRequest.of(0, 5, Sort.by(Order.desc("id"), Order.asc("name")));
+		List<Long> expectedIds = expectedItems.stream().map(TestItem::getId).toList();
+		do {
+			Page<TestItem> foundItems = this.repository.findPageByIdInNativeSql(expectedIds, pageable);
+			for (TestItem item : foundItems) {
+				assertThat(expectedItems.remove(item)).isTrue();
+			}
+			pageable = foundItems.nextPageable();
+		}
+		while (pageable.isPaged());
+		assertThat(expectedItems).isEmpty();
+	}
+
+	@Test
 	public void findAllCountCachedByIdInPageable() {
 		Set<TestItem> expectedItems = new HashSet<>();
 		for (long i = 0; i < 100; i++) {
@@ -2647,6 +2758,26 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllByDefaultDateBetweenNativeSql() {
+		AtomicLong id = new AtomicLong(1);
+		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
+			.datesUntil(LocalDate.of(2020, 6, 1))
+			.map(date -> TestItem.builder().id(id.getAndIncrement()).defaultDate(date).build())
+			.map(this.repository::save)
+			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
+		long start = LocalDate.of(2020, 1, 1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+		long end = LocalDate.of(2020, 6, 1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+		List<TestItem> foundItems = this.repository.findAllByDefaultDateBetweenNativeSql(start, end);
+		assertThat(foundItems).hasSize(expectedItems.size());
+		for (TestItem foundItem : foundItems) {
+			TestItem expectedItem = expectedItems.remove(foundItem.getId());
+			assertThat(expectedItem).isNotNull();
+			assertThat(expectedItem.getDefaultDate()).isEqualTo(foundItem.getDefaultDate());
+		}
+		assertThat(expectedItems).isEmpty();
+	}
+
+	@Test
 	public void findAllByDefaultDateBetweenSql() {
 		AtomicLong id = new AtomicLong(1);
 		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
@@ -2660,30 +2791,6 @@ class ReindexerRepositoryTests {
 		for (TestItem foundItem : foundItems) {
 			TestItem expectedItem = expectedItems.remove(foundItem.getId());
 			assertThat(expectedItem).isNotNull();
-			assertThat(expectedItem.getDefaultDate()).isEqualTo(foundItem.getDefaultDate());
-		}
-		assertThat(expectedItems).isEmpty();
-	}
-
-	@Test
-	public void findAllByDefaultDateBetweenQuotedStringSql() {
-		AtomicLong id = new AtomicLong(1);
-		Map<Long, TestItem> expectedItems = LocalDate.of(2020, 1, 1)
-			.datesUntil(LocalDate.of(2020, 6, 1))
-			.map(date -> TestItem.builder()
-				.id(id.getAndIncrement())
-				.name("defaultDate RANGE (:start, :end)")
-				.defaultDate(date)
-				.build())
-			.map(this.repository::save)
-			.collect(Collectors.toMap(TestItem::getId, Function.identity()));
-		List<TestItem> foundItems = this.repository.findAllByDefaultDateBetweenQuotedStringSql(LocalDate.of(2020, 1, 1),
-				LocalDate.of(2020, 6, 1));
-		assertThat(foundItems).hasSize(expectedItems.size());
-		for (TestItem foundItem : foundItems) {
-			TestItem expectedItem = expectedItems.remove(foundItem.getId());
-			assertThat(expectedItem).isNotNull();
-			assertThat(expectedItem.getName()).isEqualTo("defaultDate RANGE (:start, :end)");
 			assertThat(expectedItem.getDefaultDate()).isEqualTo(foundItem.getDefaultDate());
 		}
 		assertThat(expectedItems).isEmpty();
@@ -2916,6 +3023,21 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findAllByIdInSliceNativeSql() {
+		this.repository.save(TestItem.builder().id(1L).build());
+		this.repository.save(TestItem.builder().id(2L).build());
+		this.repository.save(TestItem.builder().id(3L).build());
+		this.repository.save(TestItem.builder().id(4L).build());
+		this.repository.save(TestItem.builder().id(5L).build());
+		List<Long> ids = List.of(1L, 2L, 3L, 4L, 5L);
+		Pageable pageable = PageRequest.of(0, 3);
+		Slice<TestItem> foundItems = this.repository.findAllByIdInSliceNativeSql(ids, pageable);
+		assertNotNull(foundItems);
+		assertEquals(3, foundItems.getNumberOfElements());
+		assertTrue(foundItems.hasNext());
+	}
+
+	@Test
 	public void findAllByEmbeddingHnswNear() {
 		// @formatter:off
 		List<TestItemFloatVector> entities = getTestItemFloatVectors()
@@ -3120,6 +3242,92 @@ class ReindexerRepositoryTests {
 		}
 	}
 
+	@Test
+	public void findAllByEmbeddingHnswNativeSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingHnswNativeSql(
+				Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllByEmbeddingFloatArrayHnswNativeSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<TestItemFloatVector> actual = this.itemFloatVectorRepository.findAllByEmbeddingFloatArrayHnswNativeSql(
+				new float[] { 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f },
+				KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	@Test
+	public void findAllRankedByEmbeddingHnswNativeSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		List<SearchResult<TestItemFloatVector>> actual = this.itemFloatVectorRepository
+			.findAllRankedByEmbeddingHnswNativeSql(Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+					KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+	}
+
+	@Test
+	public void findAllResultsByEmbeddingHnswNativeSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		SearchResults<TestItemFloatVector> actual = this.itemFloatVectorRepository
+			.findAllResultsByEmbeddingHnswNativeSql(Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+					KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+		assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+	}
+
+	@Test
+	public void streamAllByEmbeddingHnswNativeSql() {
+		// @formatter:off
+		List<TestItemFloatVector> entities = getTestItemFloatVectors()
+				.map(this.itemFloatVectorRepository::save)
+				.toList();
+		List<TestItemFloatVector> expected = IntStream.rangeClosed(1, 4)
+				.mapToObj(entities::get)
+				.toList();
+		// @formatter:on
+		Stream<SearchResult<TestItemFloatVector>> stream = this.itemFloatVectorRepository
+			.streamAllByEmbeddingHnswNativeSql(Vector.of(0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f, 0.23f),
+					KnnParams.hnsw(KnnParams.radius(0.4f), 5));
+		try (stream) {
+			List<SearchResult<TestItemFloatVector>> actual = stream.toList();
+			assertThat(actual).map(SearchResult::getContent).containsExactlyInAnyOrderElementsOf(expected);
+			assertThat(actual).map(SearchResult::getScore).allMatch((score) -> score.getValue() < 0.4);
+		}
+	}
+
 	private static Stream<TestItemFloatVector> getTestItemFloatVectors() {
 		// @formatter:off
 		return Stream.of(
@@ -3256,17 +3464,26 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE name = ?1")
 		ResultIterator<TestItem> findIteratorSqlByName(String name);
 
+		@Query(value = "SELECT * FROM items WHERE name = ?1", nativeQuery = true)
+		ResultIterator<TestItem> findIteratorNativeSqlByName(String name);
+
 		@Query("SELECT * FROM items WHERE name = :name")
 		ResultIterator<TestItem> findIteratorSqlByNameParam(@Param("name") String name);
 
 		@Query(value = "UPDATE items SET name = ?1 WHERE id = ?2", update = true)
 		void updateNameSql(String name, Long id);
 
+		@Query(value = "UPDATE items SET name = ?1 WHERE id = ?2", update = true, nativeQuery = true)
+		void updateNameNativeSql(String name, Long id);
+
 		@Query(value = "UPDATE items SET name = :name WHERE id = :id", update = true)
 		void updateNameSqlParam(@Param("name") String name, @Param("id") Long id);
 
-		@Query(value = "DELETE FROM items WHERE name = :name AND value = :value", update = true)
+		@Query(value = "DELETE FROM items WHERE name = :name AND value = :value")
 		void deleteByNameAndValueSql(String name, String value);
+
+		@Query(value = "DELETE FROM items WHERE name = :name AND value = :value", update = true, nativeQuery = true)
+		void deleteByNameAndValueNativeSql(String name, String value);
 
 		TestItem getByName(String name);
 
@@ -3303,6 +3520,12 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE name = ?1")
 		Optional<TestItem> findOneSqlByName(String name);
 
+		@Query(value = "SELECT * FROM items WHERE name = ?1", nativeQuery = true)
+		Optional<TestItem> findOneNativeSqlByName(String name);
+
+		@Query(value = "SELECT * FROM items WHERE name = ':name' AND value = :value", nativeQuery = true)
+		Optional<TestItem> findOneNativeSqlByNameQuotedAndValue(String value);
+
 		@Query("SELECT * FROM items WHERE name IS NOT NULL")
 		Optional<TestItem> findOneSqlByNameNotNull();
 
@@ -3315,11 +3538,12 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE name = :leftName AND (SELECT * FROM items WHERE name = :rightName) IS NOT NULL")
 		Optional<TestItem> findAllBySubQueryName(String leftName, String rightName);
 
+		@Query(value = "SELECT * FROM items WHERE name = :leftName MERGE(SELECT * FROM items WHERE name = :rightName)",
+				nativeQuery = true)
+		List<TestItem> findAllNativeSqlByMergeQueryName(String leftName, String rightName);
+
 		@Query("SELECT * FROM items WHERE name = :leftName UNION ALL(SELECT * FROM items WHERE name = :rightName)")
 		List<TestItem> findAllSqlByMergeQueryName(String leftName, String rightName);
-
-		@Query("SELECT * FROM items WHERE name = 'MERGE(SELECT * FROM items WHERE name = :name)' UNION ALL(SELECT * FROM items WHERE name = :name)")
-		List<TestItem> findAllSqlByMergeQueryNameQuotedString(String name);
 
 		@Query("SELECT * FROM items UNION ALL(SELECT * FROM items WHERE name = :name or name = 'MERGE(SELECT * FROM items WHERE name = :name)')")
 		List<TestItem> findAllSqlByMergeQueryNameQuotedParenthesisString(String name);
@@ -3363,6 +3587,18 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE id = :#{#item.id} AND name = :#{#item.name} AND value = :#{#item.value}")
 		Optional<TestItem> findOneSqlSpelByItemIdAndNameAndValueParam(TestItem item);
 
+		@Query(value = "SELECT * FROM items WHERE id = :id AND name = :name AND value = :value", nativeQuery = true)
+		Optional<TestItem> findOneNativeSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name,
+				@Param("value") String value);
+
+		@Query(value = "SELECT * FROM items WHERE id = ?#{[0]} AND name = ?#{[1]} AND value = ?#{[2]}",
+				nativeQuery = true)
+		Optional<TestItem> findOneNativeSqlSpelByIdAndNameAndValueParam(Long id, String name, String value);
+
+		@Query(value = "SELECT * FROM items WHERE id = :#{#item.id} AND name = :#{#item.name} AND value = :#{#item.value}",
+				nativeQuery = true)
+		Optional<TestItem> findOneNativeSqlSpelByItemIdAndNameAndValueParam(TestItem item);
+
 		@Query("SELECT * FROM items WHERE id = ?2 AND name = ?3 AND value = ?1")
 		Optional<TestItem> findOneSqlByIdAndNameAndValue(String value, Long id, String name);
 
@@ -3372,6 +3608,9 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT * FROM items WHERE name = ?1")
 		TestItem getOneSqlByName(String name);
+
+		@Query(value = "SELECT * FROM items WHERE name = ?1", nativeQuery = true)
+		TestItem getOneNativeSqlByName(String name);
 
 		@Query("SELECT * FROM items WHERE name = :name")
 		TestItem getOneSqlByNameParam(@Param("name") String name);
@@ -3478,6 +3717,13 @@ class ReindexerRepositoryTests {
 		@Query("SELECT *, COUNT(*) FROM items WHERE id IN :ids")
 		Page<TestItem> findAllCountByIdIn(List<Long> ids, Pageable pageable);
 
+		@Query(value = """
+				SELECT *, COUNT(*) FROM items WHERE id IN :#{#ids}
+				ORDER BY 'id' :#{#pageable.getSort().getOrderFor('id').getDirection()},
+						 'name' :#{#pageable.getSort().getOrderFor('name').getDirection()}
+				LIMIT :#{#pageable.getPageSize()} OFFSET :#{#pageable.getOffset()}""", nativeQuery = true)
+		Page<TestItem> findPageByIdInNativeSql(List<Long> ids, Pageable pageable);
+
 		@Query("SELECT *, COUNT_CACHED(*) FROM items WHERE id IN :ids")
 		Page<TestItem> findAllCountCachedByIdIn(List<Long> ids, Pageable pageable);
 
@@ -3508,11 +3754,11 @@ class ReindexerRepositoryTests {
 
 		List<TestItem> findAllByDefaultDateBetween(LocalDate start, LocalDate end);
 
+		@Query(value = "SELECT * FROM items WHERE defaultDate RANGE (:start, :end)", nativeQuery = true)
+		List<TestItem> findAllByDefaultDateBetweenNativeSql(long start, long end);
+
 		@Query("SELECT * FROM items WHERE RANGE (defaultDate, :start, :end)")
 		List<TestItem> findAllByDefaultDateBetweenSql(LocalDate start, LocalDate end);
-
-		@Query("SELECT * FROM items WHERE name = 'defaultDate RANGE (:start, :end)' AND RANGE (defaultDate, :start, :end)")
-		List<TestItem> findAllByDefaultDateBetweenQuotedStringSql(LocalDate start, LocalDate end);
 
 		Optional<TestItem> findByDefaultTime(LocalTime time);
 
@@ -3553,6 +3799,10 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT * FROM items WHERE id IN :ids")
 		Slice<TestItem> findAllByIdInSliceSql(List<Long> ids, Pageable pageable);
+
+		@Query(value = "SELECT * FROM items WHERE id IN :#{#ids} LIMIT :#{#pageable.getPageSize() + 1} OFFSET :#{#pageable.getOffset()}",
+				nativeQuery = true)
+		Slice<TestItem> findAllByIdInSliceNativeSql(List<Long> ids, Pageable pageable);
 
 	}
 
@@ -3605,6 +3855,30 @@ class ReindexerRepositoryTests {
 
 		@Query("select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)")
 		Stream<SearchResult<TestItemFloatVector>> streamAllByEmbeddingHnswSql(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		@Query(value = "select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)",
+				nativeQuery = true)
+		List<TestItemFloatVector> findAllByEmbeddingHnswNativeSql(Vector vector, KnnSearchParam knnSearchParam);
+
+		@Query(value = "select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)",
+				nativeQuery = true)
+		List<TestItemFloatVector> findAllByEmbeddingFloatArrayHnswNativeSql(float[] vector,
+				KnnSearchParam knnSearchParam);
+
+		@Query(value = "select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)",
+				nativeQuery = true)
+		List<SearchResult<TestItemFloatVector>> findAllRankedByEmbeddingHnswNativeSql(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		@Query(value = "select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)",
+				nativeQuery = true)
+		SearchResults<TestItemFloatVector> findAllResultsByEmbeddingHnswNativeSql(Vector vector,
+				KnnSearchParam knnSearchParam);
+
+		@Query(value = "select *, vectors(), rank() from test_item_float_vectors where knn(embeddingHnsw, :vector, :knnSearchParam)",
+				nativeQuery = true)
+		Stream<SearchResult<TestItemFloatVector>> streamAllByEmbeddingHnswNativeSql(Vector vector,
 				KnnSearchParam knnSearchParam);
 
 	}
