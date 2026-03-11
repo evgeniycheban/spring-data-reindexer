@@ -103,7 +103,7 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 		Assert.hasText(type, "type must not be empty");
 		Assert.hasText(field, "field must not be empty");
 		for (AggregationResult result : aggResults()) {
-			if (type.equals(result.getType()) && result.getFields().contains(field)) {
+			if (type.equalsIgnoreCase(result.getType()) && result.getFields().contains(field)) {
 				return result;
 			}
 		}

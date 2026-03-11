@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -52,7 +53,6 @@ import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.StatementVisitorAdapter;
 import net.sf.jsqlparser.statement.delete.Delete;
-import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.OrderByElement;
@@ -96,8 +96,6 @@ import org.springframework.util.Assert;
  * @since 1.6
  */
 public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
-
-	private static final ReindexerFunctionResolvingExpressionVisitor FUNCTION_RESOLVING_VISITOR = new ReindexerFunctionResolvingExpressionVisitor();
 
 	private static final ReindexerColumnResolvingExpressionVisitor COLUMN_RESOLVING_VISITOR = new ReindexerColumnResolvingExpressionVisitor();
 
@@ -220,7 +218,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		@Override
 		public <S> Function<ReindexerQuery, Object> visit(SetOperationList setOpList, S context) {
-			return getDefaultQueryExecution();
+			return StringBasedReindexerQuery.super.getQueryExecution(StringBasedReindexerQuery.this.method);
 		}
 
 		@Override
@@ -228,35 +226,33 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			if (plainSelect.getSelectItems().size() == 1) {
 				SelectItem<?> selectItem = plainSelect.getSelectItem(0);
 				Expression expr = selectItem.getExpression();
-				if (FUNCTION_RESOLVING_VISITOR.resolveCount(expr) != null) {
-					return (query) -> query.criteria().count();
-				}
-				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "sum") != null) {
-					return getAggregationQueryExecution("sum", expr);
-				}
-				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "min") != null) {
-					return getAggregationQueryExecution("min", expr);
-				}
-				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "max") != null) {
-					return getAggregationQueryExecution("max", expr);
-				}
-				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "avg") != null) {
-					return getAggregationQueryExecution("avg", expr);
+				Function<ReindexerQuery, Object> queryExecution = expr
+					.accept(new ReindexerSelectItemQueryExecutionResolvingVisitor(), context);
+				if (queryExecution != null) {
+					return queryExecution;
 				}
 			}
-			return getDefaultQueryExecution();
-		}
-
-		private Function<ReindexerQuery, Object> getAggregationQueryExecution(String functionName, Expression expr) {
-			return (query) -> {
-				try (ReindexerResultAccessor<?> it = toResultAccessor(query)) {
-					return it.aggregationValue(functionName, COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(expr));
-				}
-			};
-		}
-
-		private Function<ReindexerQuery, Object> getDefaultQueryExecution() {
 			return StringBasedReindexerQuery.super.getQueryExecution(StringBasedReindexerQuery.this.method);
+		}
+
+	}
+
+	private final class ReindexerSelectItemQueryExecutionResolvingVisitor
+			extends ExpressionVisitorAdapter<Function<ReindexerQuery, Object>> {
+
+		@Override
+		public <S> Function<ReindexerQuery, Object> visit(net.sf.jsqlparser.expression.Function function, S context) {
+			String functionName = function.getName().toLowerCase(Locale.ROOT);
+			return switch (functionName) {
+				case "count", "count_cached" -> (query) -> query.criteria().count();
+				case "sum", "min", "max", "avg" -> (query) -> {
+					try (ReindexerResultAccessor<?> it = toResultAccessor(query)) {
+						return it.aggregationValue(functionName,
+								COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function));
+					}
+				};
+				default -> StringBasedReindexerQuery.super.getQueryExecution(StringBasedReindexerQuery.this.method);
+			};
 		}
 
 	}
@@ -347,100 +343,9 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			Table table = (Table) plainSelect.getFromItem();
 			Query<?> root = createQuery(table.getName());
 			// Apply select.
-			List<String> fields = new ArrayList<>();
-			for (SelectItem<?> selectItem : plainSelect.getSelectItems()) {
-				Expression expr = selectItem.getExpression();
-				if (expr instanceof AllColumns) {
-					// Skip wildcard silently as it is added by default if select fields
-					// are not specified.
-					continue;
-				}
-				// Apply reqTotal if count function is in the query.
-				if (FUNCTION_RESOLVING_VISITOR.resolveCount(expr) != null) {
-					root.reqTotal();
-					continue;
-				}
-				// Apply aggregateSum("field") if sum function is in the query.
-				net.sf.jsqlparser.expression.Function sum = expr.accept(FUNCTION_RESOLVING_VISITOR, "sum");
-				if (sum != null) {
-					root.aggregateSum(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(sum));
-					continue;
-				}
-				// Apply aggregateMin("field") if min function is in the query.
-				net.sf.jsqlparser.expression.Function min = expr.accept(FUNCTION_RESOLVING_VISITOR, "min");
-				if (min != null) {
-					root.aggregateMin(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(min));
-					continue;
-				}
-				// Apply aggregateMax("field") if max function is in the query.
-				net.sf.jsqlparser.expression.Function max = expr.accept(FUNCTION_RESOLVING_VISITOR, "max");
-				if (max != null) {
-					root.aggregateMax(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(max));
-					continue;
-				}
-				// Apply aggregateAvg("field") if avg function is in the query.
-				net.sf.jsqlparser.expression.Function avg = expr.accept(FUNCTION_RESOLVING_VISITOR, "avg");
-				if (avg != null) {
-					root.aggregateAvg(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(avg));
-					continue;
-				}
-				// Apply aggregateFaced(fields...) if facet function is in the query.
-				net.sf.jsqlparser.expression.Function facet = expr.accept(FUNCTION_RESOLVING_VISITOR, "facet");
-				if (facet != null) {
-					List<String> facetFields = new ArrayList<>();
-					// Apply facet parameters.
-					if (facet.getParameters() != null) {
-						for (Expression parameter : facet.getParameters()) {
-							Column facetColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(parameter);
-							if (facetColumn != null) {
-								facetFields.add(facetColumn.getColumnName());
-							}
-						}
-					}
-					Query<?>.AggregationFacetRequest facetRequest = root
-						.aggregateFacet(facetFields.toArray(String[]::new));
-					// Apply facet sorting.
-					if (facet.getOrderByElements() != null) {
-						for (OrderByElement order : facet.getOrderByElements()) {
-							String indexName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(order.getExpression());
-							facetRequest.sort(indexName, !order.isAsc());
-						}
-					}
-					// Apply facet limit/offset.
-					if (facet.getLimit() != null) {
-						if (facet.getLimit().getRowCount() != null) {
-							int rowCount = this.valueResolvingVisitor.get()
-								.resolveNumberValue(facet.getLimit().getRowCount())
-								.intValue();
-							facetRequest.limit(rowCount);
-						}
-						if (facet.getLimit().getOffset() != null) {
-							int offset = this.valueResolvingVisitor.get()
-								.resolveNumberValue(facet.getLimit().getOffset())
-								.intValue();
-							facetRequest.offset(offset);
-						}
-					}
-					continue;
-				}
-				// Add vectors() to fetch Vector fields.
-				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "vectors") != null) {
-					fields.add("vectors()");
-					continue;
-				}
-				// Apply withRank to include ranks in the result.
-				if (expr.accept(FUNCTION_RESOLVING_VISITOR, "rank") != null) {
-					root.withRank();
-					continue;
-				}
-				Column column = COLUMN_RESOLVING_VISITOR.resolveColumn(expr);
-				if (column != null) {
-					fields.add(column.getColumnName());
-					continue;
-				}
-				throw new InvalidDataAccessApiUsageException("Unexpected select item: " + selectItem);
-			}
-			root.select(fields.toArray(String[]::new));
+			ReindexerSelectItemExpressionVisitor selectItemVisitor = new ReindexerSelectItemExpressionVisitor(root,
+					this.valueResolvingVisitor);
+			plainSelect.getSelectItems().forEach(item -> item.accept(selectItemVisitor, context));
 			// Apply joins.
 			if (plainSelect.getJoins() != null) {
 				for (Join join : plainSelect.getJoins()) {
@@ -523,6 +428,81 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				throw new InvalidDataAccessApiUsageException("GROUP BY expression is not supported");
 			}
 			return root;
+		}
+
+	}
+
+	private static final class ReindexerSelectItemExpressionVisitor extends ExpressionVisitorAdapter<Query<?>> {
+
+		private final Query<?> root;
+
+		private final Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor;
+
+		private ReindexerSelectItemExpressionVisitor(Query<?> root,
+				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor) {
+			this.root = root;
+			this.valueResolvingVisitor = valueResolvingVisitor;
+		}
+
+		@Override
+		public <S> Query<?> visit(Column column, S context) {
+			return this.root.select(column.getColumnName());
+		}
+
+		@Override
+		public <C> Query<?> visit(net.sf.jsqlparser.expression.Function function, C context) {
+			String functionName = function.getName().toLowerCase(Locale.ROOT);
+			return switch (functionName) {
+				case "count", "count_cached" -> this.root.reqTotal();
+				case "vectors" -> this.root.select("vectors()");
+				case "rank" -> this.root.withRank();
+				case "sum" -> this.root.aggregateSum(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function));
+				case "min" -> this.root.aggregateMin(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function));
+				case "max" -> this.root.aggregateMax(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function));
+				case "avg" -> this.root.aggregateAvg(COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function));
+				case "facet" -> applyAggregateFacetFunction(function);
+				default -> throw new InvalidDataAccessApiUsageException("Invalid function expression: " + function);
+			};
+		}
+
+		private Query<?> applyAggregateFacetFunction(net.sf.jsqlparser.expression.Function facet) {
+			if (facet != null) {
+				List<String> facetFields = new ArrayList<>();
+				// Apply facet parameters.
+				if (facet.getParameters() != null) {
+					for (Expression parameter : facet.getParameters()) {
+						Column facetColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(parameter);
+						if (facetColumn != null) {
+							facetFields.add(facetColumn.getColumnName());
+						}
+					}
+				}
+				Query<?>.AggregationFacetRequest facetRequest = this.root
+					.aggregateFacet(facetFields.toArray(String[]::new));
+				// Apply facet sorting.
+				if (facet.getOrderByElements() != null) {
+					for (OrderByElement order : facet.getOrderByElements()) {
+						String indexName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(order.getExpression());
+						facetRequest.sort(indexName, !order.isAsc());
+					}
+				}
+				// Apply facet limit/offset.
+				if (facet.getLimit() != null) {
+					if (facet.getLimit().getRowCount() != null) {
+						int rowCount = this.valueResolvingVisitor.get()
+							.resolveNumberValue(facet.getLimit().getRowCount())
+							.intValue();
+						facetRequest.limit(rowCount);
+					}
+					if (facet.getLimit().getOffset() != null) {
+						int offset = this.valueResolvingVisitor.get()
+							.resolveNumberValue(facet.getLimit().getOffset())
+							.intValue();
+						facetRequest.offset(offset);
+					}
+				}
+			}
+			return this.root;
 		}
 
 	}
@@ -652,14 +632,15 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		@Override
 		public <S> Query<?> visit(net.sf.jsqlparser.expression.Function function, S ctx) {
-			return switch (function.getName().toUpperCase()) {
-				case "RANGE" -> {
+			String functionName = function.getName().toLowerCase(Locale.ROOT);
+			return switch (functionName) {
+				case "range" -> {
 					Assert.isTrue(function.getParameters() != null && function.getParameters().size() == 3,
 							() -> "Expected exactly 3 parameters for: " + function);
 					yield buildRangeCondition(function.getParameters().get(0), function.getParameters().get(1),
 							function.getParameters().get(2), ctx);
 				}
-				case "KNN" -> {
+				case "knn" -> {
 					Assert.isTrue(function.getParameters() != null && function.getParameters().size() == 3,
 							() -> "Expected exactly 3 parameters for: " + function);
 					String indexName = COLUMN_RESOLVING_VISITOR
@@ -811,29 +792,6 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				return (JoinConditionContext) ctx;
 			}
 			throw new IllegalArgumentException("Unexpected context: " + ctx);
-		}
-
-	}
-
-	private static final class ReindexerFunctionResolvingExpressionVisitor
-			extends ExpressionVisitorAdapter<net.sf.jsqlparser.expression.Function> {
-
-		@Override
-		public <S> net.sf.jsqlparser.expression.Function visit(net.sf.jsqlparser.expression.Function function,
-				S context) {
-			String functionName = (String) context;
-			if (functionName.equalsIgnoreCase(function.getName())) {
-				return function;
-			}
-			return null;
-		}
-
-		private net.sf.jsqlparser.expression.Function resolveCount(Expression expr) {
-			net.sf.jsqlparser.expression.Function count = expr.accept(this, "count");
-			if (count != null) {
-				return count;
-			}
-			return expr.accept(this, "count_cached");
 		}
 
 	}
