@@ -46,4 +46,13 @@ public @interface Query {
 	 */
 	boolean update() default false;
 
+	/**
+	 * Indicates whether query is a native Reindexer query, thus, a
+	 * {@link org.springframework.data.reindexer.repository.query.SimpleStringBasedReindexerQuery}
+	 * will be used as an implementation to execute query. Defaults to {@literal false}.
+	 * @return true, if query is a native Reindexer query
+	 * @since 1.6
+	 */
+	boolean nativeQuery() default false;
+
 }
