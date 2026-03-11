@@ -3265,7 +3265,7 @@ class ReindexerRepositoryTests {
 		@Query(value = "UPDATE items SET name = :name WHERE id = :id", update = true)
 		void updateNameSqlParam(@Param("name") String name, @Param("id") Long id);
 
-		@Query("DELETE FROM items WHERE name = :name AND value = :value")
+		@Query(value = "DELETE FROM items WHERE name = :name AND value = :value", update = true)
 		void deleteByNameAndValueSql(String name, String value);
 
 		TestItem getByName(String name);

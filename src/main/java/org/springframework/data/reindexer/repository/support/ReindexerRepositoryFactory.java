@@ -32,10 +32,11 @@ import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
+import org.springframework.data.reindexer.repository.query.PartTreeReindexerQuery;
 import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 import org.springframework.data.reindexer.repository.query.ReindexerQueryMethod;
-import org.springframework.data.reindexer.repository.query.PartTreeReindexerQuery;
+import org.springframework.data.reindexer.repository.query.SimpleStringBasedReindexerQuery;
 import org.springframework.data.reindexer.repository.query.StringBasedReindexerQuery;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.core.EntityInformation;
@@ -48,6 +49,7 @@ import org.springframework.data.repository.query.QueryMethodValueEvaluationConte
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ValueExpressionDelegate;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
 
 /**
  * Factory to create {@link ReindexerRepository} instances.
@@ -55,6 +57,9 @@ import org.springframework.util.Assert;
  * @author Evgeniy Cheban
  */
 public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
+
+	private static final boolean USE_VISITOR_BASED_QUERY = ClassUtils.isPresent("net.sf.jsqlparser.parser.CCJSqlParser",
+			ReindexerRepositoryFactory.class.getClassLoader());
 
 	private final Reindexer reindexer;
 
@@ -130,10 +135,18 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 					mappedIndexes, ReindexerRepositoryFactory.this.mappingContext,
 					ReindexerRepositoryFactory.this.reindexerConverter);
 			if (queryMethod.hasQueryAnnotation()) {
-				return new StringBasedReindexerQuery(queryMethod, ReindexerRepositoryFactory.this.reindexerConverter,
-						ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.mappingContext,
-						queryParameterMapper,
-						new QueryMethodValueEvaluationContextAccessor(ReindexerRepositoryFactory.this.ctx));
+				QueryMethodValueEvaluationContextAccessor accessor = new QueryMethodValueEvaluationContextAccessor(
+						ReindexerRepositoryFactory.this.ctx);
+				// Use visitor-based implementation when JSQLParser is in the classpath.
+				if (USE_VISITOR_BASED_QUERY) {
+					return new StringBasedReindexerQuery(queryMethod,
+							ReindexerRepositoryFactory.this.reindexerConverter,
+							ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.mappingContext,
+							queryParameterMapper, accessor);
+				}
+				// Fallbacks to a lightweight implementation.
+				return new SimpleStringBasedReindexerQuery(queryMethod,
+						ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
 			}
 			return new PartTreeReindexerQuery(queryMethod, entityInformation,
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer,
