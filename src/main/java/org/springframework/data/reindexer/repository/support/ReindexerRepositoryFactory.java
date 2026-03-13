@@ -132,12 +132,6 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 			ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) ReindexerRepositoryFactory.this.reindexer
 				.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
 						entityInformation.getJavaType());
-			Map<String, ReindexerIndex> mappedIndexes = namespace.getIndexes()
-				.stream()
-				.collect(Collectors.toMap(ReindexerIndex::getName, Function.identity()));
-			QueryParameterMapper queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(),
-					mappedIndexes, ReindexerRepositoryFactory.this.mappingContext,
-					ReindexerRepositoryFactory.this.reindexerConverter);
 			if (queryMethod.hasQueryAnnotation()) {
 				QueryMethodValueEvaluationContextAccessor accessor = new QueryMethodValueEvaluationContextAccessor(
 						ReindexerRepositoryFactory.this.ctx);
@@ -151,7 +145,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 					return new StringBasedReindexerQuery(queryMethod,
 							ReindexerRepositoryFactory.this.reindexerConverter,
 							ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.mappingContext,
-							queryParameterMapper, accessor);
+							accessor);
 				}
 				// Fallbacks to a lightweight implementation.
 				if (LOG.isWarnEnabled()) {
@@ -164,6 +158,8 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 				return new SimpleStringBasedReindexerQuery(queryMethod,
 						ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
 			}
+			QueryParameterMapper queryParameterMapper = QueryParameterMapper.create(namespace,
+					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexerConverter);
 			return new PartTreeReindexerQuery(queryMethod, entityInformation,
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer,
 					queryParameterMapper, ReindexerRepositoryFactory.this.reindexerConverter);

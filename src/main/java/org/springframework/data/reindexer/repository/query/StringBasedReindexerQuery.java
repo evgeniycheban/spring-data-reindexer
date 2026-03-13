@@ -68,6 +68,7 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.dao.InvalidDataAccessApiUsageException;
@@ -101,11 +102,11 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private final ReindexerQueryMethod method;
 
+	private final ReindexerConverter reindexerConverter;
+
 	private final Reindexer reindexer;
 
 	private final ReindexerMappingContext mappingContext;
-
-	private final QueryParameterMapper queryParameterMapper;
 
 	private final QueryExpressionEvaluator queryEvaluator;
 
@@ -119,17 +120,16 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
-	 * @param queryParameterMapper the {@link QueryParameterMapper} to use
 	 * @param accessor the {@link QueryMethodValueEvaluationContextAccessor} to use
 	 */
 	public StringBasedReindexerQuery(ReindexerQueryMethod method, ReindexerConverter reindexerConverter,
-			Reindexer reindexer, ReindexerMappingContext mappingContext, QueryParameterMapper queryParameterMapper,
+			Reindexer reindexer, ReindexerMappingContext mappingContext,
 			QueryMethodValueEvaluationContextAccessor accessor) {
 		super(method, reindexerConverter);
 		this.method = method;
+		this.reindexerConverter = reindexerConverter;
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
-		this.queryParameterMapper = queryParameterMapper;
 		ValueExpressionQueryRewriter queryRewriter = ValueExpressionQueryRewriter.of(ValueExpressionParser.create(),
 				(index, expression) -> "__$synthetic$__" + index, (prefix, name) -> ":" + name);
 		this.queryEvaluator = queryRewriter.withEvaluationContextAccessor(accessor)
@@ -150,11 +150,15 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		return this.statement.accept(visitor, null);
 	}
 
-	private Query<?> createQuery(String namespaceName) {
+	private ReindexerNamespace<?> openNamespace(String namespaceName) {
 		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(namespaceName);
 		Namespace<?> namespace = this.reindexer.openNamespace(entity.getNamespace(), entity.getNamespaceOptions(),
 				entity.getType());
-		return namespace.query();
+		return (ReindexerNamespace<?>) namespace;
+	}
+
+	private QueryParameterMapper createParameterMapper(ReindexerNamespace<?> namespace) {
+		return QueryParameterMapper.create(namespace, this.mappingContext, this.reindexerConverter);
 	}
 
 	private Map<String, Integer> getNamedParameters(ReindexerQueryMethod method) {
@@ -282,20 +286,21 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		@Override
 		public <S> Query<?> visit(Update update, S ctx) {
-			Query<?> criteria = createQuery(update.getTable().getName());
+			ReindexerNamespace<?> namespace = openNamespace(update.getTable().getName());
+			QueryParameterMapper parameterMapper = createParameterMapper(namespace);
+			Query<?> criteria = namespace.query();
 			for (UpdateSet updateSet : update.getUpdateSets()) {
 				List<Column> columns = updateSet.getColumns();
 				for (int i = 0; i < columns.size(); i++) {
 					Column column = columns.get(i);
-					Object value = StringBasedReindexerQuery.this.queryParameterMapper.mapParameterValue(
-							column.getColumnName(),
+					Object value = parameterMapper.mapParameterValue(column.getColumnName(),
 							this.valueResolvingVisitor.get().resolveValue(updateSet.getValue(i)));
 					criteria.set(column.getColumnName(), value);
 				}
 			}
 			if (update.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
-						criteria, this.valueResolvingVisitor, this.selectVisitor.get());
+						criteria, () -> parameterMapper, this.valueResolvingVisitor, this.selectVisitor.get());
 				update.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			return criteria;
@@ -303,10 +308,12 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		@Override
 		public <S> Query<?> visit(Delete delete, S context) {
-			Query<?> criteria = createQuery(delete.getTable().getName());
+			ReindexerNamespace<?> namespace = openNamespace(delete.getTable().getName());
+			Query<?> criteria = namespace.query();
 			if (delete.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
-						criteria, this.valueResolvingVisitor, this.selectVisitor.get());
+						criteria, Lazy.of(() -> createParameterMapper(namespace)), this.valueResolvingVisitor,
+						this.selectVisitor.get());
 				delete.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			return criteria;
@@ -341,7 +348,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		@Override
 		public <S> Query<?> visit(PlainSelect plainSelect, S context) {
 			Table table = (Table) plainSelect.getFromItem();
-			Query<?> root = createQuery(table.getName());
+			ReindexerNamespace<?> namespace = openNamespace(table.getName());
+			Query<?> root = namespace.query();
 			// Apply select.
 			ReindexerSelectItemExpressionVisitor selectItemVisitor = new ReindexerSelectItemExpressionVisitor(root,
 					this.valueResolvingVisitor);
@@ -350,9 +358,10 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			if (plainSelect.getJoins() != null) {
 				for (Join join : plainSelect.getJoins()) {
 					Table joinTable = (Table) join.getFromItem();
-					Query<?> joinQuery = createQuery(joinTable.getName());
+					ReindexerNamespace<?> joinNamespace = openNamespace(joinTable.getName());
+					Query<?> joinQuery = joinNamespace.query();
 					ReindexerJoinOnExpressionVisitor joinOnVisitor = new ReindexerJoinOnExpressionVisitor(joinQuery,
-							this.valueResolvingVisitor, this);
+							Lazy.of(() -> createParameterMapper(joinNamespace)), this.valueResolvingVisitor, this);
 					// Reindexer does not support joining namespaces whose parent is not a
 					// root namespace, therefore, the root namespace is always passed as a
 					// parent table to the visitor's context.
@@ -376,7 +385,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			// Apply where.
 			if (plainSelect.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
-						root, this.valueResolvingVisitor, this);
+						root, Lazy.of(() -> createParameterMapper(namespace)), this.valueResolvingVisitor, this);
 				plainSelect.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			// Apply paging.
@@ -511,14 +520,17 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		final Query<?> criteria;
 
+		private final Supplier<QueryParameterMapper> parameterMapper;
+
 		private final Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor;
 
 		private final SelectVisitor<Query<?>> selectVisitor;
 
-		private ReindexerConditionalExpressionVisitor(Query<?> criteria,
+		private ReindexerConditionalExpressionVisitor(Query<?> criteria, Supplier<QueryParameterMapper> parameterMapper,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor,
 				SelectVisitor<Query<?>> selectVisitor) {
 			this.criteria = criteria;
+			this.parameterMapper = parameterMapper;
 			this.valueResolvingVisitor = valueResolvingVisitor;
 			this.selectVisitor = selectVisitor;
 		}
@@ -690,8 +702,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		private Query<?> buildComparisonCondition(Column column, Condition condition, Expression expr) {
 			String columnName = column.getColumnName();
-			Object value = StringBasedReindexerQuery.this.queryParameterMapper.mapParameterValue(columnName,
-					this.valueResolvingVisitor.get().resolveRequiredValue(expr));
+			Object value = this.parameterMapper.get()
+				.mapParameterValue(columnName, this.valueResolvingVisitor.get().resolveRequiredValue(expr));
 			if (value instanceof Collection<?> values) {
 				return this.criteria.where(columnName, condition, values);
 			}
@@ -705,8 +717,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			Column column = COLUMN_RESOLVING_VISITOR.resolveColumn(left);
 			if (column != null) {
 				return this.criteria.where(column.getColumnName(), Condition.RANGE,
-						StringBasedReindexerQuery.this.queryParameterMapper.mapParameterValues(column.getColumnName(),
-								start, end));
+						this.parameterMapper.get().mapParameterValues(column.getColumnName(), start, end));
 			}
 			Query<?> leftQuery = left.accept(this, ctx);
 			if (isSubQuery(leftQuery)) {
@@ -731,10 +742,10 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private final class ReindexerJoinOnExpressionVisitor extends ReindexerConditionalExpressionVisitor {
 
-		private ReindexerJoinOnExpressionVisitor(Query<?> query,
+		private ReindexerJoinOnExpressionVisitor(Query<?> query, Supplier<QueryParameterMapper> parameterMapper,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor,
 				SelectVisitor<Query<?>> selectVisitor) {
-			super(query, valueResolvingVisitor, selectVisitor);
+			super(query, parameterMapper, valueResolvingVisitor, selectVisitor);
 		}
 
 		@Override

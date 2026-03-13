@@ -20,9 +20,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import ru.rt.restream.reindexer.FieldType;
 import ru.rt.restream.reindexer.ReindexerIndex;
+import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.convert.CustomConversions;
@@ -49,6 +52,21 @@ public final class QueryParameterMapper {
 	private final ReindexerMappingContext mappingContext;
 
 	private final ReindexerConverter reindexerConverter;
+
+	/**
+	 * Creates a {@code QueryParameterMapper}.
+	 * @param namespace the {@link ReindexerNamespace} to use
+	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param reindexerConverter the {@link ReindexerConverter} to use
+	 * @return the {@code QueryParameterMapper} to use
+	 */
+	public static QueryParameterMapper create(ReindexerNamespace<?> namespace, ReindexerMappingContext mappingContext,
+			ReindexerConverter reindexerConverter) {
+		Map<String, ReindexerIndex> mappedIndexes = namespace.getIndexes()
+			.stream()
+			.collect(Collectors.toMap(ReindexerIndex::getName, Function.identity()));
+		return new QueryParameterMapper(namespace.getItemClass(), mappedIndexes, mappingContext, reindexerConverter);
+	}
 
 	/**
 	 * Creates an instance.
