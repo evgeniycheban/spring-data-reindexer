@@ -19,13 +19,8 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import ru.rt.restream.reindexer.EnumType;
-import ru.rt.restream.reindexer.ReindexerIndex;
-import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.annotations.Enumerated;
 
 import org.springframework.core.convert.ConversionService;
@@ -52,29 +47,13 @@ public final class QueryParameterMapper {
 	private final ReindexerConverter reindexerConverter;
 
 	/**
-	 * Creates a {@code QueryParameterMapper}.
-	 * @param namespace the {@link ReindexerNamespace} to use
-	 * @param mappingContext the {@link ReindexerMappingContext} to use
-	 * @param reindexerConverter the {@link ReindexerConverter} to use
-	 * @return the {@code QueryParameterMapper} to use
-	 */
-	public static QueryParameterMapper create(ReindexerNamespace<?> namespace, ReindexerMappingContext mappingContext,
-			ReindexerConverter reindexerConverter) {
-		Map<String, ReindexerIndex> mappedIndexes = namespace.getIndexes()
-			.stream()
-			.collect(Collectors.toMap(ReindexerIndex::getName, Function.identity()));
-		return new QueryParameterMapper(namespace.getItemClass(), mappedIndexes, mappingContext, reindexerConverter);
-	}
-
-	/**
 	 * Creates an instance.
 	 * @param domainType the domain type to use
-	 * @param mappedIndexes the mapped indexes to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
-	public QueryParameterMapper(Class<?> domainType, Map<String, ReindexerIndex> mappedIndexes,
-			ReindexerMappingContext mappingContext, ReindexerConverter reindexerConverter) {
+	public QueryParameterMapper(Class<?> domainType, ReindexerMappingContext mappingContext,
+			ReindexerConverter reindexerConverter) {
 		this.domainType = domainType;
 		this.mappingContext = mappingContext;
 		this.reindexerConverter = reindexerConverter;

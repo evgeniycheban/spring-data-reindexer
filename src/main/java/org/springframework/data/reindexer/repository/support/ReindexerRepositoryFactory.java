@@ -17,15 +17,11 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import ru.rt.restream.reindexer.Reindexer;
-import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.context.ApplicationContext;
@@ -158,7 +154,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 				return new SimpleStringBasedReindexerQuery(queryMethod,
 						ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
 			}
-			QueryParameterMapper queryParameterMapper = QueryParameterMapper.create(namespace,
+			QueryParameterMapper queryParameterMapper = new QueryParameterMapper(namespace.getItemClass(),
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexerConverter);
 			return new PartTreeReindexerQuery(queryMethod, entityInformation,
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer,

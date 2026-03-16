@@ -15,15 +15,9 @@
  */
 package org.springframework.data.reindexer.repository.aot;
 
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Reindexer;
-import ru.rt.restream.reindexer.ReindexerIndex;
-import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.Transaction;
 
 import org.springframework.data.projection.ProjectionFactory;
@@ -61,17 +55,7 @@ public class ReindexerAotRepositoryFragmentSupport {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
 		this.converter = converter;
-		this.parameterMapper = Lazy.of(() -> createParameterMapper(domainType));
-	}
-
-	private QueryParameterMapper createParameterMapper(Class<?> domainType) {
-		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(domainType);
-		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) this.reindexer.openNamespace(entity.getNamespace(),
-				entity.getNamespaceOptions(), domainType);
-		Map<String, ReindexerIndex> mappedIndexes = namespace.getIndexes()
-			.stream()
-			.collect(Collectors.toUnmodifiableMap(ReindexerIndex::getName, Function.identity()));
-		return new QueryParameterMapper(domainType, mappedIndexes, this.mappingContext, this.converter);
+		this.parameterMapper = Lazy.of(() -> new QueryParameterMapper(domainType, mappingContext, converter));
 	}
 
 	@SuppressWarnings("unchecked")

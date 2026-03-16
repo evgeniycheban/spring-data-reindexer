@@ -159,7 +159,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	}
 
 	private QueryParameterMapper createParameterMapper(ReindexerNamespace<?> namespace) {
-		return QueryParameterMapper.create(namespace, this.mappingContext, this.reindexerConverter);
+		return new QueryParameterMapper(namespace.getItemClass(), this.mappingContext, this.reindexerConverter);
 	}
 
 	private Map<String, Integer> getNamedParameters(ReindexerQueryMethod method) {
