@@ -56,6 +56,7 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.OrderByElement;
+import net.sf.jsqlparser.statement.select.ParenthesedSelect;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectItem;
@@ -343,6 +344,11 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			}
 			Assert.notNull(root, () -> "Could not resolve a root from: " + setOpList);
 			return root;
+		}
+
+		@Override
+		public <S> Query<?> visit(ParenthesedSelect parenthesedSelect, S context) {
+			return parenthesedSelect.getSelect().accept(this, context);
 		}
 
 		@Override

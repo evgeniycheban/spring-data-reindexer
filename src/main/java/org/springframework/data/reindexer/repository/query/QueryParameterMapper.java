@@ -23,9 +23,10 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import ru.rt.restream.reindexer.FieldType;
+import ru.rt.restream.reindexer.EnumType;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
+import ru.rt.restream.reindexer.annotations.Enumerated;
 
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.convert.CustomConversions;
@@ -36,7 +37,6 @@ import org.springframework.data.reindexer.core.convert.ReindexerConversionContex
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
-import org.springframework.util.Assert;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -46,8 +46,6 @@ import org.springframework.util.Assert;
 public final class QueryParameterMapper {
 
 	private final Class<?> domainType;
-
-	private final Map<String, ReindexerIndex> mappedIndexes;
 
 	private final ReindexerMappingContext mappingContext;
 
@@ -78,7 +76,6 @@ public final class QueryParameterMapper {
 	public QueryParameterMapper(Class<?> domainType, Map<String, ReindexerIndex> mappedIndexes,
 			ReindexerMappingContext mappingContext, ReindexerConverter reindexerConverter) {
 		this.domainType = domainType;
-		this.mappedIndexes = mappedIndexes;
 		this.mappingContext = mappingContext;
 		this.reindexerConverter = reindexerConverter;
 	}
@@ -128,13 +125,10 @@ public final class QueryParameterMapper {
 				return conversionService.convert(value, customTarget);
 			}
 		}
-		if (value instanceof Enum<?>) {
-			ReindexerIndex index = this.mappedIndexes.get(indexName);
-			Assert.notNull(index, () -> "Index not found: " + indexName);
-			if (index.getFieldType() == FieldType.STRING) {
-				return ((Enum<?>) value).name();
-			}
-			return ((Enum<?>) value).ordinal();
+		if (value instanceof Enum<?> enumValue) {
+			// TODO: Support Enum query parameters in rx-connector.
+			Enumerated enumerated = property.findAnnotation(Enumerated.class);
+			return enumerated != null && enumerated.value() == EnumType.STRING ? enumValue.name() : enumValue.ordinal();
 		}
 		if (value instanceof Collection<?> values) {
 			List<Object> result = new ArrayList<>(values.size());
