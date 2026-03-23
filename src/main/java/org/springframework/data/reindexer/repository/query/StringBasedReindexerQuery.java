@@ -159,26 +159,6 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		return new QueryParameterMapper(namespace.getItemClass(), this.mappingContext, this.reindexerConverter);
 	}
 
-	private Map<String, Integer> getNamedParameters(ReindexerQueryMethod method) {
-		Map<String, Integer> namedParameters = new HashMap<>();
-		for (ReindexerParameter parameter : method.getParameters()) {
-			if (parameter.isNamedParameter()) {
-				parameter.getName().ifPresent(name -> namedParameters.put(name, parameter.getIndex()));
-			}
-		}
-		// Add Vector and KnnSearchParam parameters to named parameters.
-		if (method.getParameters().hasVectorParameter()) {
-			ReindexerParameter parameter = method.getParameters().getParameter(method.getParameters().getVectorIndex());
-			parameter.getName().ifPresent(name -> namedParameters.put(name, parameter.getIndex()));
-		}
-		if (method.getParameters().hasKnnSearchParam()) {
-			ReindexerParameter parameter = method.getParameters()
-				.getParameter(method.getParameters().getKnnSearchParamIndex());
-			parameter.getName().ifPresent(name -> namedParameters.put(name, parameter.getIndex()));
-		}
-		return Collections.unmodifiableMap(namedParameters);
-	}
-
 	private static Statement parseStatement(String query) {
 		try {
 			return CCJSqlParserUtil.parse(query);
@@ -519,7 +499,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
-	private class ReindexerConditionalExpressionVisitor extends ExpressionVisitorAdapter<Query<?>> {
+	private static class ReindexerConditionalExpressionVisitor extends ExpressionVisitorAdapter<Query<?>> {
 
 		final Query<?> criteria;
 
@@ -743,7 +723,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
-	private final class ReindexerJoinOnExpressionVisitor extends ReindexerConditionalExpressionVisitor {
+	private static final class ReindexerJoinOnExpressionVisitor extends ReindexerConditionalExpressionVisitor {
 
 		private ReindexerJoinOnExpressionVisitor(Query<?> query, Supplier<QueryParameterMapper> parameterMapper,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor,
@@ -855,7 +835,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
-	private final class ReindexerValueResolvingExpressionVisitor extends ExpressionVisitorAdapter<Object> {
+	private static final class ReindexerValueResolvingExpressionVisitor extends ExpressionVisitorAdapter<Object> {
 
 		private final ReindexerParameterResolver parameterResolver;
 
