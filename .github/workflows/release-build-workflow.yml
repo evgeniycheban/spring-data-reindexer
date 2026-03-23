@@ -59,7 +59,11 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Perform release
-        run: ./mvnw --batch-mode release:perform -Pci,release -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
+        run: |
+          ./mvnw --batch-mode release:perform -Pci,release -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
+          curl --request POST \
+               --user "${{ secrets.MAVEN_USERNAME }}:${{ secrets.MAVEN_PASSWORD }}" \
+               --url "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.github.evgeniycheban"
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
