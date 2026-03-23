@@ -18,10 +18,13 @@ package org.springframework.data.reindexer.repository.aot;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.beans.factory.config.RuntimeBeanReference;
@@ -40,11 +43,13 @@ import org.springframework.data.repository.config.AotRepositoryContextSupport;
 import org.springframework.data.repository.config.AotRepositoryInformation;
 import org.springframework.data.repository.config.RepositoryConfigurationSource;
 import org.springframework.data.repository.core.RepositoryInformation;
+import org.springframework.data.repository.core.support.RepositoryFactoryBeanSupport;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.parser.PartTree;
 import org.springframework.data.util.Lazy;
 import org.springframework.javapoet.CodeBlock;
 import org.springframework.javapoet.TypeName;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -53,6 +58,11 @@ import org.springframework.util.StringUtils;
  * @author Evgeniy Cheban
  */
 public final class ReindexerRepositoryContributor extends RepositoryContributor {
+
+	private static final boolean USE_VISITOR_BASED_QUERY = ClassUtils.isPresent("net.sf.jsqlparser.parser.CCJSqlParser",
+			ReindexerRepositoryContributor.class.getClassLoader());
+
+	private static final Log LOG = LogFactory.getLog(ReindexerRepositoryContributor.class);
 
 	private final String reindexerRef;
 
@@ -87,9 +97,7 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 				customizer -> customizer.origin(new RuntimeBeanReference(ReindexerMappingContext.class)));
 		constructorBuilder.addParameter("reindexerConverter", ReindexerConverter.class,
 				customizer -> customizer.origin(new RuntimeBeanReference(ReindexerConverter.class)));
-		constructorBuilder
-			.customize(builder -> builder.addStatement("super(reindexer, mappingContext, reindexerConverter, $T.class)",
-					getRepositoryInformation().getDomainType()));
+		constructorBuilder.addParameter("context", RepositoryFactoryBeanSupport.FragmentCreationContext.class, false);
 	}
 
 	@Override
@@ -97,25 +105,41 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 		ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, getRepositoryInformation(),
 				getProjectionFactory());
 		if ("query".equals(method.getName())) {
-			return null;
+			return MethodContributor.forQueryMethod(queryMethod).metadataOnly(Collections::emptyMap);
 		}
-		if (queryMethod.hasQueryAnnotation()) {
-			// TODO: To be implemented in gh-93
-			return null;
+		if (queryMethod.hasQueryAnnotation() && USE_VISITOR_BASED_QUERY && !queryMethod.isNativeQuery()) {
+			LOG.warn("""
+					Using JSQLParser in AOT mode is not supported;
+					Falling back to standard mode; Offending method: %s;
+					Exclude JSQLParser or set `nativeQuery = true` to proceed in AOT mode.
+					""".formatted(queryMethod));
+			// Fallbacks to StringBasedReindexerQuery.
+			return MethodContributor.forQueryMethod(queryMethod)
+				.metadataOnly(() -> Map.of("query", queryMethod.getQuery()));
 		}
 		Map<String, Object> serialized = new HashMap<>();
 		QueryMetadata queryMetadata = () -> serialized;
 		return MethodContributor.forQueryMethod(queryMethod).withMetadata(queryMetadata).contribute(context -> {
 			CodeBlock.Builder body = CodeBlock.builder();
-			PartTree tree = new PartTree(queryMethod.getName(), queryMethod.getDomainClass());
-			AotQuery aotQuery = ReindexerCodeBlocks
-				.derivedQueryCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
-				.build();
+			AotQuery aotQuery;
+			CodeBlock executionCodeBlock;
+			if (queryMethod.hasQueryAnnotation()) {
+				aotQuery = ReindexerCodeBlocks.stringQueryCodeBlockBuilder(context, queryMethod).build();
+				executionCodeBlock = ReindexerCodeBlocks.stringQueryExecutionCodeBlockBuilder(context, queryMethod)
+					.build();
+			}
+			else {
+				PartTree tree = new PartTree(queryMethod.getName(), queryMethod.getDomainClass());
+				aotQuery = ReindexerCodeBlocks
+					.derivedQueryCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
+					.build();
+				executionCodeBlock = ReindexerCodeBlocks
+					.derivedExecutionCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
+					.build();
+			}
 			body.add(aotQuery.codeBlockQuery());
 			body.add(";\n");
-			body.add(ReindexerCodeBlocks
-				.derivedExecutionCodeBlockBuilder(tree, context, this.mappingContext, queryMethod)
-				.build());
+			body.add(executionCodeBlock);
 			serialized.put("query", aotQuery.stringQuery());
 			return body.build();
 		});

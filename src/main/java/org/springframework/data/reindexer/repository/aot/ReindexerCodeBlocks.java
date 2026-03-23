@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
+import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 
 import org.jspecify.annotations.NullUnmarked;
@@ -29,7 +30,6 @@ import org.springframework.data.core.PropertyPath;
 import org.springframework.data.domain.SearchResult;
 import org.springframework.data.domain.SearchResults;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
@@ -68,6 +68,16 @@ final class ReindexerCodeBlocks {
 		return new DerivedExecutionCodeBlockBuilder(tree, context, mappingContext, queryMethod);
 	}
 
+	static StringQueryCodeBlockBuilder stringQueryCodeBlockBuilder(AotQueryMethodGenerationContext context,
+			ReindexerQueryMethod queryMethod) {
+		return new StringQueryCodeBlockBuilder(context, queryMethod);
+	}
+
+	static StringQueryExecutionCodeBlockBuilder stringQueryExecutionCodeBlockBuilder(
+			AotQueryMethodGenerationContext context, ReindexerQueryMethod queryMethod) {
+		return new StringQueryExecutionCodeBlockBuilder(context, queryMethod);
+	}
+
 	@NullUnmarked
 	static final class DerivedQueryCodeBlockBuilder {
 
@@ -100,10 +110,6 @@ final class ReindexerCodeBlocks {
 				.getRequiredPersistentEntity(this.context.getDomainType());
 			this.stringQueryBuilder.namespace(entity.getNamespace());
 			Iterator<String> allParameterNames = this.context.getBindableParameterNames().iterator();
-			if (allParameterNames.hasNext()) {
-				builder.addStatement("$1T $2L = getParameterMapper()", QueryParameterMapper.class,
-						this.context.localVariable("parameterMapper"));
-			}
 			builder.add("$1T<$2T> $3L = query($2T.class)", Query.class, this.context.getDomainType(),
 					this.context.localVariable("root"));
 			if (this.context.getReturnedType().needsCustomConstruction()) {
@@ -141,7 +147,7 @@ final class ReindexerCodeBlocks {
 						inputProperties.toArray(String[]::new));
 			}
 			else {
-				builder.add(".select($L)", createParameterArray(inputProperties));
+				builder.add(".select($L)", createParameterArray("$S", inputProperties));
 				inputProperties.forEach(this.stringQueryBuilder::select);
 			}
 			return builder.build();
@@ -279,8 +285,8 @@ final class ReindexerCodeBlocks {
 					String right = allParameterNames.next();
 					this.stringQueryBuilder.where(operation, indexName, Query.Condition.RANGE, false, ":" + left,
 							":" + right);
-					yield CodeBlock.of(".where($1S, $2T.$3L, parameterMapper.mapParameterValues($1S, $4L, $5L))",
-							indexName, Query.Condition.class, Query.Condition.RANGE, left, right);
+					yield CodeBlock.of(".where($1S, $2T.$3L, mapParameterValues($1S, $4L, $5L))", indexName,
+							Query.Condition.class, Query.Condition.RANGE, left, right);
 				}
 				case TRUE ->
 					CodeBlock.of(".where($1S, $2T.$3L, true)", indexName, Query.Condition.class, Query.Condition.EQ);
@@ -353,11 +359,11 @@ final class ReindexerCodeBlocks {
 					|| Collection.class.isAssignableFrom(methodParameter.getParameterType());
 			this.stringQueryBuilder.where(operation, indexName, condition, negated, ":" + parameterName);
 			if (isCollectionLike) {
-				return CodeBlock.of(".where($1S, $2T.$3L, ($4T) parameterMapper.mapParameterValue($1S, $5L))",
-						indexName, Query.Condition.class, condition, Collection.class, parameterName);
+				return CodeBlock.of(".where($1S, $2T.$3L, ($4T) mapParameterValue($1S, $5L))", indexName,
+						Query.Condition.class, condition, Collection.class, parameterName);
 			}
-			return CodeBlock.of(".where($1S, $2T.$3L, parameterMapper.mapParameterValue($1S, $4L))", indexName,
-					Query.Condition.class, condition, parameterName);
+			return CodeBlock.of(".where($1S, $2T.$3L, mapParameterValue($1S, $4L))", indexName, Query.Condition.class,
+					condition, parameterName);
 		}
 
 		private CodeBlock createSortCodeBlock() {
@@ -391,24 +397,43 @@ final class ReindexerCodeBlocks {
 	}
 
 	@NullUnmarked
-	static final class DerivedExecutionCodeBlockBuilder {
-
-		private final PartTree tree;
+	static class StringQueryCodeBlockBuilder {
 
 		private final AotQueryMethodGenerationContext context;
 
-		private final ReindexerMappingContext mappingContext;
-
 		private final ReindexerQueryMethod queryMethod;
 
-		DerivedExecutionCodeBlockBuilder(PartTree tree, AotQueryMethodGenerationContext context,
-				ReindexerMappingContext mappingContext, ReindexerQueryMethod queryMethod) {
-			this.tree = tree;
+		StringQueryCodeBlockBuilder(AotQueryMethodGenerationContext context, ReindexerQueryMethod queryMethod) {
 			this.context = context;
-			this.mappingContext = mappingContext;
 			this.queryMethod = queryMethod;
 		}
 
+		AotQuery build() {
+			CodeBlock.Builder builder = CodeBlock.builder();
+			builder.add("$1T $2L = substituteQueryParameters($3S, $4L, $5L)", String.class,
+					this.context.localVariable("preparedQuery"), this.queryMethod.getQuery(),
+					this.context.getExpressionMarker().enclosingMethod(),
+					createParameterArray("$L", this.context.getAllParameterNames()));
+			return new AotQuery(this.queryMethod.getQuery(), builder.build());
+		}
+
+	}
+
+	@NullUnmarked
+	static final class DerivedExecutionCodeBlockBuilder extends QueryExecutionCodeBlockBuilder {
+
+		private final PartTree tree;
+
+		private final ReindexerMappingContext mappingContext;
+
+		DerivedExecutionCodeBlockBuilder(PartTree tree, AotQueryMethodGenerationContext context,
+				ReindexerMappingContext mappingContext, ReindexerQueryMethod queryMethod) {
+			super(context, queryMethod);
+			this.tree = tree;
+			this.mappingContext = mappingContext;
+		}
+
+		@Override
 		CodeBlock build() {
 			CodeBlock.Builder builder = CodeBlock.builder();
 			String root = this.context.localVariable("root");
@@ -431,7 +456,7 @@ final class ReindexerCodeBlocks {
 			if (mappedType.needsCustomConstruction() && this.tree.isDistinct()) {
 				Collection<String> inputProperties = QueryUtils.getSelectFields(this.mappingContext, mappedType,
 						this.tree.isDistinct());
-				builder.addStatement("$1L.aggregateFacet($2L)", root, createParameterArray(inputProperties));
+				builder.addStatement("$1L.aggregateFacet($2L)", root, createParameterArray("$S", inputProperties));
 			}
 			String sortParameterName = this.context.getSortParameterName();
 			if (sortParameterName != null) {
@@ -459,57 +484,7 @@ final class ReindexerCodeBlocks {
 					dynamicProjectionParameterName != null ? dynamicProjectionParameterName
 							: mappedType.getReturnedType(),
 					mappedType.getReturnedType(), this.context.getDomainType(), "getReindexerConverter()");
-			if (this.queryMethod.isSearchQuery()) {
-				if (this.queryMethod.isStreamQuery()) {
-					return builder
-						.addStatement("return $1T.toStream($2L).map(($3L) -> new $4T<>($3L, $2L.getCurrentRank()))",
-								ReindexerQueryExecutions.class, it, this.context.localVariable("e"), SearchResult.class)
-						.build();
-				}
-				if (this.queryMethod.isCollectionQuery()) {
-					return builder
-						.addStatement("return ($1T) $2T.toSearchResults($3L, $1T.class)",
-								this.context.getMethodReturn().toClass(), ReindexerQueryExecutions.class, it)
-						.build();
-				}
-				return builder
-					.addStatement("return new $1T<>(($2T) $3T.toSearchResults($4L, $2T.class))", SearchResults.class,
-							List.class, ReindexerQueryExecutions.class, it)
-					.build();
-			}
-			if (this.queryMethod.isPageQuery()) {
-				return builder
-					.addStatement("return $1T.getPage($2T.toList($3L), $4L, $3L::getTotalCount)",
-							PageableExecutionUtils.class, ReindexerQueryExecutions.class, it, pageableParameterName)
-					.build();
-			}
-			if (this.queryMethod.isSliceQuery()) {
-				Assert.notNull(pageableParameterName, String
-					.format("Slice query needs to have a Pageable parameter; Offending method: %s", this.queryMethod));
-				return builder
-					.addStatement("return $1T.toSlice($2L, $3L)", ReindexerQueryExecutions.class, it,
-							pageableParameterName)
-					.build();
-			}
-			if (this.queryMethod.isStreamQuery()) {
-				return builder.addStatement("return $1T.toStream($2L)", ReindexerQueryExecutions.class, it).build();
-			}
-			if (this.queryMethod.isCollectionQuery()) {
-				return builder
-					.addStatement("return ($1T) $2T.toCollection($3L, $1T.class)",
-							this.context.getMethodReturn().toClass(), ReindexerQueryExecutions.class, it)
-					.build();
-			}
-			if (this.queryMethod.isIteratorQuery()) {
-				return builder.addStatement("return $L", it).build();
-			}
-			if (this.context.getMethodReturn().isOptional()) {
-				return builder
-					.addStatement("return $1T.ofNullable($2T.toEntity($3L))", Optional.class,
-							ReindexerQueryExecutions.class, it)
-					.build();
-			}
-			return builder.addStatement("return $1T.toEntity($2L)", ReindexerQueryExecutions.class, it).build();
+			return builder.add(super.build()).build();
 		}
 
 		private CodeBlock createDynamicProjectionCodeBlock(String root, String dynamicProjectionParameterName) {
@@ -575,11 +550,112 @@ final class ReindexerCodeBlocks {
 
 	}
 
-	private static CodeBlock createParameterArray(Collection<String> inputProperties) {
+	static class StringQueryExecutionCodeBlockBuilder extends QueryExecutionCodeBlockBuilder {
+
+		StringQueryExecutionCodeBlockBuilder(AotQueryMethodGenerationContext context,
+				ReindexerQueryMethod queryMethod) {
+			super(context, queryMethod);
+		}
+
+		CodeBlock build() {
+			String ns = this.context.localVariable("ns");
+			String preparedQuery = this.context.localVariable("preparedQuery");
+			CodeBlock.Builder builder = CodeBlock.builder();
+			builder.addStatement("$1T<$3T> $2L = openNamespace($3T.class)", Namespace.class, ns,
+					this.context.getDomainType());
+			if (this.queryMethod.isModifyingQuery()) {
+				return builder.addStatement("$1L.updateSql($2L)", ns, preparedQuery).build();
+			}
+			String dynamicProjectionParameterName = this.context.getDynamicProjectionParameterName();
+			ReturnedType mappedType = this.context.getReturnedType();
+			builder.addStatement(
+					"$1T<$6T, $7T> $2L = new $1T<>($3L.execSql($4L), %s, $7T.class, $8L)"
+						.formatted(dynamicProjectionParameterName != null ? "$5L" : "$5T.class"),
+					ProjectingResultIterator.class, this.context.localVariable("it"), ns, preparedQuery,
+					dynamicProjectionParameterName != null ? dynamicProjectionParameterName
+							: mappedType.getReturnedType(),
+					mappedType.getReturnedType(), this.context.getDomainType(), "getReindexerConverter()");
+			return builder.add(super.build()).build();
+		}
+
+	}
+
+	static class QueryExecutionCodeBlockBuilder {
+
+		final AotQueryMethodGenerationContext context;
+
+		final ReindexerQueryMethod queryMethod;
+
+		QueryExecutionCodeBlockBuilder(AotQueryMethodGenerationContext context, ReindexerQueryMethod queryMethod) {
+			this.context = context;
+			this.queryMethod = queryMethod;
+		}
+
+		CodeBlock build() {
+			CodeBlock.Builder builder = CodeBlock.builder();
+			String it = this.context.localVariable("it");
+			if (this.queryMethod.isSearchQuery()) {
+				if (this.queryMethod.isStreamQuery()) {
+					return builder
+						.addStatement("return $1T.toStream($2L).map(($3L) -> new $4T<>($3L, $2L.getCurrentRank()))",
+								ReindexerQueryExecutions.class, it, this.context.localVariable("e"), SearchResult.class)
+						.build();
+				}
+				if (this.queryMethod.isCollectionQuery()) {
+					return builder
+						.addStatement("return ($1T) $2T.toSearchResults($3L, $1T.class)",
+								this.context.getMethodReturn().toClass(), ReindexerQueryExecutions.class, it)
+						.build();
+				}
+				return builder
+					.addStatement("return new $1T<>(($2T) $3T.toSearchResults($4L, $2T.class))", SearchResults.class,
+							List.class, ReindexerQueryExecutions.class, it)
+					.build();
+			}
+			if (this.queryMethod.isPageQuery()) {
+				return builder
+					.addStatement("return $1T.getPage($2T.toList($3L), $4L, $3L::getTotalCount)",
+							PageableExecutionUtils.class, ReindexerQueryExecutions.class, it,
+							this.context.getPageableParameterName())
+					.build();
+			}
+			if (this.queryMethod.isSliceQuery()) {
+				String pageableParameterName = this.context.getPageableParameterName();
+				Assert.notNull(pageableParameterName, String
+					.format("Slice query needs to have a Pageable parameter; Offending method: %s", this.queryMethod));
+				return builder
+					.addStatement("return $1T.toSlice($2L, $3L)", ReindexerQueryExecutions.class, it,
+							pageableParameterName)
+					.build();
+			}
+			if (this.queryMethod.isStreamQuery()) {
+				return builder.addStatement("return $1T.toStream($2L)", ReindexerQueryExecutions.class, it).build();
+			}
+			if (this.queryMethod.isCollectionQuery()) {
+				return builder
+					.addStatement("return ($1T) $2T.toCollection($3L, $1T.class)",
+							this.context.getMethodReturn().toClass(), ReindexerQueryExecutions.class, it)
+					.build();
+			}
+			if (this.queryMethod.isIteratorQuery()) {
+				return builder.addStatement("return $L", it).build();
+			}
+			if (this.context.getMethodReturn().isOptional()) {
+				return builder
+					.addStatement("return $1T.ofNullable($2T.toEntity($3L))", Optional.class,
+							ReindexerQueryExecutions.class, it)
+					.build();
+			}
+			return builder.addStatement("return $1T.toEntity($2L)", ReindexerQueryExecutions.class, it).build();
+		}
+
+	}
+
+	private static CodeBlock createParameterArray(String format, Collection<String> inputProperties) {
 		CodeBlock.Builder builder = CodeBlock.builder();
 		for (Iterator<String> iterator = inputProperties.iterator(); iterator.hasNext();) {
 			String inputProperty = iterator.next();
-			builder.add("$S", inputProperty);
+			builder.add(format, inputProperty);
 			if (iterator.hasNext()) {
 				builder.add(", ");
 			}
