@@ -11,7 +11,7 @@
 
 	<groupId>io.github.evgeniycheban</groupId>
 	<artifactId>spring-data-reindexer</artifactId>
-	<version>1.6</version>
+	<version>1.7-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>spring-data-reindexer</name>
@@ -43,7 +43,7 @@
 		<developerConnection>
 			scm:git:https://github.com/evgeniycheban/spring-data-reindexer.git
 		</developerConnection>
-	  <tag>spring-data-reindexer-1.6</tag>
+	  <tag>HEAD</tag>
   </scm>
 
 	<properties>
