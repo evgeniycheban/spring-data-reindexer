@@ -89,7 +89,7 @@
 
 	<profiles>
 		<profile>
-			<id>sign-artifacts</id>
+			<id>pre-release</id>
 			<build>
 				<plugins>
 					<plugin>
