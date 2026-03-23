@@ -18,6 +18,9 @@ jobs:
     if: github.repository == 'evgeniycheban/spring-data-reindexer'
     env:
       MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +44,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          ./mvnw --batch-mode release:prepare -Pci,pre-release -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
+          $GITHUB_WORKSPACE/mvnw --batch-mode release:prepare -Pci,pre-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -57,7 +60,7 @@ jobs:
 
       - name: Perform release
         run: |
-          ./mvnw --batch-mode release:perform -Pci,release -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
+          $GITHUB_WORKSPACE/mvnw --batch-mode release:perform -Pci,release -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
           curl --request POST \
                --user "${{ secrets.MAVEN_USERNAME }}:${{ secrets.MAVEN_PASSWORD }}" \
                --url "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.github.evgeniycheban"
