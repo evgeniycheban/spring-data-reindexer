@@ -6,7 +6,7 @@
 		<groupId>org.springframework.data.build</groupId>
 		<artifactId>spring-data-parent</artifactId>
 		<version>4.0.4</version>
-		<relativePath/>
+		<relativePath />
 	</parent>
 
 	<groupId>io.github.evgeniycheban</groupId>
@@ -120,12 +120,6 @@
 		</profile>
 		<profile>
 			<id>ci</id>
-			<activation>
-				<property>
-					<name>env.GITHUB_ACTIONS</name>
-					<value>true</value>
-				</property>
-			</activation>
 			<build>
 				<plugins>
 					<plugin>

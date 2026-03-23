@@ -22,8 +22,8 @@ jobs:
       #          sudo apt-get update
       #          sudo apt-get install reindexer-dev
       - name: Build spring-data-reindexer in AOT mode
-        run: ./mvnw --batch-mode --update-snapshots verify -Paot
+        run: ./mvnw --batch-mode --update-snapshots verify -Pci,aot
       - name: Build spring-data-reindexer
-        run: ./mvnw --batch-mode --update-snapshots clean install
+        run: ./mvnw --batch-mode --update-snapshots clean install -Pci
       - name: Build spring-boot-starter-data-reindexer
-        run: ./mvnw --batch-mode --update-snapshots -f spring-boot-starter-data-reindexer/pom.xml verify
+        run: ./mvnw --batch-mode --update-snapshots -f spring-boot-starter-data-reindexer/pom.xml verify -Pci
