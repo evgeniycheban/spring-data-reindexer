@@ -15,7 +15,10 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.NonNull;
 
@@ -32,25 +35,33 @@ public final class ReindexerParameters extends Parameters<ReindexerParameters, R
 
 	private final int knnSearchParamIndex;
 
-	ReindexerParameters(ParametersSource source) {
+	private final Map<String, ReindexerParameter> namedParameters;
+
+	public ReindexerParameters(ParametersSource source) {
 		super(source, (parameter) -> new ReindexerParameter(parameter, source.getDomainTypeInformation()));
+		Map<String, ReindexerParameter> namedParameters = new LinkedHashMap<>();
 		int knnSearchParamIndex = -1;
 		for (ReindexerParameter parameter : this) {
+			parameter.getName().ifPresent((name) -> namedParameters.put(name, parameter));
 			if (parameter.isKnnSearchParam()) {
 				knnSearchParamIndex = parameter.getIndex();
 			}
 		}
+		this.namedParameters = Collections.unmodifiableMap(namedParameters);
 		this.knnSearchParamIndex = knnSearchParamIndex;
 	}
 
 	private ReindexerParameters(List<ReindexerParameter> originals) {
 		super(originals);
+		Map<String, ReindexerParameter> namedParameters = new LinkedHashMap<>();
 		int knnSearchParamIndex = -1;
 		for (ReindexerParameter original : originals) {
+			original.getName().ifPresent((name) -> namedParameters.put(name, original));
 			if (original.isKnnSearchParam()) {
 				knnSearchParamIndex = original.getIndex();
 			}
 		}
+		this.namedParameters = Collections.unmodifiableMap(namedParameters);
 		this.knnSearchParamIndex = knnSearchParamIndex;
 	}
 
@@ -71,6 +82,14 @@ public final class ReindexerParameters extends Parameters<ReindexerParameters, R
 	 */
 	public int getKnnSearchParamIndex() {
 		return this.knnSearchParamIndex;
+	}
+
+	/**
+	 * Returns a {@link ReindexerParameter} for the given {@code name}.
+	 * @return a {@code ReindexerParameter} for the given {@code name}
+	 */
+	public ReindexerParameter getParameter(String name) {
+		return this.namedParameters.get(name);
 	}
 
 	@Override

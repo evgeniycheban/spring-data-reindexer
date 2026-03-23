@@ -19,13 +19,14 @@ import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.data.repository.query.ParametersParameterAccessor;
+import org.springframework.util.Assert;
 
 /**
  * For internal use only, as this contract is likely to change.
  *
  * @author Evgeniy Cheban
  */
-final class ReindexerParameterAccessor extends ParametersParameterAccessor {
+public final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 
 	private final ReindexerParameters parameters;
 
@@ -34,7 +35,7 @@ final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 	 * @param parameters must not be {@literal null}.
 	 * @param values must not be {@literal null}.
 	 */
-	ReindexerParameterAccessor(ReindexerParameters parameters, Object[] values) {
+	public ReindexerParameterAccessor(ReindexerParameters parameters, Object[] values) {
 		super(parameters, values);
 		this.parameters = parameters;
 	}
@@ -50,7 +51,7 @@ final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected Object[] getValues() {
+	public Object[] getValues() {
 		return super.getValues();
 	}
 
@@ -58,8 +59,20 @@ final class ReindexerParameterAccessor extends ParametersParameterAccessor {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected @Nullable <T> T getValue(int index) {
+	public @Nullable <T> T getValue(int index) {
 		return super.getValue(index);
+	}
+
+	/**
+	 * Returns a parameter value for the given parameter name.
+	 * @param <T> the parameter type to use
+	 * @param name the parameter name to use
+	 * @return the parameter value for the given parameter name
+	 */
+	public @Nullable <T> T getValue(String name) {
+		ReindexerParameter parameter = this.parameters.getParameter(name);
+		Assert.notNull(parameter, () -> "Could not resolve parameter: " + name);
+		return getValue(parameter.getIndex());
 	}
 
 }

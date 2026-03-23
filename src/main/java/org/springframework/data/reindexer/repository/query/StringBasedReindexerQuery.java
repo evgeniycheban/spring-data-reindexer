@@ -113,8 +113,6 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private final Statement statement;
 
-	private final Map<String, Integer> namedParameters;
-
 	/**
 	 * Creates an instance.
 	 * @param method the {@link ReindexerQueryMethod} to use
@@ -136,7 +134,6 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		this.queryEvaluator = queryRewriter.withEvaluationContextAccessor(accessor)
 			.parse(method.getQuery(), method.getParameters());
 		this.statement = parseStatement(this.queryEvaluator.getQueryString());
-		this.namedParameters = getNamedParameters(method);
 	}
 
 	ReindexerQuery createQuery(ReindexerParameterAccessor parameterAccessor, ReturnedType returnedType) {
@@ -934,7 +931,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
-	private final class ReindexerParameterResolver {
+	private static final class ReindexerParameterResolver {
 
 		private final Map<String, Object> resolvedParameters;
 
@@ -950,9 +947,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			if (this.resolvedParameters.containsKey(name)) {
 				return this.resolvedParameters.get(name);
 			}
-			Integer index = StringBasedReindexerQuery.this.namedParameters.get(name);
-			Assert.notNull(index, () -> "Could not resolve parameter: " + name);
-			return this.parameterAccessor.getValue(index);
+			return this.parameterAccessor.getValue(name);
 		}
 
 		private Object resolveIndexed(int index) {
