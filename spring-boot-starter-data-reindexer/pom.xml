@@ -89,7 +89,7 @@
 
 	<profiles>
 		<profile>
-			<id>pre-release</id>
+			<id>release</id>
 			<build>
 				<plugins>
 					<plugin>
@@ -107,6 +107,7 @@
 									<gpgArguments>
 										<arg>--pinentry-mode</arg>
 										<arg>loopback</arg>
+										<arg>--no-tty</arg>
 									</gpgArguments>
 								</configuration>
 							</execution>
