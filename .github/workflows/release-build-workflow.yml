@@ -60,7 +60,7 @@ jobs:
 
       - name: Perform release
         run: |
-          $GITHUB_WORKSPACE/mvnw --batch-mode release:perform -Pci,release -Darguments="-f ${{ inputs.working-directory }}/pom.xml"
+          $GITHUB_WORKSPACE/mvnw --batch-mode release:perform -Pci,release
           curl --request POST \
                --user "${{ secrets.MAVEN_USERNAME }}:${{ secrets.MAVEN_PASSWORD }}" \
                --url "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.github.evgeniycheban"
