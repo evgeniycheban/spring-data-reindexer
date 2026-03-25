@@ -1,6 +1,6 @@
 Spring Boot Starter Data Reindexer
 ====================
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.evgeniycheban/spring-boot-starter-data-reindexer/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.evgeniycheban/spring-boot-starter-data-reindexer)
+[![Sonatype Central](https://maven-badges.sml.io/sonatype-central/io.github.evgeniycheban/spring-boot-starter-data-reindexer/badge.svg)](https://maven-badges.sml.io/sonatype-central/io.github.evgeniycheban/spring-boot-starter-data-reindexer/)
 
 Starter for using Spring Data Reindexer.
 
