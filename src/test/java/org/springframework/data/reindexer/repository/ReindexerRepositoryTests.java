@@ -514,6 +514,17 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void findOneSqlByNestedNameAndValue() {
+		this.repository.save(TestItem.builder().id(1L).nestedItem(new TestNestedItem("TestName", "TestValue")).build());
+		TestItem item = this.repository.findOneSqlByNestedNameAndValue("TestName", "TestValue").orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(1L);
+		assertThat(item.getNestedItem()).isNotNull();
+		assertThat(item.getNestedItem().getName()).isEqualTo("TestName");
+		assertThat(item.getNestedItem().getValue()).isEqualTo("TestValue");
+	}
+
+	@Test
 	public void findOneNativeSqlByName() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
 		TestItem item = this.repository.findOneNativeSqlByName("TestName").orElse(null);
@@ -3519,6 +3530,9 @@ class ReindexerRepositoryTests {
 
 		@Query("SELECT * FROM items WHERE name = ?1")
 		Optional<TestItem> findOneSqlByName(String name);
+
+		@Query("SELECT * FROM items WHERE nestedItem->name = :name and nestedItem->value = :value")
+		Optional<TestItem> findOneSqlByNestedNameAndValue(String name, String value);
 
 		@Query(value = "SELECT * FROM items WHERE name = ?1", nativeQuery = true)
 		Optional<TestItem> findOneNativeSqlByName(String name);

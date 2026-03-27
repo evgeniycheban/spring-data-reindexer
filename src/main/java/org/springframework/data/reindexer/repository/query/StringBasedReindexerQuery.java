@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -33,6 +34,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.ExpressionVisitorAdapter;
 import net.sf.jsqlparser.expression.JdbcNamedParameter;
 import net.sf.jsqlparser.expression.JdbcParameter;
+import net.sf.jsqlparser.expression.JsonExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.NotExpression;
 import net.sf.jsqlparser.expression.StringValue;
@@ -795,6 +797,16 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		@Override
 		public <S> Column visit(Column column, S ctx) {
 			return column;
+		}
+
+		@Override
+		public <S> Column visit(JsonExpression jsonExpr, S context) {
+			// Flattens a JsonExpression: `a->b->c`
+			// into a dot notation Column name: `a.b.c`.
+			StringJoiner joiner = new StringJoiner(".");
+			joiner.add(resolveRequiredIndexName(jsonExpr.getExpression()));
+			jsonExpr.getIdentList().forEach((e) -> joiner.add(resolveRequiredIndexName(e.getKey())));
+			return new Column(joiner.toString());
 		}
 
 		@Override
