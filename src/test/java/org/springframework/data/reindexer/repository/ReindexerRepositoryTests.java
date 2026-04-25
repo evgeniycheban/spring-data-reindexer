@@ -884,6 +884,16 @@ class ReindexerRepositoryTests {
 	}
 
 	@Test
+	public void updateDefaultDateTimeMinus3DaysUsingExpression() {
+		LocalDateTime now = LocalDateTime.now();
+		this.repository.save(TestItem.builder().id(1L).defaultDateTime(now).build());
+		this.repository.updateDefaultDateTimeMinus3DaysUsingExpression(1L);
+		TestItem found = this.repository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getDefaultDateTime().toLocalDate()).isEqualTo(now.minusDays(3).toLocalDate());
+	}
+
+	@Test
 	public void deleteByNameAndValueSql() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
 		this.repository.deleteByNameAndValueSql("TestName", "TestValue");
@@ -2861,6 +2871,54 @@ class ReindexerRepositoryTests {
 		assertThat(foundItem.getCustomDateTime()).isEqualTo(expectedItem.getCustomDateTime());
 	}
 
+	@Test
+	public void findPastItems() {
+		this.repository.save(TestItem.builder().id(1L).defaultDateTime(LocalDateTime.now().minusDays(1)).build());
+		this.repository.save(TestItem.builder().id(2L).defaultDateTime(LocalDateTime.now().minusDays(2)).build());
+		this.repository.save(TestItem.builder().id(3L).defaultDateTime(LocalDateTime.now().minusDays(3)).build());
+		this.repository.save(TestItem.builder().id(4L).defaultDateTime(LocalDateTime.now().plusDays(1)).build());
+		List<TestItem> foundItems = this.repository.findPastItems();
+		assertThat(foundItems).hasSize(3);
+		assertThat(foundItems).map(TestItem::getId).containsExactly(1L, 2L, 3L);
+	}
+
+	@Test
+	public void findPastItemsInverted() {
+		this.repository.save(TestItem.builder().id(1L).defaultDateTime(LocalDateTime.now().minusDays(1)).build());
+		this.repository.save(TestItem.builder().id(2L).defaultDateTime(LocalDateTime.now().minusDays(2)).build());
+		this.repository.save(TestItem.builder().id(3L).defaultDateTime(LocalDateTime.now().minusDays(3)).build());
+		this.repository.save(TestItem.builder().id(4L).defaultDateTime(LocalDateTime.now().plusDays(1)).build());
+		List<TestItem> foundItems = this.repository.findPastItemsInverted();
+		assertThat(foundItems).hasSize(3);
+		assertThat(foundItems).map(TestItem::getId).containsExactly(1L, 2L, 3L);
+	}
+
+	@Test
+	public void findItemsCitiesLengthGreaterThan() {
+		this.repository.save(TestItem.builder().id(1L).cities(List.of("London", "Berlin", "Paris")).build());
+		this.repository
+			.save(TestItem.builder().id(2L).cities(List.of("Boston", "Warsaw", "Madrid", "Barcelona")).build());
+		this.repository.save(TestItem.builder().id(3L).cities(List.of("Dublin", "Amsterdam")).build());
+		assertThat(this.repository.findItemsCitiesLengthGreaterThan(1)).map(TestItem::getId)
+			.containsExactly(1L, 2L, 3L);
+		assertThat(this.repository.findItemsCitiesLengthGreaterThan(2)).map(TestItem::getId).containsExactly(1L, 2L);
+		assertThat(this.repository.findItemsCitiesLengthGreaterThan(3)).map(TestItem::getId).containsExactly(2L);
+	}
+
+	@Test
+	public void findItemsCitiesLengthGreaterThanInverted() {
+		this.repository.save(TestItem.builder().id(1L).cities(List.of("London", "Berlin", "Paris")).build());
+		this.repository
+			.save(TestItem.builder().id(2L).cities(List.of("Boston", "Warsaw", "Madrid", "Barcelona")).build());
+		this.repository.save(TestItem.builder().id(3L).cities(List.of("Dublin", "Amsterdam")).build());
+		assertThat(this.repository.findItemsCitiesLengthGreaterThanInverted(1)).map(TestItem::getId)
+			.containsExactly(1L, 2L, 3L);
+		assertThat(this.repository.findItemsCitiesLengthGreaterThanInverted(2)).map(TestItem::getId)
+			.containsExactly(1L, 2L);
+		assertThat(this.repository.findItemsCitiesLengthGreaterThanInverted(3)).map(TestItem::getId)
+			.containsExactly(2L);
+	}
+
 	// gh-75
 	@Test
 	public void throwsLazyLoadingExceptionWhenDataSourceUnavailable() throws Exception {
@@ -3490,6 +3548,10 @@ class ReindexerRepositoryTests {
 		@Query(value = "UPDATE items SET name = :name WHERE id = :id", update = true)
 		void updateNameSqlParam(@Param("name") String name, @Param("id") Long id);
 
+		@Query(value = "UPDATE items SET defaultDateTime = now(msec) - 3 * 24 * 60 * 60 * 1000 WHERE id = :id",
+				update = true)
+		void updateDefaultDateTimeMinus3DaysUsingExpression(Long id);
+
 		@Query(value = "DELETE FROM items WHERE name = :name AND value = :value")
 		void deleteByNameAndValueSql(String name, String value);
 
@@ -3804,6 +3866,18 @@ class ReindexerRepositoryTests {
 		@Query("SELECT * FROM items WHERE customDateTime = :dateTime")
 		Optional<TestItem> findByCustomDateTimeSql(LocalDateTime dateTime);
 
+		@Query("SELECT * FROM items WHERE defaultDateTime <= now(msec)")
+		List<TestItem> findPastItems();
+
+		@Query("SELECT * FROM items WHERE now(msec) >= defaultDateTime")
+		List<TestItem> findPastItemsInverted();
+
+		@Query("SELECT * FROM items WHERE flat_array_len(cities) > :citiesLength")
+		List<TestItem> findItemsCitiesLengthGreaterThan(int citiesLength);
+
+		@Query("SELECT * FROM items WHERE :citiesLength < flat_array_len(cities)")
+		List<TestItem> findItemsCitiesLengthGreaterThanInverted(int citiesLength);
+
 		Slice<TestItem> findAllBy(Pageable pageable);
 
 		Slice<TestItem> findAllByIdIn(List<Long> ids, Pageable pageable);
@@ -4007,6 +4081,7 @@ class ReindexerRepositoryTests {
 
 		private LocalTime defaultTime;
 
+		@Reindex(name = "defaultDateTime")
 		private LocalDateTime defaultDateTime;
 
 		public TestItem() {
