@@ -18,13 +18,17 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.BinaryExpression;
@@ -72,6 +76,10 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerNamespace;
+import ru.rt.restream.reindexer.TimeUnit;
+import ru.rt.restream.reindexer.binding.cproto.ByteBuffer;
+import ru.rt.restream.reindexer.expression.SetExpression;
+import ru.rt.restream.reindexer.expression.WhereExpression;
 import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.dao.InvalidDataAccessApiUsageException;
@@ -273,9 +281,14 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				List<Column> columns = updateSet.getColumns();
 				for (int i = 0; i < columns.size(); i++) {
 					Column column = columns.get(i);
-					Object value = parameterMapper.mapParameterValue(column.getColumnName(),
-							this.valueResolvingVisitor.get().resolveValue(updateSet.getValue(i)));
-					criteria.set(column.getColumnName(), value);
+					Object resolvedValue = this.valueResolvingVisitor.get().resolveValue(updateSet.getValue(i));
+					if (resolvedValue instanceof SetExpression expr) {
+						criteria.setExpression(column.getColumnName(), expr);
+					}
+					else {
+						Object value = parameterMapper.mapParameterValue(column.getColumnName(), resolvedValue);
+						criteria.set(column.getColumnName(), value);
+					}
 				}
 			}
 			if (update.getWhere() != null) {
@@ -503,6 +516,19 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private static class ReindexerConditionalExpressionVisitor extends ExpressionVisitorAdapter<Query<?>> {
 
+		private static final ReindexerWhereExpressionResolvingVisitor EXPRESSION_RESOLVING_VISITOR = new ReindexerWhereExpressionResolvingVisitor();
+
+		private static final UnaryOperator<Condition> CONDITION_INVERTER = createConditionInverter();
+
+		private static UnaryOperator<Condition> createConditionInverter() {
+			Map<Condition, Condition> invertedConditions = new EnumMap<>(Condition.class);
+			invertedConditions.put(Condition.GT, Condition.LT);
+			invertedConditions.put(Condition.LT, Condition.GT);
+			invertedConditions.put(Condition.GE, Condition.LE);
+			invertedConditions.put(Condition.LE, Condition.GE);
+			return (condition) -> invertedConditions.getOrDefault(condition, condition);
+		}
+
 		final Query<?> criteria;
 
 		private final Supplier<QueryParameterMapper> parameterMapper;
@@ -659,6 +685,19 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		private <S> Query<?> buildComparisonCondition(Expression left, Expression right, Condition condition, S ctx) {
+			ReindexerWhereExpression leftExpr = left.accept(EXPRESSION_RESOLVING_VISITOR, ctx);
+			ReindexerWhereExpression rightExpr = right.accept(EXPRESSION_RESOLVING_VISITOR, ctx);
+			if (leftExpr != null && rightExpr != null) {
+				return buildExpressionCondition(leftExpr, condition, rightExpr);
+			}
+			if (leftExpr != null) {
+				ReindexerWhereExpression resolvedExpr = resolveExpression(right, ctx);
+				return buildExpressionCondition(leftExpr, condition, resolvedExpr);
+			}
+			if (rightExpr != null) {
+				ReindexerWhereExpression resolvedExpr = resolveExpression(left, ctx);
+				return buildExpressionCondition(resolvedExpr, condition, rightExpr);
+			}
 			Column leftColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(left);
 			Column rightColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(right);
 			if (leftColumn != null && rightColumn != null) {
@@ -683,6 +722,35 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			}
 			throw new InvalidDataAccessApiUsageException(
 					"Invalid operand combination: %s, %s for condition: %s".formatted(left, right, condition));
+		}
+
+		private <S> ReindexerWhereExpression resolveExpression(Expression expr, S ctx) {
+			Column column = COLUMN_RESOLVING_VISITOR.resolveColumn(expr);
+			if (column != null) {
+				return new ReindexerWhereExpression(
+						ru.rt.restream.reindexer.expression.Expression.field(column.getColumnName()),
+						ExpressionSide.LEFT, ExpressionSide.RIGHT);
+			}
+			Query<?> query = expr.accept(this, ctx);
+			if (isSubQuery(query)) {
+				return new ReindexerWhereExpression(ru.rt.restream.reindexer.expression.Expression.subQuery(query),
+						ExpressionSide.LEFT, ExpressionSide.RIGHT);
+			}
+			Object value = this.valueResolvingVisitor.get().resolveRequiredValue(expr);
+			return new ReindexerWhereExpression(ru.rt.restream.reindexer.expression.Expression.values(value),
+					ExpressionSide.RIGHT);
+		}
+
+		private Query<?> buildExpressionCondition(ReindexerWhereExpression left, Condition condition,
+				ReindexerWhereExpression right) {
+			if (left.isLeft() && right.isRight()) {
+				return this.criteria.where(left, condition, right);
+			}
+			if (left.isRight() && right.isLeft()) {
+				return this.criteria.where(right, CONDITION_INVERTER.apply(condition), left);
+			}
+			throw new InvalidDataAccessApiUsageException(
+					"Invalid combination of expressions: ('%s', '%s')".formatted(left, right));
 		}
 
 		private Query<?> buildComparisonCondition(Column column, Condition condition, Expression expr) {
@@ -762,15 +830,13 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			if (context.isParent(leftOwner) && context.isChild(rightOwner)) {
 				return this.criteria.on(left.getColumnName(), condition, right.getColumnName());
 			}
-			else if (context.isChild(leftOwner) && context.isParent(rightOwner)) {
+			if (context.isChild(leftOwner) && context.isParent(rightOwner)) {
 				return this.criteria.on(right.getColumnName(), condition, left.getColumnName());
 			}
-			else {
-				throw new InvalidDataAccessApiUsageException("""
-						Unexpected tables to join: (%s, %s);
-						The parent's and child's aliases: (%s) must be used to join tables""".formatted(leftOwner,
-						rightOwner, String.join(", ", context.tableRoles.keySet())));
-			}
+			throw new InvalidDataAccessApiUsageException("""
+					Unexpected tables to join: (%s, %s);
+					The parent's and child's aliases: (%s) must be used to join tables""".formatted(leftOwner,
+					rightOwner, String.join(", ", context.tableRoles.keySet())));
 		}
 
 		private String extractOwner(Column column) {
@@ -847,6 +913,38 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
+	private static final class ReindexerWhereExpressionResolvingVisitor
+			extends ExpressionVisitorAdapter<ReindexerWhereExpression> {
+
+		@Override
+		public <S> ReindexerWhereExpression visit(net.sf.jsqlparser.expression.Function function, S context) {
+			return switch (function.getName().toLowerCase(Locale.ROOT)) {
+				case "now" -> {
+					TimeUnit unit = TimeUnit.SECONDS;
+					if (function.getParameters() != null) {
+						Assert.isTrue(function.getParameters().size() == 1,
+								() -> "Invalid function expression: %s, exactly 1 parameter expected for now(unit)"
+									.formatted(function));
+						unit = TimeUnit.fromName(function.getParameters().get(0).toString());
+					}
+					yield new ReindexerWhereExpression(ru.rt.restream.reindexer.expression.Expression.now(unit),
+							ExpressionSide.RIGHT);
+				}
+				case "flat_array_len" -> {
+					Assert.isTrue(function.getParameters() != null && function.getParameters().size() == 1,
+							() -> "Invalid function expression: %s, exactly 1 parameter expected for flat_array_len(field)"
+								.formatted(function));
+					String fieldName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function);
+					yield new ReindexerWhereExpression(
+							ru.rt.restream.reindexer.expression.Expression.flatArrayLength(fieldName),
+							ExpressionSide.LEFT, ExpressionSide.RIGHT);
+				}
+				default -> null;
+			};
+		}
+
+	}
+
 	private static final class ReindexerValueResolvingExpressionVisitor extends ExpressionVisitorAdapter<Object> {
 
 		private final ReindexerParameterResolver parameterResolver;
@@ -878,6 +976,11 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		@Override
 		public <S> Object visit(StringValue value, S ctx) {
 			return value.getValue();
+		}
+
+		@Override
+		protected <S> Object visitBinaryExpression(BinaryExpression expr, S context) {
+			return ru.rt.restream.reindexer.expression.Expression.string(expr.toString());
 		}
 
 		private float[] resolveVector(Expression expr) {
@@ -988,6 +1091,43 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	private enum JoinRole {
 
 		PARENT, CHILD
+
+	}
+
+	private static final class ReindexerWhereExpression implements WhereExpression {
+
+		private final WhereExpression delegate;
+
+		private final Set<ExpressionSide> sides;
+
+		private ReindexerWhereExpression(WhereExpression delegate, ExpressionSide side, ExpressionSide... rest) {
+			this.delegate = delegate;
+			this.sides = EnumSet.of(side, rest);
+		}
+
+		@Override
+		public void serializeWhere(ByteBuffer buffer) {
+			this.delegate.serializeWhere(buffer);
+		}
+
+		@Override
+		public String toString() {
+			return this.delegate.toString();
+		}
+
+		private boolean isLeft() {
+			return this.sides.contains(ExpressionSide.LEFT);
+		}
+
+		private boolean isRight() {
+			return this.sides.contains(ExpressionSide.RIGHT);
+		}
+
+	}
+
+	private enum ExpressionSide {
+
+		LEFT, RIGHT
 
 	}
 
