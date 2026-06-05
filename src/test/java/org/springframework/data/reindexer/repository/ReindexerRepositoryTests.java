@@ -1643,7 +1643,7 @@ class ReindexerRepositoryTests {
 		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getValue).toList())
 			.containsOnly("TestValue2", "TestValue3");
 		assertThat(foundItems.stream()
-			.map(TestItemNameValueJoinedItemProjection::getJoinedItem)
+			.map(TestItemNameValueJoinedItemProjection::getJoinedItemLazy)
 			.map(TestJoinedItem::getId)
 			.toList()).containsOnly(1L, 2L);
 	}
@@ -2125,6 +2125,19 @@ class ReindexerRepositoryTests {
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem()).isNotNull();
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItemLazy()).isNotNull();
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
+		assertThat(foundItem.getJoinedItemLazy()).isNotNull();
+		assertThat(foundItem.getJoinedItemLazy().getId()).isEqualTo(joinedItem.getId());
+		assertThat(foundItem.getJoinedItemLazy().getName()).isEqualTo(joinedItem.getName());
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItem()).isNotNull();
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemLazy()).isNotNull();
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemLazy().getName())
+			.isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
 		int i = 0;
 		for (TestJoinedItemProjection foundJoinedItem : foundItem.getJoinedItems()) {
@@ -2134,6 +2147,9 @@ class ReindexerRepositoryTests {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
 		assertThat(foundItem.getJoinedItemsReverseOrder()).hasSize(expectedJoinedItems.size());
 		i = 0;
@@ -2144,6 +2160,9 @@ class ReindexerRepositoryTests {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
 		assertThat(foundItem.getJoinedItemsRepository()).hasSize(expectedJoinedItems.size());
 		i = 0;
@@ -2154,6 +2173,9 @@ class ReindexerRepositoryTests {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
 	}
 
@@ -2926,18 +2948,18 @@ class ReindexerRepositoryTests {
 		this.joinedItemRepository.save(new TestJoinedItem(2L, "TestName"));
 		TestItem found = this.repository.findById(1L).orElse(null);
 		assertThat(found).isNotNull();
-		assertThat(found.getJoinedItem()).isNotNull();
+		assertThat(found.getJoinedItemLazy()).isNotNull();
 		// disable proxy to simulate Reindexer outage and verify that LazyLoadingException
 		// is thrown when accessing lazy namespace reference.
 		proxy.disable();
-		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getJoinedItem().getName())
+		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getJoinedItemLazy().getName())
 			.withMessage("Unable to lazily resolve reference")
 			.havingCause()
 			.withMessage("Connection timeout: no available data source to connect");
 		// enable proxy and verify that no exception is thrown when accessing lazy
 		// namespace reference.
 		proxy.enable();
-		assertThatNoException().isThrownBy(() -> found.getJoinedItem().getName());
+		assertThatNoException().isThrownBy(() -> found.getJoinedItemLazy().getName());
 	}
 
 	@Test
@@ -4010,6 +4032,7 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "active")
 		private boolean active;
 
+		@Reindex(name = "joinedItemId")
 		private Long joinedItemId;
 
 		private List<Long> joinedItemIds = new ArrayList<>();
@@ -4018,8 +4041,12 @@ class ReindexerRepositoryTests {
 		private TestNestedItem nestedItem;
 
 		@Transient
-		@NamespaceReference(indexName = "joinedItemId", joinType = JoinType.LEFT, lazy = true)
+		@NamespaceReference(indexName = "joinedItemId", joinType = JoinType.LEFT)
 		private TestJoinedItem joinedItem;
+
+		@Transient
+		@NamespaceReference(indexName = "joinedItemId", lazy = true)
+		private TestJoinedItem joinedItemLazy;
 
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT, lazy = true)
@@ -4233,6 +4260,10 @@ class ReindexerRepositoryTests {
 		@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT, fetch = true)
 		private TestJoinedItem nestedJoinedItem;
 
+		@Transient
+		@NamespaceReference(indexName = "nestedJoinedItemId", lazy = true)
+		private TestJoinedItem nestedJoinedItemLazy;
+
 		public TestJoinedItem() {
 		}
 
@@ -4356,7 +4387,7 @@ class ReindexerRepositoryTests {
 
 		String getValue();
 
-		TestJoinedItem getJoinedItem();
+		TestJoinedItem getJoinedItemLazy();
 
 	}
 
@@ -4448,6 +4479,9 @@ class ReindexerRepositoryTests {
 		@ValueConverter(TestJoinedItemPropertyConverter.class)
 		private final TestJoinedItemProjection joinedItem;
 
+		@ValueConverter(TestJoinedItemManuallyPropertyConverter.class)
+		private final TestJoinedItemProjection joinedItemLazy;
+
 		private final Set<TestJoinedItemProjection> joinedItems;
 
 		private final Collection<TestJoinedItemProjection> joinedItemsReverseOrder;
@@ -4464,6 +4498,8 @@ class ReindexerRepositoryTests {
 		private final String name;
 
 		private final TestJoinedItemProjection nestedJoinedItem;
+
+		private final TestJoinedItemProjection nestedJoinedItemLazy;
 
 	}
 
@@ -4526,6 +4562,26 @@ class ReindexerRepositoryTests {
 		@Override
 		public TestJoinedItemProjection read(TestJoinedItem value, ReindexerConversionContext context) {
 			return context.read(value, TestJoinedItemProjection.class);
+		}
+
+		@Override
+		public TestJoinedItem write(TestJoinedItemProjection value, ReindexerConversionContext context) {
+			return null;
+		}
+
+	}
+
+	public static class TestJoinedItemManuallyPropertyConverter
+			implements PropertyValueConverter<TestJoinedItemProjection, TestJoinedItem, ReindexerConversionContext> {
+
+		@Override
+		public TestJoinedItemProjection read(TestJoinedItem value, ReindexerConversionContext context) {
+			if (value == null) {
+				return null;
+			}
+			TestJoinedItemProjection nestedJoinedItem = read(value.getNestedJoinedItem(), context);
+			TestJoinedItemProjection nestedJoinedItemLazy = read(value.getNestedJoinedItemLazy(), context);
+			return new TestJoinedItemProjection(value.getId(), value.getName(), nestedJoinedItem, nestedJoinedItemLazy);
 		}
 
 		@Override
