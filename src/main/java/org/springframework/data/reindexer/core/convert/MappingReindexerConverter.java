@@ -280,6 +280,19 @@ public class MappingReindexerConverter
 					return (T) (proxy != null ? (T) proxy : value);
 				}
 			}
+			// Unwrap the value if is a proxy, create a new proxy for the target type,
+			// propagating the underlying target object for further conversion and use,
+			// preserving the lazy-loading behavior of the original proxy.
+			if (value instanceof LazyLoadingProxy proxy) {
+				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
+				Object source = getSource(namespaceReference, sourceProperty);
+				ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
+					.getRequiredPersistentEntity(sourceProperty);
+				return (T) MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
+						targetProperty.getType(), sourceProperty, proxy::getTarget,
+						new NamespaceReferenceSource(referenceEntity.getNamespace(), source),
+						resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
+			}
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
 
@@ -290,23 +303,9 @@ public class MappingReindexerConverter
 
 		private Object createProxyIfNeeded(NamespaceReference namespaceReference,
 				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty) {
-			Object source;
-			if (StringUtils.hasText(namespaceReference.lookup())) {
-				source = namespaceReference.lookup();
-			}
-			else {
-				source = this.accessor
-					.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
-				if (source == null && !namespaceReference.nullable()) {
-					String entityName = sourceProperty.getOwner().getName();
-					throw new DataIntegrityViolationException(
-							"Property: '" + entityName + "." + namespaceReference.indexName()
-									+ "' violates non-null constraint of namespace reference: '" + entityName + "."
-									+ sourceProperty.getName() + "'");
-				}
-				if (ObjectUtils.isEmpty(source)) {
-					return null;
-				}
+			Object source = getSource(namespaceReference, sourceProperty);
+			if (source == null) {
+				return null;
 			}
 			ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
 				.getRequiredPersistentEntity(sourceProperty);
@@ -356,6 +355,25 @@ public class MappingReindexerConverter
 					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
 		}
 
+		private Object getSource(NamespaceReference namespaceReference, ReindexerPersistentProperty sourceProperty) {
+			if (StringUtils.hasText(namespaceReference.lookup())) {
+				return namespaceReference.lookup();
+			}
+			Object source = this.accessor
+				.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+			if (source == null && !namespaceReference.nullable()) {
+				String entityName = sourceProperty.getOwner().getName();
+				throw new DataIntegrityViolationException("""
+						Property: '%s.%s' violates non-null constraint of namespace reference: '%s.%s'
+						""".formatted(entityName, namespaceReference.indexName(), entityName,
+						sourceProperty.getName()));
+			}
+			if (ObjectUtils.isEmpty(source)) {
+				return null;
+			}
+			return source;
+		}
+
 		private Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {
 			Object result = iterator.hasNext() ? iterator.next() : null;
 			if (result == null && !nullable) {
@@ -388,12 +406,14 @@ public class MappingReindexerConverter
 			if (valueConversions != null && valueConversions.hasValueConverter(targetProperty)) {
 				PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = valueConversions
 					.getValueConverter(targetProperty);
+				// Initialize lazy-loaded properties with proxies.
+				Object source = conversionContext.read(value, sourceProperty.getTypeInformation());
 				// If the domain entity is being read the converters have already been
 				// applied during deserialization in reindexer-java connector.
 				if (sourceProperty == targetProperty) {
-					return (T) value;
+					return (T) source;
 				}
-				return (T) (value != null ? valueConverter.read(value, conversionContext)
+				return (T) (source != null ? valueConverter.read(source, conversionContext)
 						: valueConverter.readNull(conversionContext));
 			}
 			return (T) conversionContext.read(value, targetProperty.getTypeInformation());
