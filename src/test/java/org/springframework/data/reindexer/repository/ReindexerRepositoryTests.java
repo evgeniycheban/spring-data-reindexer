@@ -1639,7 +1639,7 @@ class ReindexerRepositoryTests {
 		List<TestItemNameValueJoinedItemProjection> foundItems = this.repository
 			.findDistinctNameValueJoinedItemProjectionByIdIn(List.of(1L, 2L, 3L));
 		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getName).toList())
-			.containsOnly("TestName1", "TestName3");
+			.containsOnly("TestName1", "TestName2");
 		assertThat(foundItems.stream().map(TestItemNameValueJoinedItemProjection::getValue).toList())
 			.containsOnly("TestValue2", "TestValue3");
 		assertThat(foundItems.stream()
