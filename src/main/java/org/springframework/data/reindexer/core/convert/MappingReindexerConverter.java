@@ -284,13 +284,11 @@ public class MappingReindexerConverter
 			// propagating the underlying target object for further conversion and use,
 			// preserving the lazy-loading behavior of the original proxy.
 			if (value instanceof LazyLoadingProxy proxy) {
-				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
-				Object source = getSource(namespaceReference, sourceProperty);
 				ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
 					.getRequiredPersistentEntity(sourceProperty);
 				return (T) MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 						targetProperty.getType(), sourceProperty, proxy::getTarget,
-						new NamespaceReferenceSource(referenceEntity.getNamespace(), source),
+						new NamespaceReferenceSource(referenceEntity.getNamespace(), proxy.getSource()),
 						resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
 			}
 			return readPropertyValue(sourceProperty, targetProperty, value);
@@ -303,9 +301,23 @@ public class MappingReindexerConverter
 
 		private Object createProxyIfNeeded(NamespaceReference namespaceReference,
 				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty) {
-			Object source = getSource(namespaceReference, sourceProperty);
-			if (source == null) {
-				return null;
+			Object source;
+			if (StringUtils.hasText(namespaceReference.lookup())) {
+				source = namespaceReference.lookup();
+			}
+			else {
+				source = this.accessor
+					.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+				if (source == null && !namespaceReference.nullable()) {
+					String entityName = sourceProperty.getOwner().getName();
+					throw new DataIntegrityViolationException("""
+							Property: '%s.%s' violates non-null constraint of namespace reference: '%s.%s'
+							""".formatted(entityName, namespaceReference.indexName(), entityName,
+							sourceProperty.getName()));
+				}
+				if (ObjectUtils.isEmpty(source)) {
+					return null;
+				}
 			}
 			ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
 				.getRequiredPersistentEntity(sourceProperty);
@@ -353,25 +365,6 @@ public class MappingReindexerConverter
 					targetProperty.getType(), sourceProperty, callback,
 					new NamespaceReferenceSource(namespaceName, source),
 					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
-		}
-
-		private Object getSource(NamespaceReference namespaceReference, ReindexerPersistentProperty sourceProperty) {
-			if (StringUtils.hasText(namespaceReference.lookup())) {
-				return namespaceReference.lookup();
-			}
-			Object source = this.accessor
-				.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
-			if (source == null && !namespaceReference.nullable()) {
-				String entityName = sourceProperty.getOwner().getName();
-				throw new DataIntegrityViolationException("""
-						Property: '%s.%s' violates non-null constraint of namespace reference: '%s.%s'
-						""".formatted(entityName, namespaceReference.indexName(), entityName,
-						sourceProperty.getName()));
-			}
-			if (ObjectUtils.isEmpty(source)) {
-				return null;
-			}
-			return source;
 		}
 
 		private Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {
