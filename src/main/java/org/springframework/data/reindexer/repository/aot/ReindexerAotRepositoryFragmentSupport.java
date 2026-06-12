@@ -19,8 +19,6 @@ import java.lang.reflect.Method;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
-import ru.rt.restream.reindexer.Reindexer;
-import ru.rt.restream.reindexer.Transaction;
 
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.repository.core.RepositoryMetadata;
@@ -29,14 +27,13 @@ import org.springframework.data.repository.query.ParametersSource;
 import org.springframework.data.repository.query.ValueExpressionDelegate;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
-import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerParameterAccessor;
 import org.springframework.data.reindexer.repository.query.ReindexerParameters;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.util.StringQueryUtils;
 import org.springframework.util.ConcurrentLruCache;
 import org.springframework.data.util.Lazy;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -45,9 +42,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public class ReindexerAotRepositoryFragmentSupport {
 
-	private final Reindexer reindexer;
-
 	private final ReindexerMappingContext mappingContext;
+
+	private final ReindexerNamespaceFactory namespaceFactory;
 
 	private final ReindexerConverter converter;
 
@@ -59,17 +56,18 @@ public class ReindexerAotRepositoryFragmentSupport {
 
 	private final Lazy<ConcurrentLruCache<Method, ReindexerParameters>> parameters;
 
-	protected ReindexerAotRepositoryFragmentSupport(Reindexer reindexer, ReindexerMappingContext mappingContext,
-			ReindexerConverter converter, RepositoryFactoryBeanSupport.FragmentCreationContext context) {
-		this(reindexer, mappingContext, converter, context.getRepositoryMetadata(),
+	protected ReindexerAotRepositoryFragmentSupport(ReindexerMappingContext mappingContext,
+			ReindexerNamespaceFactory namespaceFactory, ReindexerConverter converter,
+			RepositoryFactoryBeanSupport.FragmentCreationContext context) {
+		this(mappingContext, namespaceFactory, converter, context.getRepositoryMetadata(),
 				context.getValueExpressionDelegate(), context.getProjectionFactory());
 	}
 
-	protected ReindexerAotRepositoryFragmentSupport(Reindexer reindexer, ReindexerMappingContext mappingContext,
-			ReindexerConverter converter, RepositoryMetadata metadata, ValueExpressionDelegate valueExpressionDelegate,
-			ProjectionFactory projectionFactory) {
-		this.reindexer = reindexer;
+	protected ReindexerAotRepositoryFragmentSupport(ReindexerMappingContext mappingContext,
+			ReindexerNamespaceFactory namespaceFactory, ReindexerConverter converter, RepositoryMetadata metadata,
+			ValueExpressionDelegate valueExpressionDelegate, ProjectionFactory projectionFactory) {
 		this.mappingContext = mappingContext;
+		this.namespaceFactory = namespaceFactory;
 		this.converter = converter;
 		this.valueExpressionDelegate = valueExpressionDelegate;
 		this.projectionFactory = projectionFactory;
@@ -79,16 +77,13 @@ public class ReindexerAotRepositoryFragmentSupport {
 			.of(() -> new ConcurrentLruCache<>(32, (it) -> new ReindexerParameters(ParametersSource.of(metadata, it))));
 	}
 
-	@SuppressWarnings("unchecked")
 	protected <T> Query<T> query(Class<T> domainType) {
 		Namespace<T> namespace = openNamespace(domainType);
-		Transaction<T> transaction = (Transaction<T>) TransactionSynchronizationManager.getResource(namespace);
-		return (transaction) != null ? transaction.query() : namespace.query();
+		return namespace.query();
 	}
 
 	protected <T> Namespace<T> openNamespace(Class<T> domainType) {
-		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(domainType);
-		return this.reindexer.openNamespace(entity.getNamespace(), entity.getNamespaceOptions(), domainType);
+		return this.namespaceFactory.openNamespace(domainType);
 	}
 
 	protected ProjectionFactory getProjectionFactory() {

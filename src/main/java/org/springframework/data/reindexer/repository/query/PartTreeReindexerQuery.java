@@ -18,7 +18,6 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.function.Function;
 
 import ru.rt.restream.reindexer.Namespace;
-import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
@@ -59,7 +58,7 @@ public class PartTreeReindexerQuery extends AbstractReindexerQuery {
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
 	public PartTreeReindexerQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
-			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory, Reindexer reindexer,
+			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory,
 			QueryParameterMapper queryParameterMapper, ReindexerConverter reindexerConverter) {
 		super(method, reindexerConverter);
 		this.method = method;

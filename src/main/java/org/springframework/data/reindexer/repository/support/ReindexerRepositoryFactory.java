@@ -22,7 +22,6 @@ import java.util.Optional;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import ru.rt.restream.reindexer.Reindexer;
-import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
@@ -129,23 +128,21 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 				NamedQueries namedQueries) {
 			ReindexerQueryMethod queryMethod = new ReindexerQueryMethod(method, metadata, factory);
 			ReindexerEntityInformation<?, ?> entityInformation = getEntityInformation(metadata.getDomainType());
-			ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) ReindexerRepositoryFactory.this.reindexer
-				.openNamespace(entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
-						entityInformation.getJavaType());
 			if (queryMethod.hasQueryAnnotation()) {
 				QueryMethodValueEvaluationContextAccessor accessor = new QueryMethodValueEvaluationContextAccessor(
 						ReindexerRepositoryFactory.this.ctx);
 				// Use lightweight implementation when nativeQuery = true.
 				if (queryMethod.isNativeQuery()) {
 					return new SimpleStringBasedReindexerQuery(queryMethod,
-							ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
+							ReindexerRepositoryFactory.this.reindexerConverter,
+							ReindexerRepositoryFactory.this.namespaceFactory, accessor);
 				}
 				// Use visitor-based implementation when JSQLParser is on the classpath.
 				if (USE_VISITOR_BASED_QUERY) {
 					return new StringBasedReindexerQuery(queryMethod,
 							ReindexerRepositoryFactory.this.reindexerConverter,
-							ReindexerRepositoryFactory.this.reindexer, ReindexerRepositoryFactory.this.mappingContext,
-							accessor);
+							ReindexerRepositoryFactory.this.mappingContext,
+							ReindexerRepositoryFactory.this.namespaceFactory, accessor);
 				}
 				// Fallbacks to a lightweight implementation.
 				if (LOG.isWarnEnabled()) {
@@ -156,14 +153,14 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 						.formatted(SimpleStringBasedReindexerQuery.class.getName(), queryMethod));
 				}
 				return new SimpleStringBasedReindexerQuery(queryMethod,
-						ReindexerRepositoryFactory.this.reindexerConverter, namespace, accessor);
+						ReindexerRepositoryFactory.this.reindexerConverter,
+						ReindexerRepositoryFactory.this.namespaceFactory, accessor);
 			}
-			QueryParameterMapper queryParameterMapper = new QueryParameterMapper(namespace.getItemClass(),
+			QueryParameterMapper queryParameterMapper = new QueryParameterMapper(metadata.getDomainType(),
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexerConverter);
 			return new PartTreeReindexerQuery(queryMethod, entityInformation,
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.namespaceFactory,
-					ReindexerRepositoryFactory.this.reindexer, queryParameterMapper,
-					ReindexerRepositoryFactory.this.reindexerConverter);
+					queryParameterMapper, ReindexerRepositoryFactory.this.reindexerConverter);
 		}
 
 	}

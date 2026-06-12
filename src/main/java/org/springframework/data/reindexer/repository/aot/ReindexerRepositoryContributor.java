@@ -25,7 +25,6 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.core.annotation.MergedAnnotation;
@@ -33,6 +32,7 @@ import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.query.ReindexerQueryMethod;
 import org.springframework.data.reindexer.repository.support.ReindexerDefaultRepositoryMetadata;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.repository.aot.generate.AotRepositoryClassBuilder;
 import org.springframework.data.repository.aot.generate.AotRepositoryConstructorBuilder;
 import org.springframework.data.repository.aot.generate.MethodContributor;
@@ -50,7 +50,6 @@ import org.springframework.data.util.Lazy;
 import org.springframework.javapoet.CodeBlock;
 import org.springframework.javapoet.TypeName;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.StringUtils;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -64,8 +63,6 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 
 	private static final Log LOG = LogFactory.getLog(ReindexerRepositoryContributor.class);
 
-	private final String reindexerRef;
-
 	private final ReindexerMappingContext mappingContext;
 
 	/**
@@ -77,8 +74,6 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 			ReindexerMappingContext mappingContext) {
 		super(new ReindexerAotRepositoryContextSupport(repositoryContext));
 		this.mappingContext = mappingContext;
-		RepositoryConfigurationSource configurationSource = repositoryContext.getConfigurationSource();
-		this.reindexerRef = configurationSource.getAttribute("reindexerRef").orElse(null);
 	}
 
 	@Override
@@ -89,12 +84,10 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 
 	@Override
 	protected void customizeConstructor(AotRepositoryConstructorBuilder constructorBuilder) {
-		constructorBuilder.addParameter("reindexer", Reindexer.class,
-				customizer -> customizer.origin(StringUtils.hasText(this.reindexerRef)
-						? new RuntimeBeanReference(this.reindexerRef, Reindexer.class)
-						: new RuntimeBeanReference(Reindexer.class)));
 		constructorBuilder.addParameter("mappingContext", ReindexerMappingContext.class,
 				customizer -> customizer.origin(new RuntimeBeanReference(ReindexerMappingContext.class)));
+		constructorBuilder.addParameter("namespaceFactory", ReindexerNamespaceFactory.class,
+				customizer -> customizer.origin(new RuntimeBeanReference(ReindexerNamespaceFactory.class)));
 		constructorBuilder.addParameter("reindexerConverter", ReindexerConverter.class,
 				customizer -> customizer.origin(new RuntimeBeanReference(ReindexerConverter.class)));
 		constructorBuilder.addParameter("context", RepositoryFactoryBeanSupport.FragmentCreationContext.class, false);

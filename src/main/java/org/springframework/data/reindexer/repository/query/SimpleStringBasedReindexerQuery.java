@@ -26,6 +26,7 @@ import org.springframework.data.domain.SearchResult;
 import org.springframework.data.domain.SearchResults;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.Query;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.util.StringQueryUtils;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.QueryMethodValueEvaluationContextAccessor;
@@ -60,14 +61,14 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 	 * Creates an instance.
 	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
-	 * @param namespace the {@link Namespace} to use
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
 	 * @param factory the {@link QueryMethodValueEvaluationContextAccessor} to use
 	 */
 	public SimpleStringBasedReindexerQuery(ReindexerQueryMethod method, ReindexerConverter reindexerConverter,
-			Namespace<?> namespace, QueryMethodValueEvaluationContextAccessor factory) {
+			ReindexerNamespaceFactory namespaceFactory, QueryMethodValueEvaluationContextAccessor factory) {
 		this.method = method;
 		this.reindexerConverter = reindexerConverter;
-		this.namespace = namespace;
+		this.namespace = namespaceFactory.openNamespace(method.getDomainClass());
 		this.factory = factory;
 		this.queryExecution = Lazy.of(() -> getQueryExecution(method));
 	}
