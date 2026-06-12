@@ -65,6 +65,8 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	private final ReindexerMappingContext mappingContext;
 
+	private final ReindexerNamespaceFactory namespaceFactory;
+
 	private final ApplicationContext ctx;
 
 	private final ReindexerConverter reindexerConverter;
@@ -73,13 +75,15 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	 * Creates an instance.
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @param ctx the {@link ApplicationContext} to use
 	 */
 	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext,
-			ReindexerConverter reindexerConverter, ApplicationContext ctx) {
+			ReindexerNamespaceFactory namespaceFactory, ReindexerConverter reindexerConverter, ApplicationContext ctx) {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
+		this.namespaceFactory = namespaceFactory;
 		this.reindexerConverter = reindexerConverter;
 		this.ctx = ctx;
 	}
@@ -103,7 +107,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	@Override
 	protected Object getTargetRepository(RepositoryInformation metadata) {
 		EntityInformation<?, Serializable> entityInformation = getEntityInformation(metadata.getDomainType());
-		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.reindexer,
+		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.namespaceFactory,
 				this.reindexerConverter);
 	}
 
@@ -157,8 +161,9 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 			QueryParameterMapper queryParameterMapper = new QueryParameterMapper(namespace.getItemClass(),
 					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexerConverter);
 			return new PartTreeReindexerQuery(queryMethod, entityInformation,
-					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.reindexer,
-					queryParameterMapper, ReindexerRepositoryFactory.this.reindexerConverter);
+					ReindexerRepositoryFactory.this.mappingContext, ReindexerRepositoryFactory.this.namespaceFactory,
+					ReindexerRepositoryFactory.this.reindexer, queryParameterMapper,
+					ReindexerRepositoryFactory.this.reindexerConverter);
 		}
 
 	}

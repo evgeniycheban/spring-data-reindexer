@@ -19,11 +19,10 @@ import java.util.function.Function;
 
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
-import ru.rt.restream.reindexer.ReindexerNamespace;
 
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
-import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.parser.PartTree;
@@ -42,7 +41,7 @@ public class PartTreeReindexerQuery extends AbstractReindexerQuery {
 
 	private final ReindexerMappingContext mappingContext;
 
-	private final Reindexer reindexer;
+	private final ReindexerNamespaceFactory namespaceFactory;
 
 	private final Namespace<?> namespace;
 
@@ -55,31 +54,28 @@ public class PartTreeReindexerQuery extends AbstractReindexerQuery {
 	 * @param method the {@link ReindexerQueryMethod} to use
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
-	 * @param reindexer the {@link Reindexer} to use
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
 	 * @param queryParameterMapper the {@link QueryParameterMapper} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
 	public PartTreeReindexerQuery(ReindexerQueryMethod method, ReindexerEntityInformation<?, ?> entityInformation,
-			ReindexerMappingContext mappingContext, Reindexer reindexer, QueryParameterMapper queryParameterMapper,
-			ReindexerConverter reindexerConverter) {
+			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory, Reindexer reindexer,
+			QueryParameterMapper queryParameterMapper, ReindexerConverter reindexerConverter) {
 		super(method, reindexerConverter);
 		this.method = method;
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
-		this.reindexer = reindexer;
+		this.namespaceFactory = namespaceFactory;
 		this.queryParameterMapper = queryParameterMapper;
-		ReindexerNamespace<?> namespace = (ReindexerNamespace<?>) reindexer.openNamespace(
-				entityInformation.getNamespaceName(), entityInformation.getNamespaceOptions(),
-				entityInformation.getJavaType());
-		this.namespace = new TransactionalNamespace<>(namespace);
+		this.namespace = namespaceFactory.openNamespace(entityInformation.getJavaType());
 		this.tree = new PartTree(method.getName(), entityInformation.getJavaType());
 	}
 
 	@Override
 	ReindexerQuery createQuery(ReindexerParameterAccessor parameterAccessor, ReturnedType returnedType) {
-		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.reindexer, this.namespace,
-				this.entityInformation, this.mappingContext, this.queryParameterMapper, parameterAccessor, returnedType,
-				this.method);
+		ReindexerQueryCreator queryCreator = new ReindexerQueryCreator(this.tree, this.namespace,
+				this.entityInformation, this.mappingContext, this.namespaceFactory, this.queryParameterMapper,
+				parameterAccessor, returnedType, this.method);
 		return new ReindexerQuery(queryCreator.createQuery(), returnedType, parameterAccessor);
 	}
 

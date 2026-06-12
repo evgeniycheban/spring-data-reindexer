@@ -22,6 +22,7 @@ import java.util.Set;
 
 import ru.rt.restream.reindexer.Reindexer;
 
+import org.springframework.context.annotation.Role;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -30,6 +31,8 @@ import org.springframework.data.reindexer.core.convert.MappingReindexerConverter
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.repository.support.DefaultReindexerNamespaceFactory;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
@@ -43,8 +46,9 @@ public abstract class ReindexerConfigurationSupport {
 
 	@Bean
 	public MappingReindexerConverter reindexerConverter(Reindexer reindexer, ReindexerMappingContext mappingContext,
-			ReindexerCustomConversions conversions) {
-		MappingReindexerConverter reindexerConverter = new MappingReindexerConverter(reindexer, mappingContext);
+			ReindexerNamespaceFactory namespaceFactory, ReindexerCustomConversions conversions) {
+		MappingReindexerConverter reindexerConverter = new MappingReindexerConverter(reindexer, mappingContext,
+				namespaceFactory);
 		reindexerConverter.setConversions(conversions);
 		return reindexerConverter;
 	}
@@ -59,6 +63,12 @@ public abstract class ReindexerConfigurationSupport {
 		ReindexerMappingContext mappingContext = new ReindexerMappingContext();
 		mappingContext.setInitialEntitySet(getInitialEntitySet());
 		return mappingContext;
+	}
+
+	@Bean
+	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+	public ReindexerNamespaceFactory namespaceFactory(Reindexer reindexer, ReindexerMappingContext mappingContext) {
+		return new DefaultReindexerNamespaceFactory(reindexer, mappingContext);
 	}
 
 	/**

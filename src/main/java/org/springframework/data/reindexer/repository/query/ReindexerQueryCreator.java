@@ -21,15 +21,15 @@ import java.util.Iterator;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
-import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.data.core.PropertyPath;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Vector;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.domain.Vector;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.data.repository.query.ReturnedType;
@@ -50,13 +50,13 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final PartTree tree;
 
-	private final Reindexer reindexer;
-
 	private final Namespace<?> namespace;
 
 	private final ReindexerEntityInformation<?, ?> entityInformation;
 
 	private final ReindexerMappingContext mappingContext;
+
+	private final ReindexerNamespaceFactory namespaceFactory;
 
 	private final ReindexerParameterAccessor parameters;
 
@@ -68,16 +68,16 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private Query<?> base;
 
-	ReindexerQueryCreator(PartTree tree, Reindexer reindexer, Namespace<?> namespace,
-			ReindexerEntityInformation<?, ?> entityInformation, ReindexerMappingContext mappingContext,
+	ReindexerQueryCreator(PartTree tree, Namespace<?> namespace, ReindexerEntityInformation<?, ?> entityInformation,
+			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory,
 			QueryParameterMapper queryParameterMapper, ReindexerParameterAccessor parameters, ReturnedType returnedType,
 			ReindexerQueryMethod method) {
 		super(tree, parameters);
 		this.tree = tree;
-		this.reindexer = reindexer;
 		this.namespace = namespace;
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
+		this.namespaceFactory = namespaceFactory;
 		this.queryParameterMapper = queryParameterMapper;
 		this.parameters = parameters;
 		this.returnedType = returnedType;
@@ -241,7 +241,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			// Include ranks to the query output.
 			criteria.withRank();
 		}
-		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext, this.reindexer);
+		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext,
+				this.namespaceFactory);
 	}
 
 }

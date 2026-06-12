@@ -74,7 +74,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	private final ReindexerMappingContext mappingContext;
 
-	private final Reindexer reindexer;
+	private final ReindexerNamespaceFactory namespaceFactory;
 
 	private final Namespace<T> namespace;
 
@@ -84,23 +84,17 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	 * Creates an instance.
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
-	 * @param reindexer the {@link Reindexer} to use
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
 	public SimpleReindexerRepository(ReindexerEntityInformation<T, ID> entityInformation,
-			ReindexerMappingContext mappingContext, Reindexer reindexer, ReindexerConverter reindexerConverter) {
+			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory,
+			ReindexerConverter reindexerConverter) {
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
-		this.reindexer = reindexer;
+		this.namespaceFactory = namespaceFactory;
 		this.reindexerConverter = reindexerConverter;
-		this.namespace = openNamespace(entityInformation, reindexer);
-	}
-
-	private TransactionalNamespace<T> openNamespace(ReindexerEntityInformation<T, ID> entityInformation,
-			Reindexer reindexer) {
-		Namespace<T> namespace = reindexer.openNamespace(entityInformation.getNamespaceName(),
-				entityInformation.getNamespaceOptions(), entityInformation.getJavaType());
-		return new TransactionalNamespace<>(namespace);
+		this.namespace = namespaceFactory.openNamespace(entityInformation.getJavaType());
 	}
 
 	@Override
@@ -291,7 +285,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	private Query<T> joinedQuery() {
 		Query<T> query = query();
 		return (Query<T>) QueryUtils.withJoins(query, this.entityInformation.getJavaType(), this.mappingContext,
-				this.reindexer);
+				this.namespaceFactory);
 	}
 
 	private Query<T> withExample(Query<T> criteria, Example<?> example) {
