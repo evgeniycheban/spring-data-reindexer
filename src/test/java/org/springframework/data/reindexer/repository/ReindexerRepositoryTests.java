@@ -64,6 +64,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.SearchResult;
 import org.springframework.data.domain.SearchResults;
 import org.springframework.data.domain.Slice;
@@ -4000,7 +4001,7 @@ class ReindexerRepositoryTests {
 	@AllArgsConstructor
 	public static class TestItem {
 
-		@Reindex(name = "id", isPrimaryKey = true)
+		@Id
 		private Long id;
 
 		@Reindex(name = "name", isSparse = true)

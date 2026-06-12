@@ -22,13 +22,13 @@ import java.util.Set;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
-import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.util.StringUtils;
 
@@ -49,11 +49,11 @@ public final class QueryUtils {
 	 * @param criteria the {@link Query} to use
 	 * @param domainType the entity domain class to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
-	 * @param reindexer the {@link Reindexer} to use
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
 	 * @return the {@link Query} for further customizations
 	 */
 	public static Query<?> withJoins(Query<?> criteria, Class<?> domainType, ReindexerMappingContext mappingContext,
-			Reindexer reindexer) {
+			ReindexerNamespaceFactory namespaceFactory) {
 		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(domainType);
 		for (ReindexerPersistentProperty persistentProperty : persistentEntity
 			.getPersistentProperties(NamespaceReference.class)) {
@@ -63,10 +63,7 @@ public final class QueryUtils {
 			}
 			ReindexerPersistentEntity<?> referencedEntity = mappingContext
 				.getRequiredPersistentEntity(persistentProperty.getActualType());
-			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
-					: referencedEntity.getNamespace();
-			Namespace<?> namespace = reindexer.openNamespace(namespaceName, referencedEntity.getNamespaceOptions(),
-					referencedEntity.getType());
+			Namespace<?> namespace = namespaceFactory.openNamespace(referencedEntity.getType());
 			String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
 					? namespaceReference.referencedIndexName() : referencedEntity.getRequiredIdProperty().getName();
 			Query<?> on = namespace.query()

@@ -43,6 +43,8 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	private ReindexerMappingContext mappingContext;
 
+	private ReindexerNamespaceFactory namespaceFactory;
+
 	private ReindexerConverter reindexerConverter;
 
 	private ApplicationContext ctx;
@@ -72,6 +74,15 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 	}
 
 	/**
+	 * Sets the {@link ReindexerNamespaceFactory}.
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
+	 * @since 1.7
+	 */
+	public void setNamespaceFactory(ReindexerNamespaceFactory namespaceFactory) {
+		this.namespaceFactory = namespaceFactory;
+	}
+
+	/**
 	 * Sets the {@link ReindexerConverter}.
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @since 1.4
@@ -82,7 +93,8 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	@Override
 	protected RepositoryFactorySupport createRepositoryFactory() {
-		return new ReindexerRepositoryFactory(this.reindexer, this.mappingContext, this.reindexerConverter, this.ctx);
+		return new ReindexerRepositoryFactory(this.reindexer, this.mappingContext, this.namespaceFactory,
+				this.reindexerConverter, this.ctx);
 	}
 
 	@Override

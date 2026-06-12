@@ -64,7 +64,7 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
-import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.PropertyAccessor;
@@ -102,6 +102,8 @@ public class MappingReindexerConverter
 
 	private final ReindexerMappingContext mappingContext;
 
+	private final ReindexerNamespaceFactory namespaceFactory;
+
 	private final EntityProjectionIntrospector projectionIntrospector;
 
 	private ReindexerCustomConversions conversions = new ReindexerCustomConversions();
@@ -115,9 +117,11 @@ public class MappingReindexerConverter
 	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 */
-	public MappingReindexerConverter(Reindexer reindexer, ReindexerMappingContext mappingContext) {
+	public MappingReindexerConverter(Reindexer reindexer, ReindexerMappingContext mappingContext,
+			ReindexerNamespaceFactory namespaceFactory) {
 		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
+		this.namespaceFactory = namespaceFactory;
 		this.projectionIntrospector = EntityProjectionIntrospector.create(this.projectionFactory,
 				EntityProjectionIntrospector.ProjectionPredicate.typeHierarchy()
 					.and(((target, underlyingType) -> !this.conversions.isSimpleType(target))),
@@ -345,9 +349,10 @@ public class MappingReindexerConverter
 				}
 				String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
 						? namespaceReference.referencedIndexName() : referenceEntity.getRequiredIdProperty().getName();
-				Namespace<?> namespace = openNamespace(namespaceName, referenceEntity);
+				Namespace<?> namespace = MappingReindexerConverter.this.namespaceFactory
+					.openNamespace(referenceEntity.getType());
 				Query<?> query = QueryUtils.withJoins(namespace.query(), referenceEntity.getType(),
-						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.reindexer);
+						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.namespaceFactory);
 				Sort sort = SortUtils.getSort(namespaceReference.sort());
 				if (sort.isSorted()) {
 					for (Order order : sort) {
@@ -380,12 +385,6 @@ public class MappingReindexerConverter
 
 		private ResultIterator<?> executeQuery(String query, ReindexerPersistentEntity<?> entity) {
 			return MappingReindexerConverter.this.reindexer.execSql(query, entity.getType());
-		}
-
-		private Namespace<?> openNamespace(String name, ReindexerPersistentEntity<?> entity) {
-			Namespace<?> namespace = MappingReindexerConverter.this.reindexer.openNamespace(name,
-					entity.getNamespaceOptions(), entity.getType());
-			return new TransactionalNamespace<>(namespace);
 		}
 
 		@SuppressWarnings("unchecked")
