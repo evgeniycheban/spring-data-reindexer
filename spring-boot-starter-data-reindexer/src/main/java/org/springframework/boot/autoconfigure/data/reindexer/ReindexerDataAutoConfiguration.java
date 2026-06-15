@@ -44,6 +44,8 @@ import org.springframework.data.reindexer.core.convert.ReindexerCustomConversion
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
+import org.springframework.data.reindexer.repository.support.DefaultReindexerNamespaceFactory;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.util.StringUtils;
 
 import javax.net.ssl.SSLContext;
@@ -116,8 +118,8 @@ public class ReindexerDataAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(ReindexerConverter.class)
 	MappingReindexerConverter reindexerConverter(Reindexer reindexer, ReindexerMappingContext context,
-			ReindexerCustomConversions conversions) {
-		MappingReindexerConverter converter = new MappingReindexerConverter(reindexer, context);
+			ReindexerNamespaceFactory namespaceFactory, ReindexerCustomConversions conversions) {
+		MappingReindexerConverter converter = new MappingReindexerConverter(reindexer, context, namespaceFactory);
 		converter.setConversions(conversions);
 		return converter;
 	}
@@ -135,6 +137,12 @@ public class ReindexerDataAutoConfiguration {
 		context.setManagedTypes(mappedTypes);
 		context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
 		return context;
+	}
+
+	@Bean
+	@ConditionalOnMissingBean(ReindexerNamespaceFactory.class)
+	DefaultReindexerNamespaceFactory reindexerNamespaceFactory(Reindexer reindexer, ReindexerMappingContext context) {
+		return new DefaultReindexerNamespaceFactory(reindexer, context);
 	}
 
 	@Bean

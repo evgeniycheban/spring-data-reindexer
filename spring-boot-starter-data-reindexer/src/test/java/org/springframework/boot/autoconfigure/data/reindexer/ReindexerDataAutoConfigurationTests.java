@@ -32,6 +32,7 @@ import org.springframework.data.reindexer.core.convert.MappingReindexerConverter
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -103,6 +104,13 @@ class ReindexerDataAutoConfigurationTests {
 		ReindexerMappingContext mappingContext = new ReindexerMappingContext();
 		this.contextRunner.withBean(ReindexerMappingContext.class, () -> mappingContext)
 			.run(context -> assertThat(context).getBean(ReindexerMappingContext.class).isSameAs(mappingContext));
+	}
+
+	@Test
+	void testOverrideReindexerNamespaceFactoryAutoConfiguration() {
+		ReindexerNamespaceFactory namespaceFactory = Mockito.mock(ReindexerNamespaceFactory.class);
+		this.contextRunner.withBean(ReindexerNamespaceFactory.class, () -> namespaceFactory)
+			.run(context -> assertThat(context).getBean(ReindexerNamespaceFactory.class).isSameAs(namespaceFactory));
 	}
 
 	@Test
