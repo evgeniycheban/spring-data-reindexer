@@ -67,7 +67,8 @@ public abstract class ReindexerConfigurationSupport {
 
 	@Bean
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public ReindexerNamespaceFactory namespaceFactory(Reindexer reindexer, ReindexerMappingContext mappingContext) {
+	public ReindexerNamespaceFactory reindexerNamespaceFactory(Reindexer reindexer,
+			ReindexerMappingContext mappingContext) {
 		return new DefaultReindexerNamespaceFactory(reindexer, mappingContext);
 	}
 
