@@ -61,6 +61,7 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
@@ -132,9 +133,11 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -935,6 +938,20 @@ class ReindexerRepositoryTests {
 		assertThrows(IllegalStateException.class,
 				() -> this.service.saveExceptionally(new TestItem(1L, "TestName", "TestValue")));
 		assertFalse(this.repository.existsById(1L));
+	}
+
+	@Test
+	public void saveExceptionallyDelegatesToRequiresNew() {
+		assertThatIllegalStateException().isThrownBy(
+				() -> this.service.saveExceptionallyDelegatesToRequiresNew(new TestItem(1L, "TestName", "TestValue")));
+		assertThat(this.repository.existsById(1L)).isTrue();
+	}
+
+	@Test
+	public void saveExceptionallyDelegatesToExisting() {
+		assertThatIllegalStateException().isThrownBy(
+				() -> this.service.saveExceptionallyDelegatesToExisting(new TestItem(1L, "TestName", "TestValue")));
+		assertThat(this.repository.existsById(1L)).isFalse();
 	}
 
 	@Test
@@ -3504,14 +3521,23 @@ class ReindexerRepositoryTests {
 	@Service
 	public static class TestItemTransactionalService {
 
+		private final TestItemTransactionalService self;
+
 		private final TestItemReindexerRepository repository;
 
-		public TestItemTransactionalService(TestItemReindexerRepository repository) {
+		public TestItemTransactionalService(@Lazy TestItemTransactionalService self,
+				TestItemReindexerRepository repository) {
+			this.self = self;
 			this.repository = repository;
 		}
 
 		public TestItem save(TestItem item) {
 			return this.repository.save(item);
+		}
+
+		@Transactional(transactionManager = "txManager", propagation = Propagation.REQUIRES_NEW)
+		public void saveRequiresNew(TestItem item) {
+			this.repository.save(item);
 		}
 
 		public void saveAndDelete(TestItem testItem) {
@@ -3521,6 +3547,16 @@ class ReindexerRepositoryTests {
 
 		public void saveExceptionally(TestItem item) {
 			this.repository.save(item);
+			throw new IllegalStateException();
+		}
+
+		public void saveExceptionallyDelegatesToRequiresNew(TestItem item) {
+			this.self.saveRequiresNew(item);
+			throw new IllegalStateException();
+		}
+
+		public void saveExceptionallyDelegatesToExisting(TestItem item) {
+			this.self.save(item);
 			throw new IllegalStateException();
 		}
 

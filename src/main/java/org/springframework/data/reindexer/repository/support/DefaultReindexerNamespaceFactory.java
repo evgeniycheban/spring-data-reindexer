@@ -127,7 +127,7 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 		FieldType fieldType = MAPPED_TYPES.get(property.getType());
 		Assert.notNull(fieldType, () -> "Unmapped type: %s for property: %s.%s".formatted(property.getType(),
 				property.getOwner().getName(), property.getName()));
-		final boolean validPkFieldType = switch (fieldType) {
+		boolean validPkFieldType = switch (fieldType) {
 			case INT, INT64, STRING, UUID -> true;
 			default -> false;
 		};
