@@ -20,6 +20,7 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.Transaction;
 
+import org.springframework.data.reindexer.ReindexerResourceHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 
@@ -145,7 +146,9 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 
 	@SuppressWarnings("unchecked")
 	private Transaction<T> getTransaction() {
-		return (Transaction<T>) TransactionSynchronizationManager.getResource(this.fallback);
+		ReindexerResourceHolder resourceHolder = (ReindexerResourceHolder) TransactionSynchronizationManager
+			.getResource(this.fallback);
+		return resourceHolder != null ? (Transaction<T>) resourceHolder.getActiveTransaction() : null;
 	}
 
 	@Override

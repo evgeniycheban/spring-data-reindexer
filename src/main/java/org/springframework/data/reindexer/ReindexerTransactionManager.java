@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.Transaction;
@@ -25,6 +26,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.SmartTransactionObject;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 
@@ -67,37 +69,125 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 	}
 
 	@Override
-	protected Transaction<T> doGetTransaction() throws TransactionException {
-		Transaction<T> transaction = new Transaction<>(this.namespace, this.reindexer);
-		TransactionSynchronizationManager.bindResource(this.namespace, transaction);
-		return transaction;
+	protected Object doGetTransaction() throws TransactionException {
+		ReindexerResourceHolder resourceHolder = (ReindexerResourceHolder) TransactionSynchronizationManager
+			.getResource(this.namespace);
+		return new ReindexerTransactionObject(resourceHolder, this.namespace);
+	}
+
+	@Override
+	protected boolean isExistingTransaction(Object transaction) throws TransactionException {
+		return extractReindexerTransaction(transaction).hasResourceHolder();
+	}
+
+	@Override
+	protected Object doSuspend(Object transaction) throws TransactionException {
+		return TransactionSynchronizationManager.unbindResource(this.namespace);
+	}
+
+	@Override
+	protected void doResume(Object transaction, Object suspendedResources) throws TransactionException {
+		TransactionSynchronizationManager.bindResource(this.namespace, suspendedResources);
 	}
 
 	@Override
 	protected void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException {
-		extractReindexerTransaction(transaction).start();
+		ReindexerTransactionObject transactionObject = extractReindexerTransaction(transaction);
+		ReindexerResourceHolder resourceHolder = new ReindexerResourceHolder(this.reindexer);
+		transactionObject.setResourceHolder(resourceHolder);
+		transactionObject.beginTransaction();
+		TransactionSynchronizationManager.bindResource(this.namespace, resourceHolder);
 	}
 
 	@Override
 	protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
-		extractReindexerTransaction(status.getTransaction()).commit();
+		extractReindexerTransaction(status.getTransaction()).commitTransaction();
 	}
 
 	@Override
 	protected void doRollback(DefaultTransactionStatus status) throws TransactionException {
-		extractReindexerTransaction(status.getTransaction()).rollback();
-	}
-
-	@SuppressWarnings("unchecked")
-	private Transaction<T> extractReindexerTransaction(Object transaction) {
-		Assert.isInstanceOf(Transaction.class, transaction, () -> String
-			.format("Expected to find a %s but it turned out to be %s.", Transaction.class, transaction.getClass()));
-		return (Transaction<T>) transaction;
+		extractReindexerTransaction(status.getTransaction()).rollbackTransaction();
 	}
 
 	@Override
 	protected void doCleanupAfterCompletion(Object transaction) {
 		TransactionSynchronizationManager.unbindResource(this.namespace);
+	}
+
+	private ReindexerTransactionObject extractReindexerTransaction(Object transaction) {
+		Assert.isInstanceOf(ReindexerTransactionObject.class, transaction,
+				() -> String.format("Expected to find a %s but it turned out to be %s.",
+						ReindexerTransactionObject.class, transaction.getClass()));
+		return (ReindexerTransactionObject) transaction;
+	}
+
+	/**
+	 * Reindexer specific transaction object, representing a
+	 * {@link ReindexerResourceHolder}. Used as transaction by
+	 * {@link ReindexerTransactionManager}.
+	 *
+	 * @author Evgeniy Cheban
+	 * @since 1.7
+	 */
+	protected static class ReindexerTransactionObject implements SmartTransactionObject {
+
+		private @Nullable ReindexerResourceHolder resourceHolder;
+
+		private final ReindexerNamespace<?> namespace;
+
+		/**
+		 * Creates an instance.
+		 * @param resourceHolder the {@link ReindexerResourceHolder} to use
+		 * @param namespace the {@link ReindexerNamespace} to use
+		 */
+		ReindexerTransactionObject(@Nullable ReindexerResourceHolder resourceHolder, ReindexerNamespace<?> namespace) {
+			this.resourceHolder = resourceHolder;
+			this.namespace = namespace;
+		}
+
+		/**
+		 * Sets a {@link ReindexerResourceHolder}.
+		 * @param resourceHolder the {@link ReindexerResourceHolder} to use
+		 */
+		void setResourceHolder(@Nullable ReindexerResourceHolder resourceHolder) {
+			this.resourceHolder = resourceHolder;
+		}
+
+		/**
+		 * Returns {@literal true} if a {@link ReindexerResourceHolder} is set.
+		 * @return {@literal true} if a {@link ReindexerResourceHolder} is set
+		 */
+		final boolean hasResourceHolder() {
+			return this.resourceHolder != null;
+		}
+
+		/**
+		 * Begins a transaction if a {@link ReindexerResourceHolder} is set.
+		 */
+		void beginTransaction() {
+			if (hasResourceHolder()) {
+				this.resourceHolder.beginTransaction(this.namespace.getName(), this.namespace.getItemClass());
+			}
+		}
+
+		/**
+		 * Commits the transaction if a {@link ReindexerResourceHolder} is set.
+		 */
+		public void commitTransaction() {
+			if (hasResourceHolder()) {
+				this.resourceHolder.commitTransaction();
+			}
+		}
+
+		/**
+		 * Rolls back the transaction if a {@link ReindexerResourceHolder} is set.
+		 */
+		public void rollbackTransaction() {
+			if (hasResourceHolder()) {
+				this.resourceHolder.rollbackTransaction();
+			}
+		}
+
 	}
 
 }
