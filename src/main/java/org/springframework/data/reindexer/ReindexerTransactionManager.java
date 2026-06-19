@@ -24,6 +24,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.SmartTransactionObject;
@@ -95,18 +96,50 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 		ReindexerTransactionObject transactionObject = extractReindexerTransaction(transaction);
 		ReindexerResourceHolder resourceHolder = new ReindexerResourceHolder(this.reindexer);
 		transactionObject.setResourceHolder(resourceHolder);
-		transactionObject.beginTransaction();
+		if (logger.isDebugEnabled()) {
+			logger.debug("About to start transaction for namespace: %s".formatted(this.namespace.getName()));
+		}
+		try {
+			transactionObject.beginTransaction();
+		}
+		catch (Exception ex) {
+			throw new TransactionSystemException(
+					"Could not start transaction for namespace: %s".formatted(this.namespace.getName()), ex);
+		}
+		if (logger.isDebugEnabled()) {
+			logger.debug("Started transaction for namespace: %s".formatted(this.namespace.getName()));
+		}
 		TransactionSynchronizationManager.bindResource(this.namespace, resourceHolder);
 	}
 
 	@Override
 	protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
-		extractReindexerTransaction(status.getTransaction()).commitTransaction();
+		ReindexerTransactionObject transactionObject = extractReindexerTransaction(status.getTransaction());
+		if (logger.isDebugEnabled()) {
+			logger.debug("About to commit transaction for namespace: %s".formatted(this.namespace.getName()));
+		}
+		try {
+			transactionObject.commitTransaction();
+		}
+		catch (Exception ex) {
+			throw new TransactionSystemException(
+					"Could not commit transaction for namespace: %s".formatted(this.namespace.getName()), ex);
+		}
 	}
 
 	@Override
 	protected void doRollback(DefaultTransactionStatus status) throws TransactionException {
-		extractReindexerTransaction(status.getTransaction()).rollbackTransaction();
+		ReindexerTransactionObject transactionObject = extractReindexerTransaction(status.getTransaction());
+		if (logger.isDebugEnabled()) {
+			logger.debug("About to rollback transaction for namespace: %s".formatted(this.namespace.getName()));
+		}
+		try {
+			transactionObject.rollbackTransaction();
+		}
+		catch (Exception ex) {
+			throw new TransactionSystemException(
+					"Could not rollback transaction for namespace: %s".formatted(this.namespace.getName()), ex);
+		}
 	}
 
 	@Override
