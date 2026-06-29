@@ -18,7 +18,6 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 
@@ -55,7 +54,7 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 
 	private final QueryMethodValueEvaluationContextAccessor factory;
 
-	private final Lazy<BiFunction<ReindexerParameterAccessor, ReturnedType, Object>> queryExecution;
+	private final Lazy<BiFunction<ReindexerParameterAccessor, ReturnedType, @Nullable Object>> queryExecution;
 
 	/**
 	 * Creates an instance.
@@ -74,7 +73,7 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 	}
 
 	@Override
-	public @Nullable Object execute(Object @NonNull [] parameters) {
+	public @Nullable Object execute(@Nullable Object[] parameters) {
 		ReindexerParameterAccessor accessor = new ReindexerParameterAccessor(this.method.getParameters(), parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(accessor);
 		Object result = this.queryExecution.get().apply(accessor, resultProcessor.getReturnedType());
@@ -82,11 +81,11 @@ public final class SimpleStringBasedReindexerQuery implements RepositoryQuery {
 	}
 
 	@Override
-	public @NonNull QueryMethod getQueryMethod() {
+	public QueryMethod getQueryMethod() {
 		return this.method;
 	}
 
-	private BiFunction<ReindexerParameterAccessor, ReturnedType, Object> getQueryExecution(
+	private BiFunction<ReindexerParameterAccessor, ReturnedType, @Nullable Object> getQueryExecution(
 			ReindexerQueryMethod method) {
 		if (method.isSearchQuery()) {
 			return getSearchQueryExecution(method);

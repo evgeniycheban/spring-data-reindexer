@@ -18,6 +18,8 @@ package org.springframework.data.reindexer.core.convert;
 import java.util.Collections;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.data.expression.ValueEvaluationContext;
 import org.springframework.data.expression.ValueExpression;
@@ -58,13 +60,13 @@ final class ReindexerExpressionEvaluatorFactory {
 	ReindexerExpressionEvaluator create(Object source) {
 		return new ReindexerExpressionEvaluator() {
 			@Override
-			public <T> T evaluate(String expression) {
+			public <T> @Nullable T evaluate(String expression) {
 				return evaluate(expression, Collections.emptyMap());
 			}
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public <T> T evaluate(String expression, Map<String, Object> variables) {
+			public <T> @Nullable T evaluate(String expression, Map<String, Object> variables) {
 				ValueExpression valueExpression = ReindexerExpressionEvaluatorFactory.this.expressionCache
 					.get(expression);
 				EvaluationContext evaluationContext = ReindexerExpressionEvaluatorFactory.this.evaluationContextProvider

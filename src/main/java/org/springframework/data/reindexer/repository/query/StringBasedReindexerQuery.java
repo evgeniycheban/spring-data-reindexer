@@ -71,10 +71,10 @@ import net.sf.jsqlparser.statement.select.SelectVisitorAdapter;
 import net.sf.jsqlparser.statement.select.SetOperationList;
 import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.update.UpdateSet;
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
-import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.TimeUnit;
 import ru.rt.restream.reindexer.binding.cproto.ByteBuffer;
 import ru.rt.restream.reindexer.expression.SetExpression;
@@ -185,7 +185,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		@Override
-		public <S> Function<ReindexerQuery, Object> visit(Update update, S context) {
+		public <S> Function<ReindexerQuery, @Nullable Object> visit(Update update, S context) {
 			return (query) -> {
 				query.criteria().update();
 				return null;
@@ -193,7 +193,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		@Override
-		public <S> Function<ReindexerQuery, Object> visit(Delete delete, S context) {
+		public <S> Function<ReindexerQuery, @Nullable Object> visit(Delete delete, S context) {
 			return (query) -> {
 				query.criteria().delete();
 				return null;
@@ -206,12 +206,12 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			extends SelectVisitorAdapter<Function<ReindexerQuery, Object>> {
 
 		@Override
-		public <S> Function<ReindexerQuery, Object> visit(SetOperationList setOpList, S context) {
+		public <S> Function<ReindexerQuery, @Nullable Object> visit(SetOperationList setOpList, S context) {
 			return StringBasedReindexerQuery.super.getQueryExecution(StringBasedReindexerQuery.this.method);
 		}
 
 		@Override
-		public <S> Function<ReindexerQuery, Object> visit(PlainSelect plainSelect, S context) {
+		public <S> Function<ReindexerQuery, @Nullable Object> visit(PlainSelect plainSelect, S context) {
 			if (plainSelect.getSelectItems().size() == 1) {
 				SelectItem<?> selectItem = plainSelect.getSelectItem(0);
 				Expression expr = selectItem.getExpression();
@@ -227,7 +227,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	}
 
 	private final class ReindexerSelectItemQueryExecutionResolvingVisitor
-			extends ExpressionVisitorAdapter<Function<ReindexerQuery, Object>> {
+			extends ExpressionVisitorAdapter<@Nullable Function<ReindexerQuery, Object>> {
 
 		@Override
 		public <S> Function<ReindexerQuery, Object> visit(net.sf.jsqlparser.expression.Function function, S context) {
@@ -254,7 +254,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		private ReindexerStatementVisitor(ReindexerParameterAccessor parameterAccessor) {
 			this.valueResolvingVisitor = Lazy.of(() -> {
-				Map<String, Object> resolvedParameters = StringBasedReindexerQuery.this.queryEvaluator
+				Map<String, @Nullable Object> resolvedParameters = StringBasedReindexerQuery.this.queryEvaluator
 					.evaluate(parameterAccessor.getValues());
 				ReindexerParameterResolver parameterResolver = new ReindexerParameterResolver(resolvedParameters,
 						parameterAccessor);
@@ -478,7 +478,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			};
 		}
 
-		private Query<?> applyAggregateFacetFunction(net.sf.jsqlparser.expression.Function facet) {
+		private Query<?> applyAggregateFacetFunction(net.sf.jsqlparser.expression.@Nullable Function facet) {
 			if (facet != null) {
 				List<String> facetFields = new ArrayList<>();
 				// Apply facet parameters.
@@ -786,7 +786,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 					"Invalid left operand: %s for RANGE condition, expected column or sub-query".formatted(left));
 		}
 
-		private boolean isSubQuery(Query<?> query) {
+		private boolean isSubQuery(@Nullable Query<?> query) {
 			return query != null && query != this.criteria;
 		}
 
@@ -864,7 +864,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
-	private static final class ReindexerColumnResolvingExpressionVisitor extends ExpressionVisitorAdapter<Column> {
+	private static final class ReindexerColumnResolvingExpressionVisitor
+			extends ExpressionVisitorAdapter<@Nullable Column> {
 
 		@Override
 		public <S> Column visit(Column column, S ctx) {
@@ -882,7 +883,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		@Override
-		public <S> Column visit(net.sf.jsqlparser.expression.Function function, S context) {
+		public @Nullable <S> Column visit(net.sf.jsqlparser.expression.Function function, S context) {
 			if (function.getParameters() != null && function.getParameters().size() == 1) {
 				return function.getParameters().get(0).accept(this, context);
 			}
@@ -890,7 +891,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		@Override
-		public <S> Column visit(ExpressionList<? extends Expression> expressionList, S context) {
+		public @Nullable <S> Column visit(ExpressionList<? extends Expression> expressionList, S context) {
 			// Unwraps any parenthesis expression (a) or ((b)) recursively.
 			if (expressionList.size() == 1) {
 				return expressionList.get(0).accept(this, context);
@@ -903,7 +904,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		@Override
-		public <S> Column visit(CastExpression castExpression, S context) {
+		public @Nullable <S> Column visit(CastExpression castExpression, S context) {
 			return castExpression.getLeftExpression().accept(this, context);
 		}
 
@@ -913,17 +914,17 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			return column.getColumnName();
 		}
 
-		private Column resolveColumn(Expression expr) {
+		private @Nullable Column resolveColumn(Expression expr) {
 			return expr.accept(this, null);
 		}
 
 	}
 
 	private static final class ReindexerWhereExpressionResolvingVisitor
-			extends ExpressionVisitorAdapter<ReindexerWhereExpression> {
+			extends ExpressionVisitorAdapter<@Nullable ReindexerWhereExpression> {
 
 		@Override
-		public <S> ReindexerWhereExpression visit(net.sf.jsqlparser.expression.Function function, S context) {
+		public @Nullable <S> ReindexerWhereExpression visit(net.sf.jsqlparser.expression.Function function, S context) {
 			return switch (function.getName().toLowerCase(Locale.ROOT)) {
 				case "now" -> {
 					TimeUnit unit = TimeUnit.SECONDS;
@@ -951,7 +952,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	}
 
-	private static final class ReindexerValueResolvingExpressionVisitor extends ExpressionVisitorAdapter<Object> {
+	private static final class ReindexerValueResolvingExpressionVisitor
+			extends ExpressionVisitorAdapter<@Nullable Object> {
 
 		private final ReindexerParameterResolver parameterResolver;
 
@@ -960,12 +962,12 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		}
 
 		@Override
-		public <S> Object visit(JdbcParameter parameter, S ctx) {
+		public @Nullable <S> Object visit(JdbcParameter parameter, S ctx) {
 			return this.parameterResolver.resolveIndexed(parameter.getIndex() - 1);
 		}
 
 		@Override
-		public <S> Object visit(JdbcNamedParameter parameter, S ctx) {
+		public @Nullable <S> Object visit(JdbcNamedParameter parameter, S ctx) {
 			return this.parameterResolver.resolvedNamed(parameter.getName());
 		}
 
@@ -1026,7 +1028,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			return value;
 		}
 
-		private Object resolveValue(Expression expr) {
+		private @Nullable Object resolveValue(Expression expr) {
 			return expr.accept(this, null);
 		}
 
@@ -1044,14 +1046,14 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			this.parameterAccessor = parameterAccessor;
 		}
 
-		private Object resolvedNamed(String name) {
+		private @Nullable Object resolvedNamed(String name) {
 			if (this.resolvedParameters.containsKey(name)) {
 				return this.resolvedParameters.get(name);
 			}
 			return this.parameterAccessor.getValue(name);
 		}
 
-		private Object resolveIndexed(int index) {
+		private @Nullable Object resolveIndexed(int index) {
 			return this.parameterAccessor.getValue(index);
 		}
 
@@ -1059,7 +1061,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private static class ConditionContext {
 
-		private Expression parent;
+		private @Nullable Expression parent;
 
 	}
 

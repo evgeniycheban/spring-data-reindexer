@@ -20,12 +20,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.EnumType;
 import ru.rt.restream.reindexer.annotations.Enumerated;
 
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.PropertyValueConverter;
+import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.mapping.PersistentPropertyPath;
 import org.springframework.data.reindexer.core.convert.ReindexerConversionContext;
@@ -66,8 +68,8 @@ public final class QueryParameterMapper {
 	 * @param values the values to use
 	 * @return the mapped values to use
 	 */
-	public Object[] mapParameterValues(String indexName, Object... values) {
-		Object[] result = new Object[values.length];
+	public @Nullable Object[] mapParameterValues(String indexName, Object... values) {
+		@Nullable Object[] result = new Object[values.length];
 		for (int i = 0; i < values.length; i++) {
 			result[i] = mapParameterValue(indexName, values[i]);
 		}
@@ -81,7 +83,7 @@ public final class QueryParameterMapper {
 	 * @param value the value to use
 	 * @return the mapped value to use
 	 */
-	public Object mapParameterValue(String indexName, Object value) {
+	public @Nullable Object mapParameterValue(String indexName, @Nullable Object value) {
 		if (value == null) {
 			return null;
 		}
@@ -89,11 +91,11 @@ public final class QueryParameterMapper {
 			.getPersistentPropertyPath(indexName, this.domainType);
 		ReindexerPersistentProperty property = propertyPath.getLeafProperty();
 		CustomConversions conversions = this.reindexerConverter.getCustomConversions();
-		if (conversions.hasValueConverter(property)) {
+		PropertyValueConversions pvc = conversions.getPropertyValueConversions();
+		if (pvc != null && pvc.hasValueConverter(property)) {
 			ReindexerConversionContext conversionContext = new ReindexerConversionContext(this.reindexerConverter,
 					property, this.reindexerConverter.getConversionService(), conversions);
-			PropertyValueConverter<Object, ?, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = conversions
-				.getPropertyValueConversions()
+			PropertyValueConverter<Object, ?, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = pvc
 				.getValueConverter(property);
 			return valueConverter.write(value, conversionContext);
 		}
@@ -110,7 +112,7 @@ public final class QueryParameterMapper {
 			return enumerated != null && enumerated.value() == EnumType.STRING ? enumValue.name() : enumValue.ordinal();
 		}
 		if (value instanceof Collection<?> values) {
-			List<Object> result = new ArrayList<>(values.size());
+			List<@Nullable Object> result = new ArrayList<>(values.size());
 			for (Object object : values) {
 				result.add(mapParameterValue(indexName, object));
 			}
@@ -118,7 +120,7 @@ public final class QueryParameterMapper {
 		}
 		if (value.getClass().isArray()) {
 			int length = Array.getLength(value);
-			List<Object> result = new ArrayList<>(length);
+			List<@Nullable Object> result = new ArrayList<>(length);
 			for (int i = 0; i < length; i++) {
 				result.add(mapParameterValue(indexName, Array.get(value, i)));
 			}

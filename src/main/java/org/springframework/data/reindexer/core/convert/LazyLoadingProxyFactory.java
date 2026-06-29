@@ -18,16 +18,19 @@ package org.springframework.data.reindexer.core.convert;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serial;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.cglib.core.SpringNamingPolicy;
@@ -35,7 +38,6 @@ import org.springframework.cglib.proxy.Callback;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.Factory;
 import org.springframework.cglib.proxy.MethodProxy;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.reindexer.LazyLoadingException;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.util.Lock;
@@ -65,8 +67,9 @@ public final class LazyLoadingProxyFactory {
 	 * @param source the source of an association to use
 	 * @param valueConverter the value converter to use
 	 */
-	public Object createLazyLoadingProxy(Class<?> type, ReindexerPersistentProperty property, Supplier<Object> callback,
-			Object source, Converter<Object, ?> valueConverter) {
+	public Object createLazyLoadingProxy(Class<?> type, ReindexerPersistentProperty property,
+			Supplier<@Nullable Object> callback, Object source,
+			Function<@Nullable Object, @Nullable Object> valueConverter) {
 		LazyLoadingInterceptor interceptor = new LazyLoadingInterceptor(property, callback, source, valueConverter);
 		if (!type.isInterface()) {
 			Factory factory = (Factory) this.objenesis.newInstance(getEnhancedTypeFor(type));
@@ -128,16 +131,16 @@ public final class LazyLoadingProxyFactory {
 
 		private final Supplier<Object> callback;
 
-		private final Object source;
+		private final @Nullable Object source;
 
-		private final Converter<Object, ?> valueConverter;
+		private final Function<@Nullable Object, @Nullable Object> valueConverter;
 
 		private volatile boolean resolved;
 
-		private Object result;
+		private @Nullable Object result;
 
-		private LazyLoadingInterceptor(ReindexerPersistentProperty property, Supplier<Object> callback, Object source,
-				Converter<Object, ?> valueConverter) {
+		private LazyLoadingInterceptor(ReindexerPersistentProperty property, Supplier<Object> callback,
+				@Nullable Object source, Function<@Nullable Object, @Nullable Object> valueConverter) {
 			this.property = property;
 			this.callback = callback;
 			this.source = source;
@@ -145,12 +148,13 @@ public final class LazyLoadingProxyFactory {
 		}
 
 		@Override
-		public Object invoke(MethodInvocation invocation) throws Throwable {
+		public @Nullable Object invoke(MethodInvocation invocation) throws Throwable {
 			return intercept(invocation.getThis(), invocation.getMethod(), invocation.getArguments(), null);
 		}
 
 		@Override
-		public Object intercept(Object o, Method method, Object[] args, MethodProxy proxy) throws Throwable {
+		public @Nullable Object intercept(@Nullable Object o, Method method, @Nullable Object[] args,
+				@Nullable MethodProxy proxy) throws Throwable {
 			if (GET_TARGET_METHOD.equals(method)) {
 				return ensureResolved();
 			}
@@ -179,7 +183,7 @@ public final class LazyLoadingProxyFactory {
 			return method.invoke(target, args);
 		}
 
-		private String proxyToString(Object source) {
+		private String proxyToString(@Nullable Object source) {
 			StringBuilder description = new StringBuilder();
 			if (source != null) {
 				if (source instanceof NamespaceReferenceSource referenceSource) {
@@ -198,7 +202,7 @@ public final class LazyLoadingProxyFactory {
 			return description.toString();
 		}
 
-		private boolean proxyEquals(Object proxy, Object that) {
+		private boolean proxyEquals(@Nullable Object proxy, @Nullable Object that) {
 			if (!(that instanceof LazyLoadingProxy)) {
 				return false;
 			}
@@ -212,11 +216,13 @@ public final class LazyLoadingProxyFactory {
 			return proxyToString(this.source).hashCode();
 		}
 
+		@Serial
 		private void writeObject(ObjectOutputStream out) throws IOException {
 			ensureResolved();
 			out.writeObject(this.result);
 		}
 
+		@Serial
 		private void readObject(ObjectInputStream in) throws IOException {
 			try {
 				this.result = in.readObject();
@@ -227,7 +233,7 @@ public final class LazyLoadingProxyFactory {
 			}
 		}
 
-		private Object ensureResolved() {
+		private @Nullable Object ensureResolved() {
 			if (this.resolved) {
 				return this.result;
 			}
@@ -246,7 +252,7 @@ public final class LazyLoadingProxyFactory {
 			}
 			try (AcquiredLock l = this.writeLock.lock()) {
 				if (!this.resolved) {
-					this.result = this.valueConverter.convert(this.callback.get());
+					this.result = this.valueConverter.apply(this.callback.get());
 					this.resolved = true;
 				}
 				return this.result;

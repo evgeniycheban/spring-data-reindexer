@@ -27,10 +27,10 @@ import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
-import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
@@ -300,8 +300,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 			if (propertyValue == null && matcher.getNullHandler() == NullHandler.IGNORE) {
 				continue;
 			}
-			if (propertySpecifiers.hasSpecifierForPath(propertyPath)) {
-				PropertySpecifier propertySpecifier = propertySpecifiers.getForPath(propertyPath);
+			PropertySpecifier propertySpecifier = propertySpecifiers.getForPath(propertyPath);
+			if (propertySpecifier != null) {
 				Object value = propertySpecifier.transformValue(Optional.ofNullable(propertyValue)).orElse(null);
 				if (value instanceof String s) {
 					StringMatcher stringMatcher = propertySpecifier.getStringMatcher();
@@ -370,15 +370,15 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 		private final Sort sort;
 
-		private final Integer limit;
+		private final @Nullable Integer limit;
 
 		private final Class<R> resultType;
 
 		private final List<String> fieldsToInclude;
 
 		@SuppressWarnings("unchecked")
-		private FluentQueryByExample(Example<E> example, Sort sort, Integer limit, Class<R> resultType,
-				List<String> fieldsToInclude) {
+		private FluentQueryByExample(Example<E> example, @Nullable Sort sort, @Nullable Integer limit,
+				@Nullable Class<R> resultType, List<String> fieldsToInclude) {
 			this.example = example;
 			this.sort = sort != null ? sort : Sort.unsorted();
 			this.limit = limit;
@@ -409,12 +409,12 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		}
 
 		@Override
-		public R oneValue() {
+		public @Nullable R oneValue() {
 			return findOne(byExample(joinedQuery()), this.resultType).orElse(null);
 		}
 
 		@Override
-		public R firstValue() {
+		public @Nullable R firstValue() {
 			return findOne(sorted().limit(1), this.resultType).orElse(null);
 		}
 

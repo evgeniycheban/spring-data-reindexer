@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactory;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactoryStrategy;
 
@@ -75,7 +77,7 @@ public class ReindexerProperties {
 	/**
 	 * Configure reindexer server SSL connection when cprotos protocol is used.
 	 */
-	private Ssl ssl;
+	private @Nullable Ssl ssl;
 
 	public List<String> getUrls() {
 		return this.urls;
@@ -133,7 +135,7 @@ public class ReindexerProperties {
 		this.serverConfigFile = serverConfigFile;
 	}
 
-	public Ssl getSsl() {
+	public @Nullable Ssl getSsl() {
 		return this.ssl;
 	}
 
@@ -151,12 +153,12 @@ public class ReindexerProperties {
 		/**
 		 * Configure KeyStore.
 		 */
-		private String keyStore;
+		private @Nullable String keyStore;
 
 		/**
 		 * Configure KeyStore password.
 		 */
-		private String keyStorePassword;
+		private @Nullable String keyStorePassword;
 
 		/**
 		 * Configure KeyStore type. Defaults to JKS.
@@ -176,7 +178,7 @@ public class ReindexerProperties {
 			this.enabled = enabled;
 		}
 
-		public String getKeyStore() {
+		public @Nullable String getKeyStore() {
 			return this.keyStore;
 		}
 
@@ -184,7 +186,7 @@ public class ReindexerProperties {
 			this.keyStore = keyStore;
 		}
 
-		public String getKeyStorePassword() {
+		public @Nullable String getKeyStorePassword() {
 			return this.keyStorePassword;
 		}
 

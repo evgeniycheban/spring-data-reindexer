@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.Collection;
 import java.util.Iterator;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -66,7 +67,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 
 	private final ReindexerQueryMethod method;
 
-	private Query<?> base;
+	private @Nullable Query<?> base;
 
 	ReindexerQueryCreator(PartTree tree, Namespace<?> namespace, ReindexerEntityInformation<?, ?> entityInformation,
 			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory,
@@ -183,7 +184,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 	}
 
 	@Override
-	protected Query<?> complete(Query<?> criteria, Sort sort) {
+	protected Query<?> complete(@Nullable Query<?> criteria, Sort sort) {
 		if (criteria == null) {
 			criteria = this.namespace.query();
 		}

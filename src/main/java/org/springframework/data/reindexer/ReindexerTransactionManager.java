@@ -87,7 +87,7 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 	}
 
 	@Override
-	protected void doResume(Object transaction, Object suspendedResources) throws TransactionException {
+	protected void doResume(@Nullable Object transaction, Object suspendedResources) throws TransactionException {
 		TransactionSynchronizationManager.bindResource(this.namespace, suspendedResources);
 	}
 
@@ -198,7 +198,7 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 		 * Begins a transaction if a {@link ReindexerResourceHolder} is set.
 		 */
 		void beginTransaction() {
-			if (hasResourceHolder()) {
+			if (this.resourceHolder != null) {
 				this.resourceHolder.beginTransaction(this.namespace.getName(), this.namespace.getItemClass());
 			}
 		}
@@ -207,7 +207,7 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 		 * Commits the transaction if a {@link ReindexerResourceHolder} is set.
 		 */
 		public void commitTransaction() {
-			if (hasResourceHolder()) {
+			if (this.resourceHolder != null) {
 				this.resourceHolder.commitTransaction();
 			}
 		}
@@ -216,7 +216,7 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 		 * Rolls back the transaction if a {@link ReindexerResourceHolder} is set.
 		 */
 		public void rollbackTransaction() {
-			if (hasResourceHolder()) {
+			if (this.resourceHolder != null) {
 				this.resourceHolder.rollbackTransaction();
 			}
 		}

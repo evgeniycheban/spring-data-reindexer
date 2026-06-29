@@ -17,6 +17,7 @@ package org.springframework.data.reindexer.repository.aot;
 
 import java.lang.reflect.Method;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 
@@ -98,11 +99,11 @@ public class ReindexerAotRepositoryFragmentSupport {
 		return this.converter;
 	}
 
-	protected Object[] mapParameterValues(String indexName, Object... values) {
+	protected @Nullable Object[] mapParameterValues(String indexName, Object... values) {
 		return this.parameterMapper.get().mapParameterValues(indexName, values);
 	}
 
-	protected Object mapParameterValue(String indexName, Object value) {
+	protected @Nullable Object mapParameterValue(String indexName, Object value) {
 		return this.parameterMapper.get().mapParameterValue(indexName, value);
 	}
 

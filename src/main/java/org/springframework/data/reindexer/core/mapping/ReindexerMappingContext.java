@@ -19,8 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.jspecify.annotations.NonNull;
-
 import org.springframework.data.core.TypeInformation;
 import org.springframework.data.mapping.MappingException;
 import org.springframework.data.mapping.context.AbstractMappingContext;
@@ -60,8 +58,7 @@ public class ReindexerMappingContext
 	}
 
 	@Override
-	protected @NonNull Optional<ReindexerPersistentEntity<?>> addPersistentEntity(
-			@NonNull TypeInformation<?> typeInformation) {
+	protected Optional<ReindexerPersistentEntity<?>> addPersistentEntity(TypeInformation<?> typeInformation) {
 		Optional<ReindexerPersistentEntity<?>> entity = super.addPersistentEntity(typeInformation);
 		entity.ifPresent((e) -> this.namespaceEntityMap.putIfAbsent(e.getNamespace(), e));
 		return entity;

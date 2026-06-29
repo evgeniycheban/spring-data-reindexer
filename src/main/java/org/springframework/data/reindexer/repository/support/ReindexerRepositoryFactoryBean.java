@@ -17,12 +17,14 @@ package org.springframework.data.reindexer.repository.support;
 
 import java.io.Serializable;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Reindexer;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
@@ -39,15 +41,15 @@ import org.springframework.util.Assert;
 public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID extends Serializable>
 		extends RepositoryFactoryBeanSupport<T, S, ID> implements ApplicationContextAware {
 
-	private Reindexer reindexer;
+	private @Nullable Reindexer reindexer;
 
-	private ReindexerMappingContext mappingContext;
+	private @Nullable ReindexerMappingContext mappingContext;
 
-	private ReindexerNamespaceFactory namespaceFactory;
+	private @Nullable ReindexerNamespaceFactory namespaceFactory;
 
-	private ReindexerConverter reindexerConverter;
+	private @Nullable ReindexerConverter reindexerConverter;
 
-	private ApplicationContext ctx;
+	private @Nullable ApplicationContext ctx;
 
 	/**
 	 * Creates an instance.
@@ -69,8 +71,10 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 	 * Sets the {@link ReindexerMappingContext}.
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 */
-	public void setMappingContext(ReindexerMappingContext mappingContext) {
-		this.mappingContext = mappingContext;
+	@Override
+	public void setMappingContext(MappingContext<?, ?> mappingContext) {
+		super.setMappingContext(mappingContext);
+		this.mappingContext = (ReindexerMappingContext) mappingContext;
 	}
 
 	/**
@@ -93,14 +97,18 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	@Override
 	protected RepositoryFactorySupport createRepositoryFactory() {
-		return new ReindexerRepositoryFactory(this.reindexer, this.mappingContext, this.namespaceFactory,
-				this.reindexerConverter, this.ctx);
+		Assert.notNull(this.mappingContext, "MappingContext cannot be null");
+		Assert.notNull(this.reindexerConverter, "ReindexerConverter cannot be null");
+		Assert.notNull(this.namespaceFactory, "ReindexerNamespaceFactory cannot be null");
+		Assert.notNull(this.ctx, "ApplicationContext cannot be null");
+		return new ReindexerRepositoryFactory(this.mappingContext, this.namespaceFactory, this.reindexerConverter,
+				this.ctx);
 	}
 
 	@Override
 	public void afterPropertiesSet() {
 		Assert.state(this.reindexer != null,
-				"Reindexer instance is not configured. Consider add Reindexer @Bean to the ApplicationContext");
+				"Reindexer instance is not configured. Consider adding Reindexer @Bean to the ApplicationContext");
 		super.afterPropertiesSet();
 	}
 
