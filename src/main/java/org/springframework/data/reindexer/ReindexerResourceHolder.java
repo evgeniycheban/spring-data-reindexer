@@ -46,7 +46,7 @@ public class ReindexerResourceHolder extends ResourceHolderSupport {
 	 * Returns an active transaction.
 	 * @return the active {@link Transaction} or {@literal null} if none.
 	 */
-	public Transaction<?> getActiveTransaction() {
+	public @Nullable Transaction<?> getActiveTransaction() {
 		return this.transaction;
 	}
 

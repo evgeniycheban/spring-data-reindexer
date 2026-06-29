@@ -21,7 +21,7 @@ import java.util.Optional;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import ru.rt.restream.reindexer.Reindexer;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.projection.ProjectionFactory;
@@ -60,8 +60,6 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	private static final boolean USE_VISITOR_BASED_QUERY = ClassUtils.isPresent("net.sf.jsqlparser.parser.CCJSqlParser",
 			ReindexerRepositoryFactory.class.getClassLoader());
 
-	private final Reindexer reindexer;
-
 	private final ReindexerMappingContext mappingContext;
 
 	private final ReindexerNamespaceFactory namespaceFactory;
@@ -72,15 +70,13 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
 	/**
 	 * Creates an instance.
-	 * @param reindexer the {@link Reindexer} to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
 	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 * @param ctx the {@link ApplicationContext} to use
 	 */
-	public ReindexerRepositoryFactory(Reindexer reindexer, ReindexerMappingContext mappingContext,
+	public ReindexerRepositoryFactory(ReindexerMappingContext mappingContext,
 			ReindexerNamespaceFactory namespaceFactory, ReindexerConverter reindexerConverter, ApplicationContext ctx) {
-		this.reindexer = reindexer;
 		this.mappingContext = mappingContext;
 		this.namespaceFactory = namespaceFactory;
 		this.reindexerConverter = reindexerConverter;
@@ -116,7 +112,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	}
 
 	@Override
-	protected Optional<QueryLookupStrategy> getQueryLookupStrategy(QueryLookupStrategy.Key key,
+	protected Optional<QueryLookupStrategy> getQueryLookupStrategy(QueryLookupStrategy.@Nullable Key key,
 			ValueExpressionDelegate valueExpressionDelegate) {
 		return Optional.of(new ReindexerQueryLookupStrategy());
 	}

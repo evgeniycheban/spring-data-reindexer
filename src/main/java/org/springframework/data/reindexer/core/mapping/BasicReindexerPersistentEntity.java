@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.NamespaceOptions;
 
 import org.springframework.data.core.TypeInformation;
@@ -41,7 +42,7 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 
 	private final NamespaceOptions namespaceOptions;
 
-	private final ValueExpression expression;
+	private final @Nullable ValueExpression expression;
 
 	/**
 	 * Creates an instance.
@@ -82,7 +83,7 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 		return StringUtils.uncapitalize(entityClass.getSimpleName());
 	}
 
-	private static ValueExpression detectExpression(String potentialExpression) {
+	private static @Nullable ValueExpression detectExpression(String potentialExpression) {
 		if (!StringUtils.hasText(potentialExpression)) {
 			return null;
 		}

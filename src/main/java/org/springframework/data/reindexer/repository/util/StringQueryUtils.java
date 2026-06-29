@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.StringJoiner;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.vector.params.KnnSearchParam;
 
 import org.springframework.data.domain.Vector;
@@ -60,7 +61,7 @@ public final class StringQueryUtils {
 		ValueExpressionQueryRewriter.ParsedQuery parsedQuery = CACHE.get(query);
 		ValueExpressionQueryRewriter.QueryExpressionEvaluator evaluator = QUERY_REWRITER.new QueryExpressionEvaluator(
 				factory.create(parameters.getParameters()), parsedQuery);
-		Map<String, Object> resolvedValues = evaluator.evaluate(parameters.getValues());
+		Map<String, @Nullable Object> resolvedValues = evaluator.evaluate(parameters.getValues());
 		String queryString = parsedQuery.getQueryString();
 		StringBuilder result = new StringBuilder(queryString.length());
 		char[] queryParts = queryString.toCharArray();
@@ -109,7 +110,7 @@ public final class StringQueryUtils {
 
 	}
 
-	private static String getParameterValuePart(Object value) {
+	private static String getParameterValuePart(@Nullable Object value) {
 		if (value instanceof String) {
 			return "'" + value + "'";
 		}

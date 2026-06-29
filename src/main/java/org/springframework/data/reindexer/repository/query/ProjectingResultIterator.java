@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.AggregationResult;
 import ru.rt.restream.reindexer.AggregationResult.Facet;
 import ru.rt.restream.reindexer.Query;
@@ -53,15 +54,13 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 
 	private final Class<D> domainType;
 
-	private final AggregationResult aggregationFacet;
+	private final @Nullable AggregationResult aggregationFacet;
 
 	private final Map<String, Set<String>> distinctAggregationResults;
 
 	private final ReindexerConverter reindexerConverter;
 
 	private final ConversionService conversionService;
-
-	private final boolean distinct;
 
 	private final long size;
 
@@ -94,12 +93,11 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 		this.conversionService = reindexerConverter.getConversionService();
 		this.aggregationFacet = getAggregationFacet();
 		this.distinctAggregationResults = getDistinctAggregationResults();
-		this.distinct = this.aggregationFacet != null && !this.distinctAggregationResults.isEmpty();
 		this.size = this.aggregationFacet != null ? this.aggregationFacet.getFacets().size() : delegate.size();
 	}
 
 	@Override
-	public AggregationResult aggregationResult(String type, String field) {
+	public @Nullable AggregationResult aggregationResult(String type, String field) {
 		Assert.hasText(type, "type must not be empty");
 		Assert.hasText(field, "field must not be empty");
 		for (AggregationResult result : aggResults()) {
@@ -142,7 +140,7 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 	}
 
 	@Override
-	public M next() {
+	public @Nullable M next() {
 		D entity = nextEntity();
 		if (entity == null) {
 			return null;
@@ -152,8 +150,8 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 		return this.reindexerConverter.project(descriptor, entity);
 	}
 
-	private D nextEntity() {
-		if (!this.distinct) {
+	private @Nullable D nextEntity() {
+		if (this.aggregationFacet == null || this.distinctAggregationResults.isEmpty()) {
 			return this.delegate.next();
 		}
 		D entity;
@@ -170,8 +168,9 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 		for (int i = 0; i < fields.size(); i++) {
 			String field = fields.get(i);
 			Facet facet = this.aggregationFacet.getFacets().get(aggregationPosition);
-			if (i < facet.getValues().size()
-					&& this.distinctAggregationResults.get(field).remove(facet.getValues().get(i))) {
+			Set<String> distinctValues = this.distinctAggregationResults.get(field);
+			if (i < facet.getValues().size() && distinctValues != null
+					&& distinctValues.remove(facet.getValues().get(i))) {
 				ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(field);
 				Object value = this.conversionService.convert(facet.getValues().get(i), persistentProperty.getType());
 				BeanPropertyUtils.setProperty(entity, field, value);
@@ -195,7 +194,7 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 		return result;
 	}
 
-	private AggregationResult getAggregationFacet() {
+	private @Nullable AggregationResult getAggregationFacet() {
 		for (AggregationResult aggregationResult : aggResults()) {
 			if ("facet".equals(aggregationResult.getType())) {
 				if (aggregationResult.getFacets() == null) {

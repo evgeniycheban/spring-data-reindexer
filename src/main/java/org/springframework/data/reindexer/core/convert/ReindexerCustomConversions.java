@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.convert.FieldConverter;
 import ru.rt.restream.reindexer.convert.FieldConverterRegistry;
 import ru.rt.restream.reindexer.convert.util.ConversionUtils;
@@ -38,8 +39,10 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.data.convert.CustomConversions;
 import org.springframework.data.convert.PropertyValueConverter;
+import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.convert.WritingConverter;
@@ -61,7 +64,7 @@ import org.springframework.data.util.Lazy;
  */
 public class ReindexerCustomConversions extends CustomConversions implements ApplicationContextAware {
 
-	private ObjectFactory<ReindexerConverter> reindexerConverter;
+	private @Nullable ObjectFactory<ReindexerConverter> reindexerConverter;
 
 	/**
 	 * Creates an instance with default converters.
@@ -107,8 +110,9 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 	public void registerCustomConversions(FieldConverterRegistry registry, ReindexerMappingContext context) {
 		for (ReindexerPersistentEntity<?> entity : context.getPersistentEntities()) {
 			entity.doWithProperties((PropertyHandler<ReindexerPersistentProperty>) property -> {
-				if (hasValueConverter(property)) {
-					PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = getPropertyValueConversions()
+				PropertyValueConversions pvc = getPropertyValueConversions();
+				if (pvc != null && pvc.hasValueConverter(property)) {
+					PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = pvc
 						.getValueConverter(property);
 					registry.registerFieldConverter(entity.getType(), property.getName(),
 							new PropertyValueConverterToFieldConverterAdapter(property, valueConverter));
@@ -118,12 +122,12 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 					registry.registerFieldConverter(entity.getType(), property.getName(),
 							new FieldConverter<Vector, float[]>() {
 								@Override
-								public Vector convertToFieldType(float[] dbData) {
-									return Vector.of(dbData);
+								public @Nullable Vector convertToFieldType(float @Nullable [] dbData) {
+									return dbData != null ? Vector.of(dbData) : null;
 								}
 
 								@Override
-								public float[] convertToDatabaseType(Vector field) {
+								public float @Nullable [] convertToDatabaseType(@Nullable Vector field) {
 									return field != null ? field.toFloatArray() : null;
 								}
 							});
@@ -142,7 +146,7 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 
 		private final Lazy<Pair<ResolvableType, ResolvableType>> convertiblePair;
 
-		private final Lazy<ReindexerConversionContext> context;
+		private final Lazy<ValueConversionContext<ReindexerPersistentProperty>> context;
 
 		private PropertyValueConverterToFieldConverterAdapter(ReindexerPersistentProperty property,
 				PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> delegate) {
@@ -150,6 +154,10 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 			this.convertiblePair = Lazy
 				.of(() -> ConversionUtils.resolveConvertiblePair(delegate.getClass(), PropertyValueConverter.class));
 			this.context = Lazy.of(() -> {
+				if (ReindexerCustomConversions.this.reindexerConverter == null) {
+					// NOOP conversion context.
+					return () -> property;
+				}
 				ReindexerConverter reindexerConverter = ReindexerCustomConversions.this.reindexerConverter.getObject();
 				return new ReindexerConversionContext(reindexerConverter, property,
 						reindexerConverter.getConversionService(), ReindexerCustomConversions.this);
@@ -157,8 +165,8 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 		}
 
 		@Override
-		public Object convertToFieldType(Object dbData) {
-			ReindexerConversionContext context = this.context.get();
+		public @Nullable Object convertToFieldType(@Nullable Object dbData) {
+			ValueConversionContext<ReindexerPersistentProperty> context = this.context.get();
 			if (dbData == null) {
 				return this.delegate.readNull(context);
 			}
@@ -166,8 +174,8 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 		}
 
 		@Override
-		public Object convertToDatabaseType(Object field) {
-			ReindexerConversionContext context = this.context.get();
+		public @Nullable Object convertToDatabaseType(@Nullable Object field) {
+			ValueConversionContext<ReindexerPersistentProperty> context = this.context.get();
 			if (field == null) {
 				return this.delegate.writeNull(context);
 			}
@@ -187,6 +195,8 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 
 		private final Lazy<Pair<ResolvableType, ResolvableType>> convertiblePair;
 
+		private final Lazy<ConversionService> conversionService;
+
 		private ConverterToFieldConverterAdapter(ReindexerPersistentProperty property) {
 			this.property = property;
 			this.convertiblePair = Lazy.of(() -> {
@@ -200,16 +210,21 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 				ResolvableType targetType = new ResolvableType(type, componentType, property.isCollectionLike());
 				return new Pair<>(sourceType, targetType);
 			});
+			this.conversionService = Lazy.of(() -> {
+				if (ReindexerCustomConversions.this.reindexerConverter == null) {
+					return new DefaultConversionService();
+				}
+				return ReindexerCustomConversions.this.reindexerConverter.getObject().getConversionService();
+			});
 		}
 
 		@Override
-		public Object convertToFieldType(Object dbData) {
+		public @Nullable Object convertToFieldType(@Nullable Object dbData) {
 			if (dbData == null) {
 				return null;
 			}
 			if (hasCustomReadTarget(getTargetType(), getSourceType())) {
-				ConversionService conversionService = ReindexerCustomConversions.this.reindexerConverter.getObject()
-					.getConversionService();
+				ConversionService conversionService = this.conversionService.get();
 				TypeDescriptor sourceTypeDescriptor = getSourceTypeDescriptor();
 				if (conversionService.canConvert(getTargetTypeDescriptor(), sourceTypeDescriptor)) {
 					return conversionService.convert(dbData, sourceTypeDescriptor);
@@ -219,13 +234,12 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 		}
 
 		@Override
-		public Object convertToDatabaseType(Object field) {
+		public @Nullable Object convertToDatabaseType(@Nullable Object field) {
 			if (field == null) {
 				return null;
 			}
 			if (hasCustomWriteTarget(getSourceType(), getTargetType())) {
-				ConversionService conversionService = ReindexerCustomConversions.this.reindexerConverter.getObject()
-					.getConversionService();
+				ConversionService conversionService = this.conversionService.get();
 				TypeDescriptor targetTypeDescriptor = getTargetTypeDescriptor();
 				if (conversionService.canConvert(getSourceTypeDescriptor(), targetTypeDescriptor)) {
 					return conversionService.convert(field, targetTypeDescriptor);

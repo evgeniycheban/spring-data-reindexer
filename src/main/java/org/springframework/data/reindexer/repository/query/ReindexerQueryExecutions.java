@@ -24,6 +24,8 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.SearchResult;
 import org.springframework.data.domain.Slice;
@@ -49,7 +51,7 @@ public final class ReindexerQueryExecutions {
 	 * @throws IncorrectResultSizeDataAccessException if the iterator contains more than
 	 * one entity
 	 */
-	public static <E> E toEntity(ResultIterator<E> iterator) {
+	public static @Nullable <E> E toEntity(ResultIterator<E> iterator) {
 		E entity = null;
 		try (iterator) {
 			if (iterator.hasNext()) {
@@ -68,9 +70,10 @@ public final class ReindexerQueryExecutions {
 	 * @param <E> the entity type to use
 	 * @return the {@link Stream} of entities to use
 	 */
-	public static <E> Stream<E> toStream(ResultIterator<E> iterator) {
-		Spliterator<E> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
-		return StreamSupport.stream(spliterator, false).filter(Objects::nonNull).onClose(iterator::close);
+	public static <E> Stream<E> toStream(ResultIterator<@Nullable E> iterator) {
+		Spliterator<@Nullable E> spliterator = Spliterators.spliterator(iterator, iterator.size(), Spliterator.NONNULL);
+		Stream<E> stream = StreamSupport.stream(spliterator, false).filter(Objects::nonNull);
+		return stream.onClose(iterator::close);
 	}
 
 	/**
@@ -79,7 +82,7 @@ public final class ReindexerQueryExecutions {
 	 * @param <E> the entity type to use
 	 * @return the {@link List} of entities to use
 	 */
-	public static <E> List<E> toList(ResultIterator<E> iterator) {
+	public static <E> List<E> toList(ResultIterator<@Nullable E> iterator) {
 		List<E> result = new ArrayList<>();
 		try (iterator) {
 			while (iterator.hasNext()) {
@@ -100,7 +103,7 @@ public final class ReindexerQueryExecutions {
 	 * @param <E> the entity type to use
 	 * @return the {@link Slice} of entities to use
 	 */
-	public static <E> Slice<E> toSlice(ResultIterator<E> iterator, Pageable pageable) {
+	public static <E> Slice<E> toSlice(ResultIterator<@Nullable E> iterator, Pageable pageable) {
 		try (iterator) {
 			if (pageable.isUnpaged()) {
 				List<E> result = toList(iterator);
@@ -125,7 +128,7 @@ public final class ReindexerQueryExecutions {
 	 * @param <E> the entity type to use
 	 * @return the {@link Collection} of entities to use
 	 */
-	public static <E> Collection<E> toCollection(ResultIterator<E> iterator, Class<?> collectionType) {
+	public static <E> Collection<E> toCollection(ResultIterator<@Nullable E> iterator, Class<?> collectionType) {
 		Collection<E> result = CollectionFactory.createCollection(collectionType, Math.toIntExact(iterator.size()));
 		try (iterator) {
 			while (iterator.hasNext()) {
@@ -147,7 +150,7 @@ public final class ReindexerQueryExecutions {
 	 * @return the {@link Collection} of {@link SearchResult}s to use
 	 * @since 1.6
 	 */
-	public static <E> Collection<? extends SearchResult<E>> toSearchResults(ResultIterator<E> iterator,
+	public static <E> Collection<? extends SearchResult<E>> toSearchResults(ResultIterator<@Nullable E> iterator,
 			Class<?> collectionType) {
 		Collection<SearchResult<E>> result = CollectionFactory.createCollection(collectionType,
 				Math.toIntExact(iterator.size()));

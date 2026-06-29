@@ -59,7 +59,7 @@ public final class ReindexerParameterAccessor extends ParametersParameterAccesso
 	 * {@inheritDoc}
 	 */
 	@Override
-	public @Nullable <T> T getValue(int index) {
+	public <T> @Nullable T getValue(int index) {
 		return super.getValue(index);
 	}
 
@@ -69,9 +69,8 @@ public final class ReindexerParameterAccessor extends ParametersParameterAccesso
 	 * @param name the parameter name to use
 	 * @return the parameter value for the given parameter name
 	 */
-	public @Nullable <T> T getValue(String name) {
+	public <T> @Nullable T getValue(String name) {
 		ReindexerParameter parameter = this.parameters.getParameter(name);
-		Assert.notNull(parameter, () -> "Could not resolve parameter: " + name);
 		return getValue(parameter.getIndex());
 	}
 

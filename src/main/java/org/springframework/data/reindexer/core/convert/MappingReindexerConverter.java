@@ -22,9 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -41,6 +39,10 @@ import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.EnvironmentCapable;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.PropertyValueConverter;
@@ -110,7 +112,7 @@ public class MappingReindexerConverter
 
 	private EntityInstantiators instantiators = new EntityInstantiators();
 
-	private Environment environment;
+	private @Nullable Environment environment;
 
 	/**
 	 * Creates an instance.
@@ -162,7 +164,7 @@ public class MappingReindexerConverter
 	 * @param instantiators can be {@literal null}. Uses default
 	 * {@link EntityInstantiators} if so.
 	 */
-	public void setInstantiators(EntityInstantiators instantiators) {
+	public void setInstantiators(@Nullable EntityInstantiators instantiators) {
 		this.instantiators = instantiators == null ? new EntityInstantiators() : instantiators;
 	}
 
@@ -227,7 +229,10 @@ public class MappingReindexerConverter
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.projectionFactory.setBeanFactory(applicationContext);
-		this.projectionFactory.setBeanClassLoader(applicationContext.getClassLoader());
+		ClassLoader classLoader = applicationContext.getClassLoader();
+		if (classLoader != null) {
+			this.projectionFactory.setBeanClassLoader(classLoader);
+		}
 		this.environment = applicationContext.getEnvironment();
 		this.spELContext = new SpELContext(this.spELContext, applicationContext);
 	}
@@ -239,6 +244,9 @@ public class MappingReindexerConverter
 
 	@Override
 	public Environment getEnvironment() {
+		if (this.environment == null) {
+			this.environment = new StandardEnvironment();
+		}
 		return this.environment;
 	}
 
@@ -258,7 +266,7 @@ public class MappingReindexerConverter
 		}
 
 		@Override
-		public <T> T getPropertyValue(ReindexerPersistentProperty targetProperty) {
+		public <T> @Nullable T getPropertyValue(ReindexerPersistentProperty targetProperty) {
 			ReindexerPersistentProperty sourceProperty = this.entity.getPersistentProperty(targetProperty.getName());
 			if (sourceProperty == null) {
 				// in case the target property is calculated using @Value annotation.
@@ -274,7 +282,7 @@ public class MappingReindexerConverter
 		}
 
 		@SuppressWarnings("unchecked")
-		private <T> T readNamespaceReference(ReindexerPersistentProperty sourceProperty,
+		private <T> @Nullable T readNamespaceReference(ReindexerPersistentProperty sourceProperty,
 				ReindexerPersistentProperty targetProperty) {
 			Object value = this.accessor.getProperty(sourceProperty);
 			if (ObjectUtils.isEmpty(value)) {
@@ -303,7 +311,7 @@ public class MappingReindexerConverter
 					|| StringUtils.hasText(namespaceReference.lookup());
 		}
 
-		private Object createProxyIfNeeded(NamespaceReference namespaceReference,
+		private @Nullable Object createProxyIfNeeded(NamespaceReference namespaceReference,
 				ReindexerPersistentProperty sourceProperty, ReindexerPersistentProperty targetProperty) {
 			Object source;
 			if (StringUtils.hasText(namespaceReference.lookup())) {
@@ -327,7 +335,7 @@ public class MappingReindexerConverter
 				.getRequiredPersistentEntity(sourceProperty);
 			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
 					: referenceEntity.getNamespace();
-			Supplier<Object> callback = () -> {
+			Supplier<@Nullable Object> callback = () -> {
 				if (StringUtils.hasText(namespaceReference.lookup())) {
 					Map<String, Object> variables = new HashMap<>();
 					if (namespaceReference.lookup().contains("#sort")) {
@@ -372,7 +380,7 @@ public class MappingReindexerConverter
 					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
 		}
 
-		private Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {
+		private @Nullable Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {
 			Object result = iterator.hasNext() ? iterator.next() : null;
 			if (result == null && !nullable) {
 				throw new EmptyResultDataAccessException(1);
@@ -388,8 +396,8 @@ public class MappingReindexerConverter
 		}
 
 		@SuppressWarnings("unchecked")
-		private <T> T readPropertyValue(ReindexerPersistentProperty sourceProperty,
-				ReindexerPersistentProperty targetProperty, Object value) {
+		private <T> @Nullable T readPropertyValue(ReindexerPersistentProperty sourceProperty,
+				ReindexerPersistentProperty targetProperty, @Nullable Object value) {
 			ReindexerConversionContext conversionContext = new ReindexerConversionContext(
 					MappingReindexerConverter.this, sourceProperty, MappingReindexerConverter.this.conversionService,
 					MappingReindexerConverter.this.conversions);
@@ -416,12 +424,12 @@ public class MappingReindexerConverter
 	private static final class BeanPropertyAccessor implements PropertyAccessor {
 
 		@Override
-		public boolean canRead(EvaluationContext context, Object target, String name) {
+		public boolean canRead(EvaluationContext context, @Nullable Object target, String name) {
 			return true;
 		}
 
 		@Override
-		public TypedValue read(EvaluationContext context, Object target, String name) {
+		public TypedValue read(EvaluationContext context, @Nullable Object target, String name) {
 			if (target == null) {
 				return TypedValue.NULL;
 			}
@@ -430,12 +438,12 @@ public class MappingReindexerConverter
 		}
 
 		@Override
-		public boolean canWrite(EvaluationContext context, Object target, String name) {
+		public boolean canWrite(EvaluationContext context, @Nullable Object target, String name) {
 			return false;
 		}
 
 		@Override
-		public void write(EvaluationContext context, Object target, String name, Object newValue) {
+		public void write(EvaluationContext context, @Nullable Object target, String name, @Nullable Object newValue) {
 			// NOOP
 		}
 

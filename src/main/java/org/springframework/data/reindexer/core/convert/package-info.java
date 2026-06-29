@@ -13,21 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * Spring Data Reindexer specific converter infrastructure.
+ */
+@NullMarked
 package org.springframework.data.reindexer.core.convert;
 
-import java.util.Map;
-
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.data.mapping.model.ValueExpressionEvaluator;
-
-/**
- * For internal use only, as this contract is likely to change.
- *
- * @author Evgeniy Cheban
- */
-interface ReindexerExpressionEvaluator extends ValueExpressionEvaluator {
-
-	<T> @Nullable T evaluate(String expression, Map<String, Object> variables);
-
-}
+import org.jspecify.annotations.NullMarked;

@@ -18,8 +18,6 @@ package org.springframework.data.reindexer.repository.query;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 
-import org.jspecify.annotations.NonNull;
-
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.repository.core.RepositoryMetadata;
@@ -109,7 +107,7 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	 * @since 1.6
 	 */
 	@Override
-	public @NonNull ReindexerParameters getParameters() {
+	public ReindexerParameters getParameters() {
 		return (ReindexerParameters) super.getParameters();
 	}
 

@@ -18,7 +18,7 @@ package org.springframework.data.reindexer.repository.query;
 import java.util.List;
 import java.util.function.Function;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Query;
 
 import org.springframework.data.domain.SearchResult;
@@ -42,7 +42,7 @@ abstract class AbstractReindexerQuery implements RepositoryQuery {
 
 	private final ReindexerConverter reindexerConverter;
 
-	private final Lazy<Function<ReindexerQuery, Object>> queryExecution;
+	private final Lazy<Function<ReindexerQuery, @Nullable Object>> queryExecution;
 
 	AbstractReindexerQuery(ReindexerQueryMethod method, ReindexerConverter reindexerConverter) {
 		this.method = method;
@@ -51,7 +51,7 @@ abstract class AbstractReindexerQuery implements RepositoryQuery {
 	}
 
 	@Override
-	public final Object execute(Object @NonNull [] parameters) {
+	public final @Nullable Object execute(@Nullable Object[] parameters) {
 		ReindexerParameterAccessor parameterAccessor = new ReindexerParameterAccessor(this.method.getParameters(),
 				parameters);
 		ResultProcessor resultProcessor = this.method.getResultProcessor().withDynamicProjection(parameterAccessor);
@@ -61,13 +61,13 @@ abstract class AbstractReindexerQuery implements RepositoryQuery {
 	}
 
 	@Override
-	public final @NonNull QueryMethod getQueryMethod() {
+	public final QueryMethod getQueryMethod() {
 		return this.method;
 	}
 
 	abstract ReindexerQuery createQuery(ReindexerParameterAccessor parameterAccessor, ReturnedType returnedType);
 
-	Function<ReindexerQuery, Object> getQueryExecution(ReindexerQueryMethod method) {
+	Function<ReindexerQuery, @Nullable Object> getQueryExecution(ReindexerQueryMethod method) {
 		if (method.isSearchQuery()) {
 			return getSearchQueryExecution(method);
 		}

@@ -20,10 +20,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jspecify.annotations.NonNull;
-
 import org.springframework.data.repository.query.Parameters;
 import org.springframework.data.repository.query.ParametersSource;
+import org.springframework.util.Assert;
 
 /**
  * A Reindexer-specific {@link Parameters}.
@@ -89,11 +88,13 @@ public final class ReindexerParameters extends Parameters<ReindexerParameters, R
 	 * @return a {@code ReindexerParameter} for the given {@code name}
 	 */
 	public ReindexerParameter getParameter(String name) {
-		return this.namedParameters.get(name);
+		ReindexerParameter parameter = this.namedParameters.get(name);
+		Assert.notNull(parameter, () -> "Could not resolve parameter: " + name);
+		return parameter;
 	}
 
 	@Override
-	protected ReindexerParameters createFrom(@NonNull List<ReindexerParameter> parameters) {
+	protected ReindexerParameters createFrom(List<ReindexerParameter> parameters) {
 		return new ReindexerParameters(parameters);
 	}
 

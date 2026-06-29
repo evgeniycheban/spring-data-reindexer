@@ -55,6 +55,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AutoClose;
@@ -3705,9 +3706,10 @@ class ReindexerRepositoryTests {
 		Optional<TestItem> findOneSqlByNameParam(@Param("name") String name);
 
 		@Query("SELECT * FROM items WHERE name = ?11 AND value = ?12")
-		Optional<TestItem> findOneSqlByNameAndValueManyParams(String name1, String name2, String name3, String name4,
-				String name5, String name6, String name7, String name8, String name9, String name10, String name11,
-				String value);
+		Optional<TestItem> findOneSqlByNameAndValueManyParams(@Nullable String name1, @Nullable String name2,
+				@Nullable String name3, @Nullable String name4, @Nullable String name5, @Nullable String name6,
+				@Nullable String name7, @Nullable String name8, @Nullable String name9, @Nullable String name10,
+				String name11, String value);
 
 		@Query("SELECT * FROM items WHERE id = ?1 AND name = ?2 AND value = ?3")
 		Optional<TestItem> findOneSqlByIdAndNameAndValue(Long id, String name, String value);

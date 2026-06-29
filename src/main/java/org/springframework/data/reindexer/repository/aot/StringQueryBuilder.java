@@ -22,6 +22,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.NullUnmarked;
 import ru.rt.restream.reindexer.Query;
 
 import org.springframework.data.reindexer.core.mapping.JoinType;
@@ -32,6 +33,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Evgeniy Cheban
  */
+@NullUnmarked
 final class StringQueryBuilder {
 
 	private QueryType type = QueryType.SELECT;

@@ -18,6 +18,8 @@ package org.springframework.data.reindexer.core.convert;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.data.core.TypeInformation;
@@ -74,7 +76,7 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T read(Object value, TypeInformation<T> target) {
+	public <T> @Nullable T read(@Nullable Object value, TypeInformation<T> target) {
 		if (value == null) {
 			return null;
 		}
@@ -103,7 +105,7 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 	}
 
 	@SuppressWarnings("unchecked")
-	private Object readEntity(Object value, TypeInformation<?> target) {
+	private @Nullable Object readEntity(Object value, TypeInformation<?> target) {
 		EntityProjection<Object, Object> projection = (EntityProjection<Object, Object>) this.reindexerConverter
 			.getProjectionIntrospector()
 			.introspect(target.getRequiredActualType().getType(), this.property.getActualType());

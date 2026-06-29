@@ -100,7 +100,7 @@ public abstract class ReindexerConfigurationSupport {
 	 */
 	protected Collection<String> getMappingBasePackages() {
 		Package mappingBasePackage = getClass().getPackage();
-		return Collections.singleton(mappingBasePackage == null ? null : mappingBasePackage.getName());
+		return Collections.singleton(mappingBasePackage.getName());
 	}
 
 	/**
@@ -120,8 +120,11 @@ public abstract class ReindexerConfigurationSupport {
 					false);
 			componentProvider.addIncludeFilter(new AnnotationTypeFilter(Namespace.class));
 			for (BeanDefinition candidate : componentProvider.findCandidateComponents(basePackage)) {
-				initialEntitySet.add(ClassUtils.forName(candidate.getBeanClassName(),
-						ReindexerConfigurationSupport.class.getClassLoader()));
+				String beanClassName = candidate.getBeanClassName();
+				if (beanClassName != null) {
+					initialEntitySet
+						.add(ClassUtils.forName(beanClassName, ReindexerConfigurationSupport.class.getClassLoader()));
+				}
 			}
 		}
 		return initialEntitySet;

@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.ResultIterator;
@@ -145,7 +146,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Transaction<T> getTransaction() {
+	private @Nullable Transaction<T> getTransaction() {
 		ReindexerResourceHolder resourceHolder = (ReindexerResourceHolder) TransactionSynchronizationManager
 			.getResource(this.fallback);
 		return resourceHolder != null ? (Transaction<T>) resourceHolder.getActiveTransaction() : null;

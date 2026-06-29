@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.NamespaceOptions;
 
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
@@ -62,7 +63,7 @@ public class MappingReindexerEntityInformation<T, ID> implements ReindexerEntity
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public ID getId(T entity) {
+	public @Nullable ID getId(T entity) {
 		return (ID) this.metadata.getIdentifierAccessor(entity).getIdentifier();
 	}
 
