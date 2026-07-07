@@ -158,7 +158,7 @@ public class ReindexerDataAutoConfiguration {
 			if (StringUtils.hasText(strategyName)) {
 				return DataSourceFactoryStrategy.valueOf(strategyName.toUpperCase(Locale.ROOT));
 			}
-			return null;
+			return DataSourceFactoryStrategy.NEXT;
 		}
 
 	}

@@ -1,16 +1,6 @@
 name: Release Build
 
-on:
-  workflow_dispatch:
-    inputs:
-      working-directory:
-        description: 'Select a working directory to release Spring Data Reindexer'
-        required: false
-        default: '.'
-        type: choice
-        options:
-          - '.'
-          - './spring-boot-starter-data-reindexer'
+on: workflow_dispatch
 
 jobs:
   build:
@@ -18,9 +8,6 @@ jobs:
     if: github.repository == 'evgeniycheban/spring-data-reindexer'
     env:
       MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-    defaults:
-      run:
-        working-directory: ${{ inputs.working-directory }}
 
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +31,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          $GITHUB_WORKSPACE/mvnw --batch-mode release:prepare -Pci,pre-release
+          ./mvnw --batch-mode release:prepare -Pci,pre-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -60,7 +47,7 @@ jobs:
 
       - name: Perform release
         run: |
-          $GITHUB_WORKSPACE/mvnw --batch-mode release:perform -Pci,release
+          ./mvnw --batch-mode release:perform -Pci,release
           curl --request POST \
                --user "${{ secrets.MAVEN_USERNAME }}:${{ secrets.MAVEN_PASSWORD }}" \
                --url "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.github.evgeniycheban"
