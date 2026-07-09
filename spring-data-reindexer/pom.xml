@@ -16,19 +16,7 @@
 
     <profiles>
         <profile>
-            <id>default</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <spring.aot.enabled>false</spring.aot.enabled>
-            </properties>
-        </profile>
-        <profile>
             <id>aot</id>
-            <properties>
-                <spring.aot.enabled>true</spring.aot.enabled>
-            </properties>
             <build>
                 <plugins>
                     <plugin>

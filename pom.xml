@@ -62,9 +62,18 @@
 		<httpclient.version>5.6.2</httpclient.version>
 		<lombok.version>1.18.46</lombok.version>
 		<jsqlparser.version>5.3</jsqlparser.version>
+
+		<!-- Enabled in aot profile -->
+		<spring.aot.enabled>false</spring.aot.enabled>
 	</properties>
 
 	<profiles>
+		<profile>
+			<id>aot</id>
+			<properties>
+				<spring.aot.enabled>true</spring.aot.enabled>
+			</properties>
+		</profile>
 		<profile>
 			<id>ci</id>
 			<build>
