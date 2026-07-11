@@ -296,11 +296,8 @@ public class MappingReindexerConverter
 			// propagating the underlying target object for further conversion and use,
 			// preserving the lazy-loading behavior of the original proxy.
 			if (value instanceof LazyLoadingProxy proxy) {
-				ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
-					.getRequiredPersistentEntity(sourceProperty);
 				return (T) MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
-						targetProperty.getType(), sourceProperty, proxy::getTarget,
-						new NamespaceReferenceSource(referenceEntity.getNamespace(), proxy.getSource()),
+						targetProperty.getType(), sourceProperty, proxy::getTarget, proxy.getSource(),
 						resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
 			}
 			return readPropertyValue(sourceProperty, targetProperty, value);
