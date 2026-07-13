@@ -132,10 +132,12 @@ public class ReindexerDataAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	ReindexerMappingContext reindexerMappingContext(ManagedTypes mappedTypes, ReindexerCustomConversions conversions) {
+	ReindexerMappingContext reindexerMappingContext(ReindexerProperties properties, ManagedTypes mappedTypes,
+			ReindexerCustomConversions conversions) {
 		ReindexerMappingContext context = new ReindexerMappingContext();
 		context.setManagedTypes(mappedTypes);
 		context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
+		context.setAutoIndexCreation(properties.isAutoIndexCreation());
 		return context;
 	}
 

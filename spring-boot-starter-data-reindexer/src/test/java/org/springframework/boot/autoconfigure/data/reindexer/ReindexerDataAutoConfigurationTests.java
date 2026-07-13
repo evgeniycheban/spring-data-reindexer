@@ -121,4 +121,12 @@ class ReindexerDataAutoConfigurationTests {
 				.isEqualTo(DataSourceFactoryStrategy.RANDOM));
 	}
 
+	@Test
+	void testEnableAutoIndexCreation() {
+		this.contextRunner.withPropertyValues("spring.data.reindexer.auto-index-creation=true")
+			.run(context -> assertThat(context).getBean(ReindexerMappingContext.class)
+				.extracting(ReindexerMappingContext::isAutoIndexCreation)
+				.isEqualTo(true));
+	}
+
 }

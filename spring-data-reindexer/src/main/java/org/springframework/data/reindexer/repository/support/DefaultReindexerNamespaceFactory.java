@@ -112,6 +112,16 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(type);
 		ReindexerNamespace<T> namespace = (ReindexerNamespace<T>) this.reindexer.openNamespace(entity.getNamespace(),
 				entity.getNamespaceOptions(), type);
+		createMissingIndexesIfNeeded(namespace, entity);
+		return new TransactionalNamespace<>(namespace);
+	}
+
+	private void createMissingIndexesIfNeeded(ReindexerNamespace<?> namespace, ReindexerPersistentEntity<?> entity) {
+		if (!this.mappingContext.isAutoIndexCreation()) {
+			LOGGER.trace("Auto index creation is disabled; skipping");
+			return;
+		}
+		// Create missing indexes in Reindexer with the default configuration.
 		Map<String, ReindexerIndex> indexes = namespace.getIndexes()
 			.stream()
 			.collect(Collectors.toMap(ReindexerIndex::getName, Function.identity()));
@@ -120,7 +130,6 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 				createDefaultPkIndex(namespace, property);
 			}
 		}
-		return new TransactionalNamespace<>(namespace);
 	}
 
 	private void createDefaultPkIndex(ReindexerNamespace<?> namespace, ReindexerPersistentProperty property) {
@@ -133,21 +142,30 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 		};
 		Assert.isTrue(validPkFieldType, () -> "Unsupported primary key fieldType: %s for property: %s.%s"
 			.formatted(fieldType, property.getOwner().getName(), property.getName()));
+		ReindexerIndex index = ReindexerIndex.builder()
+			.fieldType(fieldType)
+			.name(property.getName())
+			.jsonPaths(List.of(property.getName()))
+			.isPk(true)
+			.collateMode(CollateMode.NONE)
+			.indexType(IndexType.DEFAULT)
+			.sortOrder("")
+			.build();
+		createIndex(namespace.getName(), index);
+	}
+
+	private void createIndex(String namespaceName, ReindexerIndex index) {
+		if (LOGGER.isTraceEnabled()) {
+			LOGGER.trace("Creating index: %s in namespace: %s".formatted(index.getName(), namespaceName));
+		}
 		try {
-			this.reindexer.addIndex(namespace.getName(),
-					ReindexerIndex.builder()
-						.fieldType(fieldType)
-						.name(property.getName())
-						.jsonPaths(List.of(property.getName()))
-						.isPk(true)
-						.collateMode(CollateMode.NONE)
-						.indexType(IndexType.DEFAULT)
-						.sortOrder("")
-						.build());
+			this.reindexer.addIndex(namespaceName, index);
 		}
 		catch (IndexConflictException e) {
 			if (LOGGER.isWarnEnabled()) {
-				LOGGER.warn("Index: %s already exists in Reindexer; skipping".formatted(property.getName()), e);
+				LOGGER.warn(
+						"Index: %s already exists in namespace: %s; skipping".formatted(index.getName(), namespaceName),
+						e);
 			}
 		}
 	}

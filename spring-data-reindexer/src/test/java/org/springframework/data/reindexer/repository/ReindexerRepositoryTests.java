@@ -3529,6 +3529,11 @@ class ReindexerRepositoryTests {
 			return new ReindexerCustomConversions(converters);
 		}
 
+		@Override
+		protected boolean autoIndexCreation() {
+			return true;
+		}
+
 	}
 
 	@Transactional(transactionManager = "txManager")

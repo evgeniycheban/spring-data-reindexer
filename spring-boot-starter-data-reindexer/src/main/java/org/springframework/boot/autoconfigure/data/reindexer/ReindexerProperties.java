@@ -48,6 +48,11 @@ public class ReindexerProperties {
 	private boolean allowUnlistedDataSource = false;
 
 	/**
+	 * Enables automatic creation of missing indexes. Defaults to {@literal false}.
+	 */
+	private boolean autoIndexCreation = false;
+
+	/**
 	 * Configure a {@link DataSourceFactory}. Defaults to
 	 * {@link DataSourceFactoryStrategy#NEXT}.
 	 */
@@ -93,6 +98,14 @@ public class ReindexerProperties {
 
 	public void setAllowUnlistedDataSource(boolean allowUnlistedDataSource) {
 		this.allowUnlistedDataSource = allowUnlistedDataSource;
+	}
+
+	public boolean isAutoIndexCreation() {
+		return this.autoIndexCreation;
+	}
+
+	public void setAutoIndexCreation(boolean autoIndexCreation) {
+		this.autoIndexCreation = autoIndexCreation;
 	}
 
 	public DataSourceFactory getDataSourceFactory() {
