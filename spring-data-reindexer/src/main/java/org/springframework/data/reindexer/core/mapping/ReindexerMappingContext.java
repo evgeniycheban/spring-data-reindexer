@@ -40,6 +40,27 @@ public class ReindexerMappingContext
 
 	private final Map<String, ReindexerPersistentEntity<?>> namespaceEntityMap = new ConcurrentHashMap<>();
 
+	private boolean autoIndexCreation;
+
+	/**
+	 * Returns whether auto-index creation is enabled or disabled.
+	 * @return {@literal true} when auto-index creation is enabled; {@literal false}
+	 * otherwise
+	 * @since 1.7
+	 */
+	public boolean isAutoIndexCreation() {
+		return this.autoIndexCreation;
+	}
+
+	/**
+	 * Enables/disables auto-index creation.
+	 * @param autoIndexCreation set to {@literal true} to enable auto-index creation
+	 * @since 1.7
+	 */
+	public void setAutoIndexCreation(boolean autoIndexCreation) {
+		this.autoIndexCreation = autoIndexCreation;
+	}
+
 	/**
 	 * Returns a {@link ReindexerPersistentEntity} for the given {@code namespaceName}.
 	 * @param namespaceName the namespace name to use, must not be empty

@@ -65,6 +65,7 @@ public abstract class ReindexerConfigurationSupport {
 		ReindexerMappingContext mappingContext = new ReindexerMappingContext();
 		mappingContext.setManagedTypes(managedTypes);
 		mappingContext.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
+		mappingContext.setAutoIndexCreation(autoIndexCreation());
 		return mappingContext;
 	}
 
@@ -136,6 +137,17 @@ public abstract class ReindexerConfigurationSupport {
 			}
 		}
 		return initialEntitySet;
+	}
+
+	/**
+	 * Configure whether to automatically create missing indexes for domain types with the
+	 * default configuration e.g., {@link org.springframework.data.annotation.Id @Id}
+	 * annotated fields.
+	 * @return {@literal false} by default
+	 * @since 1.7
+	 */
+	protected boolean autoIndexCreation() {
+		return false;
 	}
 
 }
