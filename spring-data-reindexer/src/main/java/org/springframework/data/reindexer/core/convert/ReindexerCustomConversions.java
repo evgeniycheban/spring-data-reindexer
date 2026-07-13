@@ -70,7 +70,16 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 	 * Creates an instance with default converters.
 	 */
 	public ReindexerCustomConversions() {
-		this(StoreConversions.NONE, Collections.emptyList());
+		this(Collections.emptyList());
+	}
+
+	/**
+	 * Creates an instance with {@link ReindexerSimpleTypes Reindexer specific simple
+	 * types} and given converters.
+	 * @since 1.7
+	 */
+	public ReindexerCustomConversions(Collection<?> converters) {
+		this(StoreConversions.of(ReindexerSimpleTypes.HOLDER), converters);
 	}
 
 	/**

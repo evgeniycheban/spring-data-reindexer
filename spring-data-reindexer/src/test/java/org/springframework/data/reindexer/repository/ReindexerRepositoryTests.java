@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -3438,6 +3439,18 @@ class ReindexerRepositoryTests {
 		}
 	}
 
+	@Test
+	public void findRecordWithUuidById() {
+		long id = 1L;
+		UUID uuid = UUID.randomUUID();
+		TestItem item = TestItem.builder().id(id).uuid(uuid).build();
+		this.repository.save(item);
+		TestItemRecord found = this.repository.findById(id, TestItemRecord.class).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.id()).isEqualTo(id);
+		assertThat(found.uuid()).isEqualTo(uuid.toString());
+	}
+
 	private static Stream<TestItemFloatVector> getTestItemFloatVectors() {
 		// @formatter:off
 		return Stream.of(
@@ -3503,8 +3516,8 @@ class ReindexerRepositoryTests {
 		}
 
 		@Bean
-		ReindexerTransactionManager<TestItem> txManager(Reindexer reindexer) throws ClassNotFoundException {
-			return new ReindexerTransactionManager<>(reindexer, reindexerMappingContext(), TestItem.class);
+		ReindexerTransactionManager<TestItem> txManager(Reindexer reindexer, ReindexerMappingContext mappingContext) {
+			return new ReindexerTransactionManager<>(reindexer, mappingContext, TestItem.class);
 		}
 
 		@Override
@@ -3513,7 +3526,7 @@ class ReindexerRepositoryTests {
 			converters.add(new TestItemDTOPlaceConverter());
 			converters.add(new PriceReadingConverter());
 			converters.add(new PriceWritingConverter());
-			return new ReindexerCustomConversions(StoreConversions.NONE, converters);
+			return new ReindexerCustomConversions(converters);
 		}
 
 	}
@@ -3805,6 +3818,8 @@ class ReindexerRepositoryTests {
 
 		<T> List<T> findByIdIn(List<Long> ids, Class<T> type);
 
+		<T> Optional<T> findById(Long id, Class<T> type);
+
 		List<TestItem> findAllBy(Limit limit);
 
 		Optional<TestItem> findFirstByOrderByIdAsc();
@@ -4041,6 +4056,9 @@ class ReindexerRepositoryTests {
 
 		@Id
 		private Long id;
+
+		@Reindex(name = "uuid")
+		private UUID uuid;
 
 		@Reindex(name = "name", isSparse = true)
 		private String name;
@@ -4486,7 +4504,7 @@ class ReindexerRepositoryTests {
 
 	}
 
-	public record TestItemRecord(Long id, String name) {
+	public record TestItemRecord(Long id, String uuid, String name) {
 	}
 
 	public record TestItemNameRecord(String name) {
