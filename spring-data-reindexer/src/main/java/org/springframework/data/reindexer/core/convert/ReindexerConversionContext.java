@@ -90,10 +90,7 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 		if (this.property.isEntity()) {
 			return (T) readEntity(value, target);
 		}
-		if (this.conversions.isSimpleType(target.getType())) {
-			return (T) value;
-		}
-		return ValueConversionContext.super.read(value, target);
+		return this.conversionService.convert(value, target.getType());
 	}
 
 	private TypeDescriptor getTypeDescriptor(TypeInformation<?> typeInformation) {

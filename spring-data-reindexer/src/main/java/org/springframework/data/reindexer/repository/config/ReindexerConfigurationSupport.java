@@ -27,6 +27,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.domain.ManagedTypes;
 import org.springframework.data.reindexer.core.convert.MappingReindexerConverter;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.Namespace;
@@ -59,10 +60,17 @@ public abstract class ReindexerConfigurationSupport {
 	}
 
 	@Bean
-	public ReindexerMappingContext reindexerMappingContext() throws ClassNotFoundException {
+	public ReindexerMappingContext reindexerMappingContext(ReindexerCustomConversions conversions,
+			ManagedTypes managedTypes) {
 		ReindexerMappingContext mappingContext = new ReindexerMappingContext();
-		mappingContext.setInitialEntitySet(getInitialEntitySet());
+		mappingContext.setManagedTypes(managedTypes);
+		mappingContext.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
 		return mappingContext;
+	}
+
+	@Bean
+	public ManagedTypes managedTypes() throws ClassNotFoundException {
+		return ManagedTypes.fromIterable(getInitialEntitySet());
 	}
 
 	@Bean
