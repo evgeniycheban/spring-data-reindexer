@@ -330,8 +330,6 @@ public class MappingReindexerConverter
 			}
 			ReindexerPersistentEntity<?> referenceEntity = MappingReindexerConverter.this.mappingContext
 				.getRequiredPersistentEntity(sourceProperty);
-			String namespaceName = StringUtils.hasText(namespaceReference.namespace()) ? namespaceReference.namespace()
-					: referenceEntity.getNamespace();
 			Supplier<@Nullable Object> callback = () -> {
 				if (StringUtils.hasText(namespaceReference.lookup())) {
 					Map<String, Object> variables = new HashMap<>();
@@ -373,7 +371,7 @@ public class MappingReindexerConverter
 			};
 			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 					targetProperty.getType(), sourceProperty, callback,
-					new NamespaceReferenceSource(namespaceName, source),
+					new NamespaceReferenceSource(referenceEntity.getNamespace(), source),
 					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
 		}
 
