@@ -111,6 +111,13 @@
 						<groupId>io.spring.javaformat</groupId>
 						<artifactId>spring-javaformat-maven-plugin</artifactId>
 						<version>0.0.47</version>
+						<configuration>
+							<testSourceDirectories>
+								<testSourceDirectory>${project.build.testSourceDirectory}</testSourceDirectory>
+								<!-- Include jmh tests -->
+								<testSourceDirectory>${project.basedir}/src/jmh/java</testSourceDirectory>
+							</testSourceDirectories>
+						</configuration>
 						<executions>
 							<execution>
 								<phase>validate</phase>
@@ -176,6 +183,11 @@
 									<artifactId>lombok</artifactId>
 									<version>${lombok.version}</version>
 								</path>
+								<dependency>
+									<groupId>org.openjdk.jmh</groupId>
+									<artifactId>jmh-generator-annprocess</artifactId>
+									<version>${jmh}</version>
+								</dependency>
 							</annotationProcessorPaths>
 						</configuration>
 						<executions>
@@ -240,6 +252,11 @@
 							<artifactId>spring-boot-configuration-processor</artifactId>
 							<version>${spring-boot.version}</version>
 						</path>
+						<dependency>
+							<groupId>org.openjdk.jmh</groupId>
+							<artifactId>jmh-generator-annprocess</artifactId>
+							<version>${jmh}</version>
+						</dependency>
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
