@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -45,10 +44,12 @@ import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -101,7 +102,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.annotation.PersistenceCreator;
-import org.springframework.data.convert.CustomConversions.StoreConversions;
 import org.springframework.data.convert.PropertyValueConverter;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.ValueConverter;
@@ -4056,7 +4056,10 @@ class ReindexerRepositoryTests {
 	@Getter
 	@Setter
 	@Builder
+	@NoArgsConstructor
 	@AllArgsConstructor
+	@EqualsAndHashCode
+	@ToString
 	public static class TestItem {
 
 		@Id
@@ -4086,7 +4089,7 @@ class ReindexerRepositoryTests {
 		private Place place;
 
 		@Reindex(name = "places")
-		private List<Place> places;
+		private List<Place> places = new ArrayList<>();
 
 		@Reindex(name = "cities")
 		private List<String> cities = new ArrayList<>();
@@ -4102,23 +4105,28 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "nested")
 		private TestNestedItem nestedItem;
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemId", joinType = JoinType.LEFT)
 		private TestJoinedItem joinedItem;
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemId", lazy = true)
 		private TestJoinedItem joinedItemLazy;
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT, lazy = true)
 		private List<TestJoinedItem> joinedItems = new ArrayList<>();
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds",
 				lookup = "select * from test_joined_items where id in (#{joinedItemIds}) order by id desc")
 		private List<TestJoinedItem> joinedItemsReverseOrder = new ArrayList<>();
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds", lookup = """
 					select *
@@ -4131,6 +4139,7 @@ class ReindexerRepositoryTests {
 				""", sort = "value, id asc")
 		private List<TestJoinedItem> joinedItemsOrderByPriceDescNameValueIdAscLimit10 = new ArrayList<>();
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds", lookup = """
 					select *
@@ -4140,15 +4149,18 @@ class ReindexerRepositoryTests {
 				""", sort = "price desc, id")
 		private List<TestJoinedItem> joinedItemsOrderByPriceDescIdAscLimit5 = new ArrayList<>();
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(indexName = "joinedItemIds", lazy = true, sort = "price desc, id asc")
 		private List<TestJoinedItem> joinedItemsOrderByPriceDescIdAsc = new ArrayList<>();
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(lookup = "#{@joinedItemRepository.findAllById(joinedItemIds, #sort)}",
 				sort = "price desc, id asc")
 		private List<TestJoinedItem> joinedItemsFromRepositoryOrderByPriceDescIdAsc = new ArrayList<>();
 
+		@EqualsAndHashCode.Exclude
 		@Transient
 		@NamespaceReference(lookup = "#{@joinedItemRepository.findAllById(joinedItemIds)}")
 		private List<TestJoinedItem> joinedItemsRepository = new ArrayList<>();
@@ -4173,20 +4185,10 @@ class ReindexerRepositoryTests {
 		@Reindex(name = "defaultDateTime")
 		private LocalDateTime defaultDateTime;
 
-		public TestItem() {
-		}
-
 		public TestItem(Long id, String name, String value) {
 			this.id = id;
 			this.name = name;
 			this.value = value;
-		}
-
-		public TestItem(Long id, String name, String value, Price price) {
-			this.id = id;
-			this.name = name;
-			this.value = value;
-			this.price = price;
 		}
 
 		public TestItem(Long id, String name, String value, boolean active) {
@@ -4249,34 +4251,6 @@ class ReindexerRepositoryTests {
 			this.joinedItemIds = joinedItemIds;
 		}
 
-		@Override
-		public boolean equals(Object o) {
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-			TestItem item = (TestItem) o;
-			return active == item.active && Objects.equals(id, item.id) && Objects.equals(name, item.name)
-					&& Objects.equals(value, item.value) && testEnumString == item.testEnumString
-					&& testEnumOrdinal == item.testEnumOrdinal && Objects.equals(cities, item.cities)
-					&& Objects.equals(nestedItem, item.nestedItem) && Objects.equals(joinedItemId, item.joinedItemId)
-					&& Objects.equals(joinedItemIds, item.joinedItemIds) && Objects.equals(localDate, item.localDate)
-					&& Objects.equals(localDateTime, item.localDateTime);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(id, name, value, testEnumString, testEnumOrdinal, cities, active, nestedItem,
-					joinedItemId, joinedItemIds, localDate, localDateTime);
-		}
-
-		@Override
-		public String toString() {
-			return "TestItem{" + "id=" + this.id + ", name='" + this.name + '\'' + ", value='" + this.value + '\''
-					+ ", testEnumString=" + this.testEnumString + ", testEnumOrdinal=" + this.testEnumOrdinal
-					+ ", cities=" + this.cities + ", active=" + this.active + ", localDate=" + this.localDate
-					+ ", localDateTime=" + this.localDateTime + '}';
-		}
-
 	}
 
 	@Data
@@ -4301,6 +4275,7 @@ class ReindexerRepositoryTests {
 
 	@Namespace(name = "test_joined_items")
 	@Data
+	@NoArgsConstructor
 	public static class TestJoinedItem {
 
 		@Reindex(name = "id", isPrimaryKey = true)
@@ -4325,9 +4300,6 @@ class ReindexerRepositoryTests {
 		@Transient
 		@NamespaceReference(indexName = "nestedJoinedItemId", lazy = true)
 		private TestJoinedItem nestedJoinedItemLazy;
-
-		public TestJoinedItem() {
-		}
 
 		public TestJoinedItem(Long id, String name) {
 			this.id = id;
