@@ -15,9 +15,9 @@
  */
 package org.springframework.data.reindexer.aot;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
@@ -25,8 +25,14 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.aot.generate.FileSystemGeneratedFiles;
 import org.springframework.aot.generate.GeneratedFiles;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.filter.AssignableTypeFilter;
+import org.springframework.data.reindexer.repository.AbstractReindexerTest;
 import org.springframework.test.context.aot.TestContextAotGenerator;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * An executable utility that runs a {@link TestContextAotGenerator} to generate AOT
@@ -40,20 +46,33 @@ public class ReindexerTestContextAotGeneratorMain {
 	private static final Log LOG = LogFactory.getLog(ReindexerTestContextAotGeneratorMain.class);
 
 	public static void main(String[] args) {
-		Assert.isTrue(args.length >= 2, () -> "Usage: %s <sourceOutput> <classpathRoots>");
+		Assert.isTrue(args.length >= 2, () -> "Usage: %s <sourceOutput> <basePackage>");
 		Path sourceOutput = Paths.get(args[0]);
-		String classPathRoots = args[1];
-		LOG.info(String.format("Generating AOT artifacts for: %s to: %s", classPathRoots, sourceOutput));
+		String basePackage = args[1];
+		LOG.info(String.format("Generating AOT artifacts for: %s to: %s", basePackage, sourceOutput));
 		GeneratedFiles generatedFiles = new FileSystemGeneratedFiles(sourceOutput);
 		TestContextAotGenerator generator = new TestContextAotGenerator(generatedFiles);
-		Stream<Class<?>> testClasses = Stream.of(classPathRoots.split(File.pathSeparator))
-			.map(ReindexerTestContextAotGeneratorMain::loadClass);
+		Stream<Class<?>> testClasses = scanForTestClasses(basePackage);
 		generator.processAheadOfTime(testClasses);
+	}
+
+	private static Stream<Class<?>> scanForTestClasses(String basePackage) {
+		if (!StringUtils.hasText(basePackage)) {
+			return Stream.empty();
+		}
+		ClassPathScanningCandidateComponentProvider componentProvider = new ClassPathScanningCandidateComponentProvider(
+				false);
+		componentProvider.addIncludeFilter(new AssignableTypeFilter(AbstractReindexerTest.class));
+		return componentProvider.findCandidateComponents(basePackage)
+			.stream()
+			.map(BeanDefinition::getBeanClassName)
+			.filter(Objects::nonNull)
+			.map(ReindexerTestContextAotGeneratorMain::loadClass);
 	}
 
 	private static Class<?> loadClass(String className) {
 		try {
-			return Class.forName(className);
+			return ClassUtils.forName(className, ReindexerTestContextAotGeneratorMain.class.getClassLoader());
 		}
 		catch (ClassNotFoundException e) {
 			throw new RuntimeException("Test class: '" + className + "' not found", e);

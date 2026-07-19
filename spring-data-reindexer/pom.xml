@@ -46,7 +46,7 @@
                                     <mainClass>org.springframework.data.reindexer.aot.ReindexerTestContextAotGeneratorMain</mainClass>
                                     <arguments>
                                         <argument>${project.build.directory}/generated-test-sources/aot</argument>
-                                        <argument>org.springframework.data.reindexer.repository.ReindexerRepositoryTests</argument>
+                                        <argument>org.springframework.data.reindexer</argument>
                                     </arguments>
                                     <classpathScope>test</classpathScope>
                                 </configuration>
