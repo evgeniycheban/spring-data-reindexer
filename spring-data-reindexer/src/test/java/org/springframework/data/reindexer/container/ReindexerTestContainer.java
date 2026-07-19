@@ -30,6 +30,7 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -62,8 +63,8 @@ public class ReindexerTestContainer {
 	private final static Proxy PROXY;
 
 	static {
-		REINDEXER.start();
-		TOXIPROXY.start();
+		// Start containers in parallel.
+		Startables.deepStart(REINDEXER, TOXIPROXY).join();
 		ToxiproxyClient toxiproxyClient = new ToxiproxyClient(TOXIPROXY.getHost(), TOXIPROXY.getControlPort());
 		try {
 			PROXY = toxiproxyClient.createProxy("reindexer", "0.0.0.0:" + PROXY_RPC_PORT, "reindexer:" + RPC_PORT);
