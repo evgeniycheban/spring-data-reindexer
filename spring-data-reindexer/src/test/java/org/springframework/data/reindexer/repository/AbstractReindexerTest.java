@@ -110,10 +110,10 @@ public abstract class AbstractReindexerTest {
 		 * Clears all registered namespaces.
 		 */
 		void clear() {
-			for (ReindexerNamespace<?> namespace : namespaceMap.values()) {
+			for (ReindexerNamespace<?> namespace : this.namespaceMap.values()) {
 				// Skip system namespaces.
 				if (!namespace.getName().startsWith("#")) {
-					query(namespace.getName(), namespace.getItemClass()).delete();
+					namespace.query().delete();
 				}
 			}
 		}
