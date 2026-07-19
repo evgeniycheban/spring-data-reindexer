@@ -120,9 +120,6 @@ public abstract class ReindexerConfigurationSupport {
 	 * @throws ClassNotFoundException if the class could not be loaded
 	 */
 	protected Set<Class<?>> scanForEntities(String basePackage) throws ClassNotFoundException {
-		if (!StringUtils.hasText(basePackage)) {
-			return Collections.emptySet();
-		}
 		Set<Class<?>> initialEntitySet = new HashSet<>();
 		if (StringUtils.hasText(basePackage)) {
 			ClassPathScanningCandidateComponentProvider componentProvider = new ClassPathScanningCandidateComponentProvider(
