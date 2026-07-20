@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,9 +62,6 @@ public class TestItem {
 
 	@Id
 	private Long id;
-
-	@Reindex(name = "uuid")
-	private UUID uuid;
 
 	@Reindex(name = "name", isSparse = true)
 	private String name;

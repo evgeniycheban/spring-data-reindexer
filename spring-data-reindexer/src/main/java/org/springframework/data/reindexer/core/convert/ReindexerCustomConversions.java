@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -102,6 +104,10 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 		result.add(LocalDateToMilliConverter.INSTANCE);
 		result.add(MilliToLocalDateTimeConverter.INSTANCE);
 		result.add(LocalDateTimeToMilliConverter.INSTANCE);
+		result.add(StringToBigIntegerConverter.INSTANCE);
+		result.add(BigIntegerToStringConverter.INSTANCE);
+		result.add(StringToBigDecimalConverter.INSTANCE);
+		result.add(BigDecimalToStringConverter.INSTANCE);
 		return result;
 	}
 
@@ -363,6 +369,54 @@ public class ReindexerCustomConversions extends CustomConversions implements App
 		@Override
 		public Long convert(LocalDateTime source) {
 			return source.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+		}
+
+	}
+
+	@ReadingConverter
+	private enum StringToBigIntegerConverter implements Converter<String, BigInteger> {
+
+		INSTANCE;
+
+		@Override
+		public BigInteger convert(String source) {
+			return new BigInteger(source);
+		}
+
+	}
+
+	@WritingConverter
+	private enum BigIntegerToStringConverter implements Converter<BigInteger, String> {
+
+		INSTANCE;
+
+		@Override
+		public String convert(BigInteger source) {
+			return source.toString();
+		}
+
+	}
+
+	@ReadingConverter
+	private enum StringToBigDecimalConverter implements Converter<String, BigDecimal> {
+
+		INSTANCE;
+
+		@Override
+		public BigDecimal convert(String source) {
+			return new BigDecimal(source);
+		}
+
+	}
+
+	@WritingConverter
+	private enum BigDecimalToStringConverter implements Converter<BigDecimal, String> {
+
+		INSTANCE;
+
+		@Override
+		public String convert(BigDecimal source) {
+			return source.toString();
 		}
 
 	}

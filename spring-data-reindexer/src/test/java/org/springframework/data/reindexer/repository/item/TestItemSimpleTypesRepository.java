@@ -13,10 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.data.reindexer.repository.item.dto;
+package org.springframework.data.reindexer.repository.item;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.List;
+
+import org.springframework.data.reindexer.repository.ReindexerRepository;
+import org.springframework.data.reindexer.repository.item.entity.TestItemSimpleTypes;
+import org.springframework.stereotype.Repository;
 
 /**
  * @author Evgeniy Cheban
  */
-public record TestItemRecord(Long id, String name) {
+@Repository
+public interface TestItemSimpleTypesRepository extends ReindexerRepository<TestItemSimpleTypes, Long> {
+
+	List<TestItemSimpleTypes> findAllByBigIntegerGreaterThan(BigInteger bigInteger);
+
+	List<TestItemSimpleTypes> findAllByBigDecimalGreaterThan(BigDecimal bigDecimal);
+
 }
