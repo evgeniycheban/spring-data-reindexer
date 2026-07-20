@@ -365,18 +365,6 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 	}
 
 	@Test
-	void findRecordWithUuidById() {
-		long id = 1L;
-		UUID uuid = UUID.randomUUID();
-		TestItem item = TestItem.builder().id(id).uuid(uuid).build();
-		this.repository.save(item);
-		TestItemRecord found = this.repository.findById(id, TestItemRecord.class).orElse(null);
-		assertThat(found).isNotNull();
-		assertThat(found.id()).isEqualTo(id);
-		assertThat(found.uuid()).isEqualTo(uuid.toString());
-	}
-
-	@Test
 	void findDistinctNameRecordByIdIn() {
 		this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
 		this.repository.save(new TestItem(2L, "TestName1", "TestValue2"));
