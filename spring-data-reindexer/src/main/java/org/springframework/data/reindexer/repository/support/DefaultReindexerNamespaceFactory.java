@@ -19,8 +19,6 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import ru.rt.restream.reindexer.CollateMode;
 import ru.rt.restream.reindexer.FieldType;
@@ -125,11 +123,8 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 			return;
 		}
 		// Create missing indexes in Reindexer with the default configuration.
-		Map<String, ReindexerIndex> indexes = namespace.getIndexes()
-			.stream()
-			.collect(Collectors.toMap(ReindexerIndex::getName, Function.identity()));
 		for (ReindexerPersistentProperty property : entity) {
-			if (property.isIdProperty() && !indexes.containsKey(property.getName())) {
+			if (property.isIdProperty() && !property.isIndexedProperty()) {
 				createDefaultPkIndex(namespace, property);
 			}
 		}

@@ -38,6 +38,8 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 	private final Lazy<NamespaceReference> getReference = Lazy.of(() -> findAnnotation(NamespaceReference.class));
 
+	private final Lazy<Reindex> getReindex = Lazy.of(() -> findAnnotation(Reindex.class));
+
 	private final Lazy<Boolean> isIdProperty = Lazy.of(() -> {
 		if (super.isIdProperty()) {
 			return true;
@@ -68,6 +70,11 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	@Override
 	public boolean isNamespaceReference() {
 		return this.getReference.getNullable() != null;
+	}
+
+	@Override
+	public boolean isIndexedProperty() {
+		return this.getReindex.getNullable() != null;
 	}
 
 	@Override

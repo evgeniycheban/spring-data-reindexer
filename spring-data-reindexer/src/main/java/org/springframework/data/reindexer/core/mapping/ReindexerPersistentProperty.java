@@ -35,6 +35,15 @@ public interface ReindexerPersistentProperty extends PersistentProperty<Reindexe
 	boolean isNamespaceReference();
 
 	/**
+	 * Returns {@literal true} if the property has
+	 * {@link ru.rt.restream.reindexer.annotations.Reindex} annotation.
+	 * @return {@literal true} if the property has
+	 * {@link ru.rt.restream.reindexer.annotations.Reindex} annotation
+	 * @since 1.7
+	 */
+	boolean isIndexedProperty();
+
+	/**
 	 * Returns {@link NamespaceReference} annotation. Can be {@literal null}.
 	 * @return the {@link NamespaceReference} annotation. Can be {@literal null}.
 	 */
