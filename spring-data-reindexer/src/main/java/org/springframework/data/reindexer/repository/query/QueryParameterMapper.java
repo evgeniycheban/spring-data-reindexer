@@ -34,6 +34,7 @@ import org.springframework.data.reindexer.core.convert.ReindexerConversionContex
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.lang.Contract;
 
 /**
  * For internal use only, as this contract is likely to change.
@@ -83,6 +84,7 @@ public final class QueryParameterMapper {
 	 * @param value the value to use
 	 * @return the mapped value to use
 	 */
+	@Contract("_, null -> null; _, !null -> !null")
 	public @Nullable Object mapParameterValue(String indexName, @Nullable Object value) {
 		if (value == null) {
 			return null;

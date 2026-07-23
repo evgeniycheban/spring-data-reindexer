@@ -52,6 +52,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
+import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
@@ -80,6 +81,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	private final ReindexerConverter reindexerConverter;
 
+	private final QueryParameterMapper queryParameterMapper;
+
 	/**
 	 * Creates an instance.
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
@@ -95,6 +98,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		this.namespaceFactory = namespaceFactory;
 		this.reindexerConverter = reindexerConverter;
 		this.namespace = namespaceFactory.openNamespace(entityInformation.getJavaType());
+		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), mappingContext,
+				reindexerConverter);
 	}
 
 	@Override
@@ -122,7 +127,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public Optional<T> findById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		Query<T> query = joinedQuery().where(this.entityInformation.getIdFieldName(), Condition.EQ, id);
+		Query<T> query = joinedQuery().where(this.entityInformation.getIdFieldName(), Condition.EQ, convertId(id));
 		return findOne(query, this.entityInformation.getJavaType());
 	}
 
@@ -144,7 +149,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public boolean existsById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		return query().where(this.entityInformation.getIdFieldName(), Query.Condition.EQ, id).exists();
+		return query().where(this.entityInformation.getIdFieldName(), Query.Condition.EQ, convertId(id)).exists();
 	}
 
 	@Override
@@ -231,10 +236,14 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		return this.reindexerConverter.project(descriptor, e);
 	}
 
-	private Set<ID> toSet(Iterable<? extends ID> ids) {
-		Set<ID> result = new HashSet<>();
-		ids.forEach(result::add);
+	private Set<Object> toSet(Iterable<? extends ID> ids) {
+		Set<Object> result = new HashSet<>();
+		ids.forEach(id -> result.add(convertId(id)));
 		return result;
+	}
+
+	private Object convertId(ID id) {
+		return this.queryParameterMapper.mapParameterValue(this.entityInformation.getIdFieldName(), id);
 	}
 
 	@Override
@@ -255,7 +264,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public void deleteById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		query().where(this.entityInformation.getIdFieldName(), Query.Condition.EQ, id).delete();
+		query().where(this.entityInformation.getIdFieldName(), Query.Condition.EQ, convertId(id)).delete();
 	}
 
 	@Override
@@ -335,7 +344,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 				}
 			}
 			else {
-				criteria.where(propertyPath, Condition.EQ, propertyValue);
+				criteria.where(propertyPath, Condition.EQ,
+						this.queryParameterMapper.mapParameterValue(propertyPath, propertyValue));
 			}
 			if (matcher.isAnyMatching()) {
 				criteria.or();

@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +69,8 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 			Map.entry(String.class, FieldType.STRING),
 			Map.entry(char.class, FieldType.STRING),
 			Map.entry(Character.class, FieldType.STRING),
+			// TODO: Consider using CollateMode.NUMERIC for BigInteger after INT64 overflow is fixed at Reindexer core.
+			Map.entry(BigInteger.class, FieldType.STRING),
 			Map.entry(UUID.class, FieldType.UUID)
 	);
 	// @formatter:on

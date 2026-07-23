@@ -27,7 +27,7 @@ import org.springframework.stereotype.Repository;
  * @author Evgeniy Cheban
  */
 @Repository
-public interface TestItemSimpleTypesRepository extends ReindexerRepository<TestItemSimpleTypes, Long> {
+public interface TestItemSimpleTypesRepository extends ReindexerRepository<TestItemSimpleTypes, BigInteger> {
 
 	List<TestItemSimpleTypes> findAllByBigIntegerGreaterThan(BigInteger bigInteger);
 

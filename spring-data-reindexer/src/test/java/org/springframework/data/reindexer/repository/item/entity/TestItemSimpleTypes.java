@@ -45,7 +45,7 @@ import org.springframework.data.reindexer.core.mapping.Namespace;
 public class TestItemSimpleTypes {
 
 	@Id
-	private Long id;
+	private BigInteger id;
 
 	@Reindex(name = "uuid")
 	private UUID uuid;

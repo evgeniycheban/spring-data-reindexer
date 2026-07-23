@@ -41,7 +41,7 @@ class ReindexerSimpleTypesRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void findItemWithUuidById() {
-		long id = 1L;
+		BigInteger id = new BigInteger("123456789012345678910");
 		UUID uuid = UUID.randomUUID();
 		TestItemSimpleTypes item = TestItemSimpleTypes.builder().id(id).uuid(uuid).build();
 		this.repository.save(item);
@@ -53,7 +53,7 @@ class ReindexerSimpleTypesRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void findItemWithBigIntegerById() {
-		long id = 1L;
+		BigInteger id = new BigInteger("123456789012345678910");
 		BigInteger bigInteger = new BigInteger("1234567890123456789");
 		TestItemSimpleTypes item = TestItemSimpleTypes.builder().id(id).bigInteger(bigInteger).build();
 		this.repository.save(item);
@@ -65,7 +65,7 @@ class ReindexerSimpleTypesRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void findItemWithBigDecimalById() {
-		long id = 1L;
+		BigInteger id = new BigInteger("123456789012345678910");
 		BigDecimal bigDecimal = new BigDecimal("1234567890123456789.123456789");
 		TestItemSimpleTypes item = TestItemSimpleTypes.builder().id(id).bigDecimal(bigDecimal).build();
 		this.repository.save(item);
@@ -77,9 +77,9 @@ class ReindexerSimpleTypesRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void findAllByBigIntegerGreaterThan() {
-		long id1 = 1L;
-		long id2 = 2L;
-		long id3 = 3L;
+		BigInteger id1 = new BigInteger("123456789012345678910");
+		BigInteger id2 = new BigInteger("123456789012345678911");
+		BigInteger id3 = new BigInteger("123456789012345678912");
 		BigInteger bigInteger1 = new BigInteger("12345678901234567");
 		BigInteger bigInteger2 = new BigInteger("123456789012345678");
 		BigInteger bigInteger3 = new BigInteger("1234567890123456789");
@@ -101,9 +101,9 @@ class ReindexerSimpleTypesRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void findAllByBigDecimalGreaterThan() {
-		long id1 = 1L;
-		long id2 = 2L;
-		long id3 = 3L;
+		BigInteger id1 = new BigInteger("123456789012345678910");
+		BigInteger id2 = new BigInteger("123456789012345678911");
+		BigInteger id3 = new BigInteger("123456789012345678912");
 		BigDecimal bigDecimal1 = new BigDecimal("1234567890123456789.1234567");
 		BigDecimal bigDecimal2 = new BigDecimal("1234567890123456789.12345678");
 		BigDecimal bigDecimal3 = new BigDecimal("1234567890123456789.123456789");
