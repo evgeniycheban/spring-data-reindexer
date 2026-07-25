@@ -32,6 +32,7 @@ import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerParameterAccessor;
 import org.springframework.data.reindexer.repository.query.ReindexerParameters;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
+import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.reindexer.repository.util.StringQueryUtils;
 import org.springframework.util.ConcurrentLruCache;
 import org.springframework.data.util.Lazy;
@@ -80,6 +81,14 @@ public class ReindexerAotRepositoryFragmentSupport {
 
 	protected <T> Query<T> query(Class<T> domainType) {
 		Namespace<T> namespace = openNamespace(domainType);
+		return namespace.query();
+	}
+
+	protected <T> Query<T> modifyingQuery(Class<T> domainType) {
+		Namespace<T> namespace = openNamespace(domainType);
+		if (namespace instanceof TransactionalNamespace<T> transactionalNamespace) {
+			return transactionalNamespace.modifyingQuery();
+		}
 		return namespace.query();
 	}
 

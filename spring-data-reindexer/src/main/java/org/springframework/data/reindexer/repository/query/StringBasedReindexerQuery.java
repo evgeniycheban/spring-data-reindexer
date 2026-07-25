@@ -96,6 +96,7 @@ import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter;
 import org.springframework.data.repository.query.ValueExpressionQueryRewriter.QueryExpressionEvaluator;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
+import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 
@@ -275,7 +276,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				.getRequiredPersistentEntity(update.getTable().getName());
 			Namespace<?> namespace = openNamespace(entity.getNamespace());
 			QueryParameterMapper parameterMapper = createParameterMapper(entity.getType());
-			Query<?> criteria = namespace.query();
+			Query<?> criteria = createModifyingQuery(namespace);
 			for (UpdateSet updateSet : update.getUpdateSets()) {
 				List<Column> columns = updateSet.getColumns();
 				for (int i = 0; i < columns.size(); i++) {
@@ -303,7 +304,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			ReindexerPersistentEntity<?> entity = StringBasedReindexerQuery.this.mappingContext
 				.getRequiredPersistentEntity(delete.getTable().getName());
 			Namespace<?> namespace = openNamespace(entity.getNamespace());
-			Query<?> criteria = namespace.query();
+			Query<?> criteria = createModifyingQuery(namespace);
 			if (delete.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
 						criteria, Lazy.of(() -> createParameterMapper(entity.getType())), this.valueResolvingVisitor,
@@ -311,6 +312,13 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				delete.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			return criteria;
+		}
+
+		private Query<?> createModifyingQuery(Namespace<?> namespace) {
+			if (namespace instanceof TransactionalNamespace<?> transactionalNamespace) {
+				return transactionalNamespace.modifyingQuery();
+			}
+			return namespace.query();
 		}
 
 	}

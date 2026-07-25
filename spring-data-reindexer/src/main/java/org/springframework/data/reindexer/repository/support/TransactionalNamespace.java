@@ -21,6 +21,7 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.Transaction;
 
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.reindexer.ReindexerResourceHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
@@ -55,6 +56,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void insert(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.insert(item);
 		}
 		else {
@@ -66,6 +68,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void insert(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.insert(item);
 		}
 		else {
@@ -77,6 +80,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void upsert(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.upsert(item);
 		}
 		else {
@@ -88,6 +92,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void upsert(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.upsert(item);
 		}
 		else {
@@ -99,6 +104,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void update(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.update(item);
 		}
 		else {
@@ -110,6 +116,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void update(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.update(item);
 		}
 		else {
@@ -121,6 +128,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void delete(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.delete(item);
 		}
 		else {
@@ -132,6 +140,7 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public void delete(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
+			checkReadOnly();
 			tx.delete(item);
 		}
 		else {
@@ -143,6 +152,21 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	public Query<T> query() {
 		Transaction<T> tx = getTransaction();
 		return (tx != null) ? tx.query() : this.fallback.query();
+	}
+
+	/**
+	 * Creates a {@link Query} that can be used to modify data.
+	 * @return the {@link Query} for further customizations
+	 * @throws InvalidDataAccessApiUsageException if the current transaction is read-only
+	 * @since 1.7
+	 */
+	public Query<T> modifyingQuery() {
+		Transaction<T> tx = getTransaction();
+		if (tx != null) {
+			checkReadOnly();
+			return tx.query();
+		}
+		return this.fallback.query();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -169,7 +193,17 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 
 	@Override
 	public void updateSql(String query) {
+		Transaction<T> tx = getTransaction();
+		if (tx != null) {
+			checkReadOnly();
+		}
 		this.fallback.updateSql(query);
+	}
+
+	private static void checkReadOnly() {
+		if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+			throw new InvalidDataAccessApiUsageException("Write operations are not allowed in read-only transaction");
+		}
 	}
 
 }

@@ -110,8 +110,14 @@ final class ReindexerCodeBlocks {
 				.getRequiredPersistentEntity(this.context.getDomainType());
 			this.stringQueryBuilder.namespace(entity.getNamespace());
 			Iterator<String> allParameterNames = this.context.getBindableParameterNames().iterator();
-			builder.add("$1T<$2T> $3L = query($2T.class)", Query.class, this.context.getDomainType(),
-					this.context.localVariable("root"));
+			String root = this.context.localVariable("root");
+			if (this.tree.isDelete()) {
+				builder.add("$1T<$2T> $3L = modifyingQuery($2T.class)", Query.class, this.context.getDomainType(),
+						root);
+			}
+			else {
+				builder.add("$1T<$2T> $3L = query($2T.class)", Query.class, this.context.getDomainType(), root);
+			}
 			if (this.context.getReturnedType().needsCustomConstruction()) {
 				builder.add(createSelectCodeBlock());
 			}

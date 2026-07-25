@@ -18,11 +18,13 @@ package org.springframework.data.reindexer.repository;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.reindexer.repository.item.TestItemReindexerRepository;
 import org.springframework.data.reindexer.repository.item.entity.TestItem;
 import org.springframework.data.reindexer.repository.item.service.TestItemTransactionalService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -46,6 +48,87 @@ class ReindexerTransactionalRepositoryTests extends AbstractReindexerTest {
 		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
 		assertThat(testItem).isNotNull();
 		TestItem item = this.repository.findById(1L).orElse(null);
+		assertThat(item).isNotNull();
+		assertThat(item.getId()).isEqualTo(testItem.getId());
+		assertThat(item.getName()).isEqualTo(testItem.getName());
+		assertThat(item.getValue()).isEqualTo(testItem.getValue());
+	}
+
+	@Test
+	void saveTransactionalReadOnly() {
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.saveReadOnly(new TestItem(1L, "TestName", "TestValue")))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void saveExistingTransactionalReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.saveReadOnly(testItem))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void updateNameSqlTransactionalReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.updateNameSqlReadOnly("TestNameUpdated", testItem.getId()))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void updateNameNativeSqlTransactionalReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.updateNameNativeSqlReadOnly("TestNameUpdated", testItem.getId()))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void deleteByNameTransactionalReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.deleteByNameReadOnly(testItem.getName()))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void deleteTransactionalReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.deleteReadOnly(testItem))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void deleteByIdSqlReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.deleteByIdSqlReadOnly(testItem.getId()))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void deleteByIdNativeSqlReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		assertThatExceptionOfType(InvalidDataAccessApiUsageException.class)
+			.isThrownBy(() -> this.service.deleteByIdNativeSqlReadOnly(testItem.getId()))
+			.withMessageContaining("Write operations are not allowed in read-only transaction");
+	}
+
+	@Test
+	void findByIdTransactionalReadOnly() {
+		TestItem testItem = this.service.save(new TestItem(1L, "TestName", "TestValue"));
+		assertThat(testItem).isNotNull();
+		TestItem item = this.service.findByIdReadOnly(1L).orElse(null);
 		assertThat(item).isNotNull();
 		assertThat(item.getId()).isEqualTo(testItem.getId());
 		assertThat(item.getName()).isEqualTo(testItem.getName());
