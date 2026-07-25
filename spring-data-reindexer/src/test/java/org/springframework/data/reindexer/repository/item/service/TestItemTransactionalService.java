@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.repository.item.service;
 
+import java.util.Optional;
+
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.reindexer.repository.item.TestItemReindexerRepository;
 import org.springframework.data.reindexer.repository.item.entity.TestItem;
@@ -42,6 +44,46 @@ public class TestItemTransactionalService {
 
 	public TestItem save(TestItem item) {
 		return this.repository.save(item);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void saveReadOnly(TestItem item) {
+		this.repository.save(item);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void updateNameSqlReadOnly(String name, Long id) {
+		this.repository.updateNameSql(name, id);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void updateNameNativeSqlReadOnly(String name, Long id) {
+		this.repository.updateNameNativeSql(name, id);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void deleteByNameReadOnly(String name) {
+		this.repository.deleteByName(name);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void deleteReadOnly(TestItem item) {
+		this.repository.delete(item);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void deleteByIdSqlReadOnly(Long id) {
+		this.repository.deleteByIdSql(id);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public void deleteByIdNativeSqlReadOnly(Long id) {
+		this.repository.deleteByIdNativeSql(id);
+	}
+
+	@Transactional(transactionManager = "txManager", readOnly = true)
+	public Optional<TestItem> findByIdReadOnly(Long id) {
+		return this.repository.findById(id);
 	}
 
 	@Transactional(transactionManager = "txManager", propagation = Propagation.REQUIRES_NEW)

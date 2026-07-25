@@ -106,6 +106,12 @@ public interface TestItemReindexerRepository extends ReindexerRepository<TestIte
 	@Query(value = "DELETE FROM items WHERE name = :name AND value = :value")
 	void deleteByNameAndValueSql(String name, String value);
 
+	@Query(value = "DELETE FROM items WHERE id = :id")
+	void deleteByIdSql(Long id);
+
+	@Query(value = "DELETE FROM items WHERE id = :id", update = true, nativeQuery = true)
+	void deleteByIdNativeSql(Long id);
+
 	@Query(value = "DELETE FROM items WHERE name = :name AND value = :value", update = true, nativeQuery = true)
 	void deleteByNameAndValueNativeSql(String name, String value);
 

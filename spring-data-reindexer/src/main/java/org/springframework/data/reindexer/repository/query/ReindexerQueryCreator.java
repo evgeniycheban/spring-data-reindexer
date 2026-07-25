@@ -31,6 +31,7 @@ import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.domain.Vector;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
+import org.springframework.data.reindexer.repository.support.TransactionalNamespace;
 import org.springframework.data.reindexer.repository.util.PageableUtils;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.data.repository.query.ReturnedType;
@@ -88,7 +89,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 	@Override
 	protected Query<?> create(Part part, Iterator<Object> parameters) {
 		if (this.base == null) {
-			this.base = this.namespace.query();
+			this.base = createCriteria();
 		}
 		else {
 			/*
@@ -186,7 +187,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 	@Override
 	protected Query<?> complete(@Nullable Query<?> criteria, Sort sort) {
 		if (criteria == null) {
-			criteria = this.namespace.query();
+			criteria = createCriteria();
 		}
 		if (this.returnedType.needsCustomConstruction()) {
 			String[] fields = QueryUtils.getSelectFields(this.mappingContext, this.returnedType, this.tree.isDistinct())
@@ -244,6 +245,13 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 		}
 		return QueryUtils.withJoins(criteria, this.returnedType.getDomainType(), this.mappingContext,
 				this.namespaceFactory);
+	}
+
+	private Query<?> createCriteria() {
+		if (this.tree.isDelete() && this.namespace instanceof TransactionalNamespace<?> transactionalNamespace) {
+			return transactionalNamespace.modifyingQuery();
+		}
+		return this.namespace.query();
 	}
 
 }
