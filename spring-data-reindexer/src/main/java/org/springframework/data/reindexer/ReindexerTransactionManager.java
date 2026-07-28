@@ -143,8 +143,16 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 	}
 
 	@Override
+	protected void doSetRollbackOnly(DefaultTransactionStatus status) throws TransactionException {
+		ReindexerTransactionObject transactionObject = extractReindexerTransaction(status.getTransaction());
+		transactionObject.getRequiredResourceHolder().setRollbackOnly();
+	}
+
+	@Override
 	protected void doCleanupAfterCompletion(Object transaction) {
+		ReindexerTransactionObject transactionObject = extractReindexerTransaction(transaction);
 		TransactionSynchronizationManager.unbindResource(this.namespace);
+		transactionObject.getRequiredResourceHolder().clear();
 	}
 
 	private ReindexerTransactionObject extractReindexerTransaction(Object transaction) {
@@ -176,6 +184,11 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 		ReindexerTransactionObject(@Nullable ReindexerResourceHolder resourceHolder, ReindexerNamespace<?> namespace) {
 			this.resourceHolder = resourceHolder;
 			this.namespace = namespace;
+		}
+
+		@Override
+		public boolean isRollbackOnly() {
+			return this.resourceHolder != null && this.resourceHolder.isRollbackOnly();
 		}
 
 		/**
@@ -219,6 +232,11 @@ public class ReindexerTransactionManager<T> extends AbstractPlatformTransactionM
 			if (this.resourceHolder != null) {
 				this.resourceHolder.rollbackTransaction();
 			}
+		}
+
+		private ReindexerResourceHolder getRequiredResourceHolder() {
+			Assert.state(this.resourceHolder != null, "ReindexerResourceHolder is required but not present");
+			return this.resourceHolder;
 		}
 
 	}
