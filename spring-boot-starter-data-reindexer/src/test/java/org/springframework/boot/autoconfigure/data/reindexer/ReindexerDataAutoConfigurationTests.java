@@ -15,6 +15,7 @@
  */
 package org.springframework.boot.autoconfigure.data.reindexer;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.testcontainers.junit.jupiter.Container;
@@ -127,6 +128,22 @@ class ReindexerDataAutoConfigurationTests {
 			.run(context -> assertThat(context).getBean(ReindexerMappingContext.class)
 				.extracting(ReindexerMappingContext::isAutoIndexCreation)
 				.isEqualTo(true));
+	}
+
+	@Test
+	void testContextDoesNotHaveObservationRegistryBean() {
+		this.contextRunner.run(context -> assertThat(context).getBean(ReindexerConfiguration.class)
+			.extracting("observationRegistry")
+			.isSameAs(ObservationRegistry.NOOP));
+	}
+
+	@Test
+	void testContextHasObservationRegistryBean() {
+		ObservationRegistry registry = ObservationRegistry.create();
+		this.contextRunner.withBean(ObservationRegistry.class, () -> registry)
+			.run(context -> assertThat(context).getBean(ReindexerConfiguration.class)
+				.extracting("observationRegistry")
+				.isSameAs(registry));
 	}
 
 }

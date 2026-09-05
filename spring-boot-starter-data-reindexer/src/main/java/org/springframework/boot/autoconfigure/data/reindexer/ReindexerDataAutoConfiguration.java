@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.security.KeyStore;
 import java.util.Locale;
 
+import io.micrometer.observation.ObservationRegistry;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactory;
@@ -80,7 +81,8 @@ public class ReindexerDataAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean
 	ReindexerConfiguration reindexerConfiguration(ReindexerProperties properties,
-			ReindexerCustomConversions conversions, ReindexerMappingContext context) {
+			ReindexerCustomConversions conversions, ReindexerMappingContext context,
+			ObjectProvider<ObservationRegistry> observationRegistry) {
 		ReindexerConfiguration configuration = ReindexerConfiguration.builder()
 			.urls(properties.getUrls())
 			.allowUnlistedDataSource(properties.isAllowUnlistedDataSource())
@@ -95,6 +97,7 @@ public class ReindexerDataAutoConfiguration {
 			.when(ReindexerProperties.Ssl::isEnabled)
 			.as(this::createSSLSocketFactory)
 			.to(configuration::sslSocketFactory);
+		observationRegistry.ifAvailable(configuration::observationRegistry);
 		return configuration;
 	}
 
