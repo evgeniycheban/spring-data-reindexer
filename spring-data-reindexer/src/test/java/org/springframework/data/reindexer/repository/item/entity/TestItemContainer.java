@@ -44,7 +44,7 @@ public class TestItemContainer {
 	@Reindex(name = "id", isPrimaryKey = true)
 	private Long id;
 
-	@Reindex(name = "mandatoryItemId")
+	@Reindex(name = "mandatory_item_id")
 	private Long mandatoryItemId;
 
 	@Reindex(name = "ambiguousItemName")
@@ -56,6 +56,10 @@ public class TestItemContainer {
 	@Transient
 	@NamespaceReference(indexName = "mandatoryItemId", lazy = true, nullable = false)
 	private TestItem mandatoryItem;
+
+	@Transient
+	@NamespaceReference(indexName = "mandatoryItemId")
+	private TestItem eagerItem;
 
 	@Transient
 	@NamespaceReference(lookup = "select * from items where id = #{mandatoryItemId}", nullable = false)

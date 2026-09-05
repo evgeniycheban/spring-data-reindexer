@@ -19,20 +19,20 @@ import java.io.InputStream;
 import java.security.KeyStore;
 import java.util.Locale;
 
-import org.springframework.boot.context.properties.PropertyMapper;
-import org.springframework.boot.io.ApplicationResourceLoader;
-import org.springframework.core.io.ResourceLoader;
-import org.springframework.util.Assert;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactory;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactoryStrategy;
 
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.io.ApplicationResourceLoader;
 import org.springframework.boot.persistence.autoconfigure.EntityScanner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -46,6 +46,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.support.DefaultReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 import javax.net.ssl.SSLContext;
@@ -132,12 +133,16 @@ public class ReindexerDataAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	ReindexerMappingContext reindexerMappingContext(ReindexerProperties properties, ManagedTypes mappedTypes,
-			ReindexerCustomConversions conversions) {
+	ReindexerMappingContext reindexerMappingContext(ObjectProvider<Reindexer> reindexer, ReindexerProperties properties,
+			ManagedTypes mappedTypes, ReindexerCustomConversions conversions) {
 		ReindexerMappingContext context = new ReindexerMappingContext();
 		context.setManagedTypes(mappedTypes);
 		context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
 		context.setAutoIndexCreation(properties.isAutoIndexCreation());
+		context.setQueryFormatVersion(() -> {
+			Reindexer rx = reindexer.getIfAvailable();
+			return rx != null ? rx.getBinding().queryFormatVersion() : properties.getQueryFormatVersion();
+		});
 		return context;
 	}
 

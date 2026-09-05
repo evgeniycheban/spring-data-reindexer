@@ -16,12 +16,16 @@
 package org.springframework.data.reindexer.repository.util;
 
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
+import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.data.reindexer.core.mapping.JoinType;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
@@ -40,12 +44,28 @@ import org.springframework.util.StringUtils;
  */
 public final class QueryUtils {
 
+	private static final Log LOG = LogFactory.getLog(QueryUtils.class);
+
 	private QueryUtils() {
 		throw new IllegalStateException("Cannot instantiate a utility class!");
 	}
 
 	/**
 	 * Adds {@link NamespaceReference} join declarations to the provided {@link Query}.
+	 * <p>
+	 * Note: since 1.7 version, Reindexer supports nested joins, depending on a query
+	 * format version supported by the server, nested references are fetched using native
+	 * nested joins support or using {@link NamespaceReference#fetch()} flag with proxies.
+	 * <p>
+	 * The self-join references are fetched differently depending on the query format
+	 * version:
+	 * <ul>
+	 * <li>For {@link Consts#QUERY_FORMAT_V1 V1} the first level self-joins are fetched
+	 * using native join support, deeply nested self-joins are fetched lazily using
+	 * proxies.</li>
+	 * <li>For {@link Consts#QUERY_FORMAT_V2 V2} the self-joins are fetched lazily using
+	 * proxies.</li>
+	 * </ul>
 	 * @param criteria the {@link Query} to use
 	 * @param domainType the entity domain class to use
 	 * @param mappingContext the {@link ReindexerMappingContext} to use
@@ -54,26 +74,78 @@ public final class QueryUtils {
 	 */
 	public static Query<?> withJoins(Query<?> criteria, Class<?> domainType, ReindexerMappingContext mappingContext,
 			ReindexerNamespaceFactory namespaceFactory) {
+		return withJoins(criteria, domainType, mappingContext, namespaceFactory, EnumSet.allOf(JoinType.class));
+	}
+
+	/**
+	 * Adds {@link NamespaceReference} only {@link JoinType#INNER inner join} declarations
+	 * to the provided {@link Query}. Useful for update/delete queries.
+	 * <p>
+	 * Note: since 1.7 version, Reindexer supports nested joins, depending on a query
+	 * format version supported by the server, nested references are fetched using native
+	 * nested joins support or using {@link NamespaceReference#fetch()} flag with proxies.
+	 * <p>
+	 * The self-join references are fetched differently depending on the query format
+	 * version:
+	 * <ul>
+	 * <li>For {@link Consts#QUERY_FORMAT_V1 V1} the first level self-joins are fetched
+	 * using native join support, deeply nested self-joins are fetched lazily using
+	 * proxies.</li>
+	 * <li>For {@link Consts#QUERY_FORMAT_V2 V2} the self-joins are fetched lazily using
+	 * proxies.</li>
+	 * </ul>
+	 * @param criteria the {@link Query} to use
+	 * @param domainType the entity domain class to use
+	 * @param mappingContext the {@link ReindexerMappingContext} to use
+	 * @param namespaceFactory the {@link ReindexerNamespaceFactory} to use
+	 * @return the {@link Query} for further customizations
+	 * @since 1.7
+	 */
+	public static Query<?> withInnerJoins(Query<?> criteria, Class<?> domainType,
+			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory) {
+		return withJoins(criteria, domainType, mappingContext, namespaceFactory, EnumSet.of(JoinType.INNER));
+	}
+
+	private static Query<?> withJoins(Query<?> criteria, Class<?> domainType, ReindexerMappingContext mappingContext,
+			ReindexerNamespaceFactory namespaceFactory, Set<JoinType> joinTypes) {
 		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(domainType);
 		for (ReindexerPersistentProperty persistentProperty : persistentEntity
 			.getPersistentProperties(NamespaceReference.class)) {
 			NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
-			if (namespaceReference.lazy() || StringUtils.hasText(namespaceReference.lookup())) {
+			if (!joinTypes.contains(namespaceReference.joinType()) || namespaceReference.lazy()
+					|| StringUtils.hasText(namespaceReference.lookup())) {
 				continue;
 			}
 			ReindexerPersistentEntity<?> referencedEntity = mappingContext
-				.getRequiredPersistentEntity(persistentProperty.getActualType());
+				.getRequiredPersistentEntity(persistentProperty);
+			boolean isSelfJoinV2 = mappingContext.getQueryFormatVersion() == Consts.QUERY_FORMAT_V2
+					&& referencedEntity.getType().isAssignableFrom(domainType);
+			if (isSelfJoinV2) {
+				if (LOG.isTraceEnabled()) {
+					LOG.trace(
+							"Circular reference detected: %s.%s; The self-join (V2) property will be fetched lazily using proxy"
+								.formatted(persistentEntity.getName(), persistentProperty.getName()));
+				}
+				continue;
+			}
 			Namespace<?> namespace = namespaceFactory.openNamespace(referencedEntity.getType());
-			String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
-					? namespaceReference.referencedIndexName() : referencedEntity.getRequiredIdProperty().getName();
-			Query<?> on = namespace.query()
-				.on(namespaceReference.indexName(),
-						persistentProperty.isCollectionLike() ? Condition.SET : Condition.EQ, indexName);
+			ReindexerPersistentProperty referencedProperty = StringUtils
+				.hasText(namespaceReference.referencedIndexName())
+						? referencedEntity.getRequiredPersistentProperty(namespaceReference.referencedIndexName())
+						: referencedEntity.getRequiredIdProperty();
+			ReindexerPersistentProperty joinProperty = persistentEntity
+				.getRequiredPersistentProperty(namespaceReference.indexName());
+			Query<?> joinQuery = mappingContext.getQueryFormatVersion() == Consts.QUERY_FORMAT_V2
+					? withJoins(namespace.query(), referencedEntity.getType(), mappingContext, namespaceFactory,
+							joinTypes)
+					: namespace.query();
+			joinQuery.on(joinProperty.getIndexName(), joinProperty.isCollectionLike() ? Condition.SET : Condition.EQ,
+					referencedProperty.getIndexName());
 			if (namespaceReference.joinType() == JoinType.LEFT) {
-				criteria.leftJoin(on, persistentProperty.getName());
+				criteria.leftJoin(joinQuery, persistentProperty.getName());
 			}
 			else {
-				criteria.innerJoin(on, persistentProperty.getName());
+				criteria.innerJoin(joinQuery, persistentProperty.getName());
 			}
 		}
 		return criteria;

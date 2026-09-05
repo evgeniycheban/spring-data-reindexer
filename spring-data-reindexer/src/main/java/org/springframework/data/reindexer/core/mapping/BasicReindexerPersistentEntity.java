@@ -15,8 +15,12 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.NamespaceOptions;
+import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.data.core.TypeInformation;
 import org.springframework.data.expression.ValueExpression;
@@ -44,6 +48,8 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 
 	private final @Nullable ValueExpression expression;
 
+	private final Map<String, ReindexerPersistentProperty> indexedProperties;
+
 	/**
 	 * Creates an instance.
 	 * @param information the {@link TypeInformation} to use
@@ -65,6 +71,25 @@ public class BasicReindexerPersistentEntity<T> extends BasicPersistentEntity<T, 
 			this.namespaceOptions = NamespaceOptions.defaultOptions();
 			this.expression = null;
 		}
+		this.indexedProperties = new HashMap<>(16, 1.0f);
+	}
+
+	@Override
+	public void addPersistentProperty(ReindexerPersistentProperty property) {
+		super.addPersistentProperty(property);
+		if (!property.isTransient() && property.isIndexedProperty()) {
+			Reindex reindex = property.getReindex();
+			this.indexedProperties.putIfAbsent(reindex.name(), property);
+		}
+	}
+
+	@Override
+	public @Nullable ReindexerPersistentProperty getPersistentProperty(String name) {
+		ReindexerPersistentProperty property = super.getPersistentProperty(name);
+		if (property != null) {
+			return property;
+		}
+		return this.indexedProperties.get(name);
 	}
 
 	@Override

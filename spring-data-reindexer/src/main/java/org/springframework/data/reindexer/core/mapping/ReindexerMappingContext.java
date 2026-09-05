@@ -18,6 +18,9 @@ package org.springframework.data.reindexer.core.mapping;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
+
+import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.data.core.TypeInformation;
 import org.springframework.data.mapping.MappingException;
@@ -42,6 +45,8 @@ public class ReindexerMappingContext
 
 	private boolean autoIndexCreation;
 
+	private Supplier<Integer> queryFormatVersion = () -> Consts.QUERY_FORMAT_V1;
+
 	/**
 	 * Returns whether auto-index creation is enabled or disabled.
 	 * @return {@literal true} when auto-index creation is enabled; {@literal false}
@@ -59,6 +64,27 @@ public class ReindexerMappingContext
 	 */
 	public void setAutoIndexCreation(boolean autoIndexCreation) {
 		this.autoIndexCreation = autoIndexCreation;
+	}
+
+	/**
+	 * Returns a negotiated query serialization format version. Defaults to
+	 * {@link Consts#QUERY_FORMAT_V1}.
+	 * @return the query serialization format version
+	 * @since 1.7
+	 */
+	public int getQueryFormatVersion() {
+		return this.queryFormatVersion.get();
+	}
+
+	/**
+	 * Sets a {@link Supplier} that provides a negotiated query serialization format
+	 * version.
+	 * @param queryFormatVersion the {@code Supplier} to get the negotiated query
+	 * serialization format version
+	 * @since 1.7
+	 */
+	public void setQueryFormatVersion(Supplier<Integer> queryFormatVersion) {
+		this.queryFormatVersion = queryFormatVersion;
 	}
 
 	/**

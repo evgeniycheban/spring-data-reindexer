@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,6 +29,7 @@ import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
+import ru.rt.restream.reindexer.binding.Consts;
 import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
 import org.springframework.beans.BeansException;
@@ -66,6 +68,7 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.repository.query.ReindexerQueryExecutions;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.expression.EvaluationContext;
@@ -287,7 +290,7 @@ public class MappingReindexerConverter
 			Object value = this.accessor.getProperty(sourceProperty);
 			if (ObjectUtils.isEmpty(value)) {
 				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
-				if (shouldCreateProxy(namespaceReference)) {
+				if (shouldCreateProxy(sourceProperty, namespaceReference)) {
 					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty);
 					return (T) (proxy != null ? (T) proxy : value);
 				}
@@ -303,8 +306,15 @@ public class MappingReindexerConverter
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
 
-		private boolean shouldCreateProxy(NamespaceReference namespaceReference) {
-			return namespaceReference.lazy() || namespaceReference.fetch()
+		private boolean shouldCreateProxy(ReindexerPersistentProperty property, NamespaceReference namespaceReference) {
+			// The proxy is created for self-joined (V2) and lazy-loaded relations.
+			// Note: The fetch flag is kept for backward compatibility with the Reindexer
+			// server prior to the 5.16.0 version, which does not support nested joins.
+			// @formatter:off
+			boolean isSelfJoinV2 = MappingReindexerConverter.this.mappingContext.getQueryFormatVersion() == Consts.QUERY_FORMAT_V2
+					&& property.getActualType().isAssignableFrom(property.getOwner().getType());
+			// @formatter:on
+			return isSelfJoinV2 || namespaceReference.lazy() || namespaceReference.fetch()
 					|| StringUtils.hasText(namespaceReference.lookup());
 		}
 
@@ -315,16 +325,15 @@ public class MappingReindexerConverter
 				source = namespaceReference.lookup();
 			}
 			else {
-				source = this.accessor
-					.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
-				if (source == null && !namespaceReference.nullable()) {
-					String entityName = sourceProperty.getOwner().getName();
-					throw new DataIntegrityViolationException("""
-							Property: '%s.%s' violates non-null constraint of namespace reference: '%s.%s'
-							""".formatted(entityName, namespaceReference.indexName(), entityName,
-							sourceProperty.getName()));
-				}
-				if (ObjectUtils.isEmpty(source)) {
+				source = getSource(namespaceReference);
+				if (source == null) {
+					if (!namespaceReference.nullable()) {
+						String entityName = sourceProperty.getOwner().getName();
+						throw new DataIntegrityViolationException("""
+								Property: '%s.%s' violates non-null constraint of namespace reference: '%s.%s'
+								""".formatted(entityName, namespaceReference.indexName(), entityName,
+								sourceProperty.getName()));
+					}
 					return null;
 				}
 			}
@@ -350,8 +359,10 @@ public class MappingReindexerConverter
 						return getSingleResult(iterator, namespaceReference.nullable());
 					}
 				}
-				String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
-						? namespaceReference.referencedIndexName() : referenceEntity.getRequiredIdProperty().getName();
+				ReindexerPersistentProperty referencedProperty = StringUtils
+					.hasText(namespaceReference.referencedIndexName())
+							? referenceEntity.getRequiredPersistentProperty(namespaceReference.referencedIndexName())
+							: referenceEntity.getRequiredIdProperty();
 				Namespace<?> namespace = MappingReindexerConverter.this.namespaceFactory
 					.openNamespace(referenceEntity.getType());
 				Query<?> query = QueryUtils.withJoins(namespace.query(), referenceEntity.getType(),
@@ -363,9 +374,16 @@ public class MappingReindexerConverter
 					}
 				}
 				if (source instanceof Collection<?> values) {
-					return query.where(indexName, Condition.SET, values).toList();
+					query.where(referencedProperty.getIndexName(), Condition.SET, values);
 				}
-				try (ResultIterator<?> iterator = query.where(indexName, Condition.EQ, source).execute()) {
+				else {
+					query.where(referencedProperty.getIndexName(), Condition.EQ, source);
+				}
+				ResultIterator<?> iterator = query.execute();
+				if (targetProperty.isCollectionLike()) {
+					return ReindexerQueryExecutions.toList(iterator);
+				}
+				try (iterator) {
 					return getSingleResult(iterator, namespaceReference.nullable());
 				}
 			};
@@ -373,6 +391,29 @@ public class MappingReindexerConverter
 					targetProperty.getType(), sourceProperty, callback,
 					new NamespaceReferenceSource(referenceEntity.getNamespace(), source),
 					resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
+		}
+
+		private @Nullable Object getSource(NamespaceReference namespaceReference) {
+			Object source = this.accessor
+				.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+			if (ObjectUtils.isEmpty(source)) {
+				return null;
+			}
+			if (source instanceof Collection<?> values) {
+				return values.size() == 1 ? values.iterator().next() : values;
+			}
+			if (source.getClass().isArray()) {
+				int length = Array.getLength(source);
+				if (length == 1) {
+					return Array.get(source, 0);
+				}
+				List<Object> result = new ArrayList<>(length);
+				for (int i = 0; i < length; i++) {
+					result.add(Array.get(source, i));
+				}
+				return result;
+			}
+			return source;
 		}
 
 		private @Nullable Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {

@@ -127,7 +127,12 @@ public @interface NamespaceReference {
 	 * Controls whether the referenced entity should be fetched if it is a nested
 	 * relationship of the top level entity. This defaults to {@literal false}.
 	 * @return {@literal false} by default
+	 * @deprecated since 1.7 version, Reindexer supports nested joins, use {@link #lazy()}
+	 * to fetch recursive (self-joined) relations, this is only kept for backward
+	 * compatibility with Reindexer server version prior to 5.16.0 and can be removed in
+	 * future releases.
 	 */
+	@Deprecated(since = "1.7")
 	boolean fetch() default false;
 
 	/**
