@@ -21,8 +21,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 import ru.rt.restream.reindexer.Reindexer;
+import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.context.annotation.Role;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -60,12 +62,16 @@ public abstract class ReindexerConfigurationSupport {
 	}
 
 	@Bean
-	public ReindexerMappingContext reindexerMappingContext(ReindexerCustomConversions conversions,
-			ManagedTypes managedTypes) {
+	public ReindexerMappingContext reindexerMappingContext(ObjectProvider<Reindexer> reindexer,
+			ReindexerCustomConversions conversions, ManagedTypes managedTypes) {
 		ReindexerMappingContext mappingContext = new ReindexerMappingContext();
 		mappingContext.setManagedTypes(managedTypes);
 		mappingContext.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
 		mappingContext.setAutoIndexCreation(autoIndexCreation());
+		mappingContext.setQueryFormatVersion(() -> {
+			Reindexer rx = reindexer.getIfAvailable();
+			return rx != null ? rx.getBinding().queryFormatVersion() : getQueryFormatVersion();
+		});
 		return mappingContext;
 	}
 
@@ -145,6 +151,22 @@ public abstract class ReindexerConfigurationSupport {
 	 */
 	protected boolean autoIndexCreation() {
 		return false;
+	}
+
+	/**
+	 * Configure the query format version to use.
+	 * <p>
+	 * Note: this is useful when AOT processing is enabled since the query format version
+	 * cannot be negotiated from the Reindexer server during the AOT compilation phase,
+	 * therefore, the version must be explicitely configured.
+	 * </p>
+	 * Use {@link Consts#QUERY_FORMAT_V2} for nested joins support.
+	 * @return {@link Consts#QUERY_FORMAT_V1} by default for backward compatibility with
+	 * the Reindexer server version prior to 5.16.0
+	 * @since 1.7
+	 */
+	protected int getQueryFormatVersion() {
+		return Consts.QUERY_FORMAT_V1;
 	}
 
 }

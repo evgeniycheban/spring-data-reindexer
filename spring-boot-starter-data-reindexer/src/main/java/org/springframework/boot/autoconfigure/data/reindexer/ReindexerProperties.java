@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import ru.rt.restream.reindexer.binding.Consts;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactory;
 import ru.rt.restream.reindexer.binding.cproto.DataSourceFactoryStrategy;
 
@@ -62,6 +63,12 @@ public class ReindexerProperties {
 	 * Configure reindexer connection pool size. Defaults to 8.
 	 */
 	private int connectionPoolSize = 8;
+
+	/**
+	 * Configure reindexer query format version. Defaults to
+	 * {@link Consts#QUERY_FORMAT_V1}.
+	 */
+	private int queryFormatVersion = Consts.QUERY_FORMAT_V1;
 
 	/**
 	 * Configure reindexer request timeout. Defaults to 60 seconds.
@@ -122,6 +129,14 @@ public class ReindexerProperties {
 
 	public void setConnectionPoolSize(int connectionPoolSize) {
 		this.connectionPoolSize = connectionPoolSize;
+	}
+
+	public int getQueryFormatVersion() {
+		return this.queryFormatVersion;
+	}
+
+	public void setQueryFormatVersion(int queryFormatVersion) {
+		this.queryFormatVersion = queryFormatVersion;
 	}
 
 	public Duration getRequestTimeout() {

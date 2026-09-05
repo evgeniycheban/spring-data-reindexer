@@ -83,6 +83,11 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	}
 
 	@Override
+	public Reindex getReindex() {
+		return this.getReindex.get();
+	}
+
+	@Override
 	public boolean isIdProperty() {
 		return this.isIdProperty.get();
 	}

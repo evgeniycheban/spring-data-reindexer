@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.repository.item.entity;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -29,7 +31,9 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
  */
 @Namespace(name = "test_joined_items")
 @Data
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class TestJoinedItem {
 
 	@Reindex(name = "id", isPrimaryKey = true)
@@ -48,8 +52,12 @@ public class TestJoinedItem {
 	private Long nestedJoinedItemId;
 
 	@Transient
-	@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT, fetch = true)
+	@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT)
 	private TestJoinedItem nestedJoinedItem;
+
+	@Transient
+	@NamespaceReference(indexName = "nestedJoinedItemId", joinType = JoinType.LEFT, fetch = true)
+	private TestJoinedItem nestedJoinedItemFetch;
 
 	@Transient
 	@NamespaceReference(indexName = "nestedJoinedItemId", lazy = true)

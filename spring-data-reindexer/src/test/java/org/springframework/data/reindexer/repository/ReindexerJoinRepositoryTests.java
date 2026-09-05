@@ -20,7 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,6 +30,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.reindexer.LazyLoadingException;
 import org.springframework.data.reindexer.container.ReindexerTestContainer;
+import org.springframework.data.reindexer.core.convert.LazyLoadingProxy;
 import org.springframework.data.reindexer.repository.item.TestItemContainerRepository;
 import org.springframework.data.reindexer.repository.item.TestItemReindexerRepository;
 import org.springframework.data.reindexer.repository.item.TestJoinedItemRepository;
@@ -79,6 +82,10 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem()).isNotNull();
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 		assertThat(foundItem.getJoinedItem().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItemFetch()).isNotNull();
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItem().getNestedJoinedItemFetch().getName())
+			.isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
 		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItems()) {
 			TestJoinedItem expectedJoinedItem = expectedJoinedItems.remove(foundJoinedItem.getId());
@@ -88,6 +95,9 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
 		assertThat(expectedJoinedItems).hasSize(0);
 	}
@@ -207,6 +217,44 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 		assertThat(found.getMandatoryItem()).isNotNull();
 		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getMandatoryItem().getName())
 			.withCauseInstanceOf(EmptyResultDataAccessException.class);
+	}
+
+	@Test
+	void getEagerItemWhenQueryFormatV2ThenNativeNestedJoinsSupportUsed() {
+		Assumptions.assumeTrue(this.reindexer.getBinding().queryFormatVersion() == Consts.QUERY_FORMAT_V2,
+				"Only query format v2 supports nested joins");
+		this.joinedItemRepository.save(TestJoinedItem.builder().id(1L).name("TestJoinedName1").build());
+		this.joinedItemRepository
+			.save(TestJoinedItem.builder().id(2L).name("TestJoinedName2").nestedJoinedItemId(1L).build());
+		this.joinedItemRepository
+			.save(TestJoinedItem.builder().id(3L).name("TestJoinedName3").nestedJoinedItemId(2L).build());
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(3L).build());
+		this.itemContainerRepository.save(TestItemContainer.builder().id(1L).mandatoryItemId(1L).build());
+		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		// Nested eager joins are fetched using native nested joins support.
+		TestItem eagerItem = found.getEagerItem();
+		assertThat(eagerItem).isNotNull();
+		assertThat(eagerItem).isNotInstanceOf(LazyLoadingProxy.class);
+		assertThat(eagerItem.getId()).isEqualTo(1L);
+		assertThat(eagerItem.getName()).isEqualTo("TestName");
+		TestJoinedItem joinedItem = eagerItem.getJoinedItem();
+		assertThat(joinedItem).isNotNull();
+		assertThat(joinedItem).isNotInstanceOf(LazyLoadingProxy.class);
+		assertThat(joinedItem.getId()).isEqualTo(3L);
+		assertThat(joinedItem.getName()).isEqualTo("TestJoinedName3");
+		// Self-joins are fetched lazily using proxies.
+		TestJoinedItem selfJoinedItem1 = joinedItem.getNestedJoinedItem();
+		assertThat(selfJoinedItem1).isNotNull();
+		assertThat(selfJoinedItem1).isInstanceOf(LazyLoadingProxy.class);
+		assertThat(selfJoinedItem1.getId()).isEqualTo(2L);
+		assertThat(selfJoinedItem1.getName()).isEqualTo("TestJoinedName2");
+		TestJoinedItem selfJoinedItem2 = selfJoinedItem1.getNestedJoinedItem();
+		assertThat(selfJoinedItem2).isNotNull();
+		assertThat(selfJoinedItem2).isInstanceOf(LazyLoadingProxy.class);
+		assertThat(selfJoinedItem2.getId()).isEqualTo(1L);
+		assertThat(selfJoinedItem2.getName()).isEqualTo("TestJoinedName1");
 	}
 
 	@Test

@@ -166,8 +166,8 @@ final class ReindexerCodeBlocks {
 				NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
 				boolean shouldSkip = namespaceReference.lazy() //
 						|| StringUtils.hasText(namespaceReference.lookup()) //
-						|| namespaceReference.joinType() == JoinType.LEFT
-								&& (this.tree.isExistsProjection() || this.tree.isCountProjection());
+						|| namespaceReference.joinType() == JoinType.LEFT && (this.tree.isExistsProjection()
+								|| this.tree.isCountProjection() || this.tree.isDelete());
 				if (shouldSkip) {
 					continue;
 				}

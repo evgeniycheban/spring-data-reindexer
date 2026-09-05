@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import ru.rt.restream.reindexer.annotations.Reindex;
+
 import org.springframework.data.mapping.PersistentProperty;
 
 /**
@@ -25,6 +27,16 @@ import org.springframework.data.mapping.PersistentProperty;
  * @since 1.4
  */
 public interface ReindexerPersistentProperty extends PersistentProperty<ReindexerPersistentProperty> {
+
+	/**
+	 * Returns an index name if {@link Reindex} annotation is present, fallbacks to
+	 * {@link PersistentProperty#getName()}. Cannot be {@literal null}.
+	 * @return the index name or property name to use
+	 * @since 1.7
+	 */
+	default String getIndexName() {
+		return isIndexedProperty() ? getReindex().name() : getName();
+	}
 
 	/**
 	 * Returns {@literal true} if the property contains {@link NamespaceReference}
@@ -48,5 +60,12 @@ public interface ReindexerPersistentProperty extends PersistentProperty<Reindexe
 	 * @return the {@link NamespaceReference} annotation. Can be {@literal null}.
 	 */
 	NamespaceReference getNamespaceReference();
+
+	/**
+	 * Returns {@link Reindex} annotation. Cannot be {@literal null}.
+	 * @return the {@link Reindex} annotation. Cannot be {@literal null}.
+	 * @since 1.7
+	 */
+	Reindex getReindex();
 
 }

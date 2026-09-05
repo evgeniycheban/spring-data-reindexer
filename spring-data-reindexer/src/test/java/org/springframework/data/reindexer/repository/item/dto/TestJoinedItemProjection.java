@@ -29,6 +29,8 @@ public class TestJoinedItemProjection {
 
 	private final TestJoinedItemProjection nestedJoinedItem;
 
+	private final TestJoinedItemProjection nestedJoinedItemFetch;
+
 	private final TestJoinedItemProjection nestedJoinedItemLazy;
 
 }

@@ -107,6 +107,11 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItem()).isNotNull();
 		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemFetch()).isNotNull();
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemFetch().getId())
+			.isEqualTo(nestedJoinedItem.getId());
+		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemFetch().getName())
+			.isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemLazy()).isNotNull();
 		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
 		assertThat(foundItem.getJoinedItemLazy().getNestedJoinedItemLazy().getName())
@@ -120,6 +125,9 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
@@ -133,6 +141,9 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
@@ -146,6 +157,9 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy()).isNotNull();
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
