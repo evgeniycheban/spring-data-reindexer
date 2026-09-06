@@ -18,6 +18,8 @@ package org.springframework.data.reindexer.core.convert;
 import java.util.List;
 
 import lombok.Data;
+import net.minidev.json.JSONObject;
+import net.minidev.json.JSONValue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -175,7 +177,7 @@ class MappingReindexerConverterTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	void projectRecordDto() {
+	void projectDto() {
 		Role adminRole = createAdminRole();
 		Role userRole = createUserRole();
 		Person managerPerson = createManagerPerson();
@@ -204,6 +206,47 @@ class MappingReindexerConverterTests {
 				);
 		// @formatter:on
 		PersonDto result = this.converter.project(projection, person);
+		assertPersonDto(result);
+		verifyQueries();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void projectDtoFromJsonObject() {
+		Role adminRole = createAdminRole();
+		Role userRole = createUserRole();
+		Person managerPerson = createManagerPerson();
+		Person person = createPerson();
+		person.setManager(managerPerson);
+		Account managerAccount = createManagerAccount();
+		Account personalAccount = createPersonalAccount();
+		Account businessAccount = createBusinessAccount();
+		EntityProjection<PersonDto, Person> projection = this.converter.getProjectionIntrospector()
+			.introspect(PersonDto.class, Person.class);
+		when(this.namespaceFactory.openNamespace(Account.class)).thenReturn(this.accountNamespace);
+		when(this.namespaceFactory.openNamespace(Role.class)).thenReturn(this.roleNamespace);
+		when(this.accountNamespace.query()).thenReturn(this.accountQuery);
+		when(this.roleNamespace.query()).thenReturn(this.roleQuery);
+		// @formatter:off
+		when(this.accountQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(managerAccount),
+						new ListBackedResultIterator<>(personalAccount, businessAccount)
+				);
+		when(this.roleQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(adminRole),
+						new ListBackedResultIterator<>(adminRole, userRole),
+						new ListBackedResultIterator<>(userRole)
+				);
+		// @formatter:on
+		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		PersonDto result = this.converter.project(projection, document);
+		assertPersonDto(result);
+		verifyQueries();
+	}
+
+	private static void assertPersonDto(PersonDto result) {
 		assertThat(result).isNotNull();
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
@@ -279,7 +322,6 @@ class MappingReindexerConverterTests {
 		assertThat(addressCountry).isNotInstanceOf(LazyLoadingProxy.class);
 		assertThat(addressCountry.id()).isEqualTo(2L);
 		assertThat(addressCountry.name()).isEqualTo("Germany");
-		verifyQueries();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -346,6 +388,40 @@ class MappingReindexerConverterTests {
 		// @formatter:on
 		Person result = this.converter.read(Person.class, person);
 		assertThat(result).isSameAs(person);
+		assertPerson(result);
+		verifyQueries();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void readEntityFromJsonObject() {
+		Role adminRole = createAdminRole();
+		Role userRole = createUserRole();
+		Person managerPerson = createManagerPerson();
+		Person person = createPerson();
+		person.setManager(managerPerson);
+		Account managerAccount = createManagerAccount();
+		Account personalAccount = createPersonalAccount();
+		Account businessAccount = createBusinessAccount();
+		when(this.namespaceFactory.openNamespace(Account.class)).thenReturn(this.accountNamespace);
+		when(this.namespaceFactory.openNamespace(Role.class)).thenReturn(this.roleNamespace);
+		when(this.accountNamespace.query()).thenReturn(this.accountQuery);
+		when(this.roleNamespace.query()).thenReturn(this.roleQuery);
+		// @formatter:off
+		when(this.accountQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(managerAccount),
+						new ListBackedResultIterator<>(personalAccount, businessAccount)
+				);
+		when(this.roleQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(adminRole),
+						new ListBackedResultIterator<>(adminRole, userRole),
+						new ListBackedResultIterator<>(userRole)
+				);
+		// @formatter:on
+		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Person result = this.converter.read(Person.class, document);
 		assertPerson(result);
 		verifyQueries();
 	}
@@ -462,7 +538,7 @@ class MappingReindexerConverterTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	void projectRecordDtoUsingQueryFormatVersion2() {
+	void projectDtoUsingQueryFormatVersion2() {
 		Role adminRole = createAdminRole();
 		Role userRole = createUserRole();
 		Person managerPerson = createManagerPerson();
@@ -498,6 +574,54 @@ class MappingReindexerConverterTests {
                 );
         // @formatter:on
 		PersonDto result = this.converter.project(projection, person);
+		assertPersonDtoV2(result);
+		verifyQueriesV2();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void projectDtoFromJsonObjectUsingQueryFormatVersion2() {
+		Role adminRole = createAdminRole();
+		Role userRole = createUserRole();
+		Person managerPerson = createManagerPerson();
+		Person person = createPerson();
+		Account managerAccount = createManagerAccount();
+		Account personalAccount = createPersonalAccount();
+		Account businessAccount = createBusinessAccount();
+		EntityProjection<PersonDto, Person> projection = this.converter.getProjectionIntrospector()
+			.introspect(PersonDto.class, Person.class);
+		this.mappingContext.setQueryFormatVersion(() -> Consts.QUERY_FORMAT_V2);
+		when(this.namespaceFactory.openNamespace(Person.class)).thenReturn(this.personNamespace);
+		when(this.namespaceFactory.openNamespace(Account.class)).thenReturn(this.accountNamespace);
+		when(this.namespaceFactory.openNamespace(Role.class)).thenReturn(this.roleNamespace);
+		when(this.namespaceFactory.openNamespace(Address.class)).thenReturn(this.addressNamespace);
+		when(this.namespaceFactory.openNamespace(Country.class)).thenReturn(this.countryNamespace);
+		when(this.personNamespace.query()).thenReturn(this.personQuery);
+		when(this.accountNamespace.query()).thenReturn(this.accountQuery);
+		when(this.roleNamespace.query()).thenReturn(this.roleQuery);
+		when(this.addressNamespace.query()).thenReturn(this.addressQuery);
+		when(this.countryNamespace.query()).thenReturn(this.countryQuery);
+		when(this.personQuery.execute()).thenReturn(new ListBackedResultIterator<>(managerPerson));
+		// @formatter:off
+		when(this.accountQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(managerAccount),
+						new ListBackedResultIterator<>(personalAccount, businessAccount)
+				);
+		when(this.roleQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(adminRole),
+						new ListBackedResultIterator<>(adminRole, userRole),
+						new ListBackedResultIterator<>(userRole)
+				);
+		// @formatter:on
+		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		PersonDto result = this.converter.project(projection, document);
+		assertPersonDtoV2(result);
+		verifyQueriesV2();
+	}
+
+	private static void assertPersonDtoV2(PersonDto result) {
 		assertThat(result).isNotNull();
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
@@ -572,7 +696,6 @@ class MappingReindexerConverterTests {
 		assertThat(country).isNotInstanceOf(LazyLoadingProxy.class);
 		assertThat(country.id()).isEqualTo(2L);
 		assertThat(country.name()).isEqualTo("Germany");
-		verifyQueriesV2();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -620,6 +743,49 @@ class MappingReindexerConverterTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
+	void projectEntityFromJsonObjectUsingQueryFormatVersion2() {
+		Role adminRole = createAdminRole();
+		Role userRole = createUserRole();
+		Person managerPerson = createManagerPerson();
+		Person person = createPerson();
+		Account managerAccount = createManagerAccount();
+		Account personalAccount = createPersonalAccount();
+		Account businessAccount = createBusinessAccount();
+		EntityProjection<Person, Person> projection = this.converter.getProjectionIntrospector()
+			.introspect(Person.class, Person.class);
+		this.mappingContext.setQueryFormatVersion(() -> Consts.QUERY_FORMAT_V2);
+		when(this.namespaceFactory.openNamespace(Person.class)).thenReturn(this.personNamespace);
+		when(this.namespaceFactory.openNamespace(Account.class)).thenReturn(this.accountNamespace);
+		when(this.namespaceFactory.openNamespace(Role.class)).thenReturn(this.roleNamespace);
+		when(this.namespaceFactory.openNamespace(Address.class)).thenReturn(this.addressNamespace);
+		when(this.namespaceFactory.openNamespace(Country.class)).thenReturn(this.countryNamespace);
+		when(this.personNamespace.query()).thenReturn(this.personQuery);
+		when(this.accountNamespace.query()).thenReturn(this.accountQuery);
+		when(this.roleNamespace.query()).thenReturn(this.roleQuery);
+		when(this.addressNamespace.query()).thenReturn(this.addressQuery);
+		when(this.countryNamespace.query()).thenReturn(this.countryQuery);
+		when(this.personQuery.execute()).thenReturn(new ListBackedResultIterator<>(managerPerson));
+		// @formatter:off
+		when(this.accountQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(managerAccount),
+						new ListBackedResultIterator<>(personalAccount, businessAccount)
+				);
+		when(this.roleQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(adminRole),
+						new ListBackedResultIterator<>(adminRole, userRole),
+						new ListBackedResultIterator<>(userRole)
+				);
+		// @formatter:on
+		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Person result = this.converter.project(projection, document);
+		assertPersonV2(result);
+		verifyQueriesV2();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
 	void readEntityUsingQueryFormatVersion2() {
 		Role adminRole = createAdminRole();
 		Role userRole = createUserRole();
@@ -657,6 +823,49 @@ class MappingReindexerConverterTests {
 		// @formatter:on
 		Person result = this.converter.project(projection, person);
 		assertThat(result).isSameAs(person);
+		assertPersonV2(result);
+		verifyQueriesV2();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void readEntityFromJsonObjectUsingQueryFormatVersion2() {
+		Role adminRole = createAdminRole();
+		Role userRole = createUserRole();
+		Person managerPerson = createManagerPerson();
+		Person person = createPerson();
+		Account managerAccount = createManagerAccount();
+		Account personalAccount = createPersonalAccount();
+		Account businessAccount = createBusinessAccount();
+		EntityProjection<Person, Person> projection = this.converter.getProjectionIntrospector()
+			.introspect(Person.class, Person.class);
+		this.mappingContext.setQueryFormatVersion(() -> Consts.QUERY_FORMAT_V2);
+		when(this.namespaceFactory.openNamespace(Person.class)).thenReturn(this.personNamespace);
+		when(this.namespaceFactory.openNamespace(Account.class)).thenReturn(this.accountNamespace);
+		when(this.namespaceFactory.openNamespace(Role.class)).thenReturn(this.roleNamespace);
+		when(this.namespaceFactory.openNamespace(Address.class)).thenReturn(this.addressNamespace);
+		when(this.namespaceFactory.openNamespace(Country.class)).thenReturn(this.countryNamespace);
+		when(this.personNamespace.query()).thenReturn(this.personQuery);
+		when(this.accountNamespace.query()).thenReturn(this.accountQuery);
+		when(this.roleNamespace.query()).thenReturn(this.roleQuery);
+		when(this.addressNamespace.query()).thenReturn(this.addressQuery);
+		when(this.countryNamespace.query()).thenReturn(this.countryQuery);
+		when(this.personQuery.execute()).thenReturn(new ListBackedResultIterator<>(managerPerson));
+		// @formatter:off
+		when(this.accountQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(managerAccount),
+						new ListBackedResultIterator<>(personalAccount, businessAccount)
+				);
+		when(this.roleQuery.execute())
+				.thenReturn(
+						new ListBackedResultIterator<>(adminRole),
+						new ListBackedResultIterator<>(adminRole, userRole),
+						new ListBackedResultIterator<>(userRole)
+				);
+		// @formatter:on
+		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Person result = this.converter.project(projection, document);
 		assertPersonV2(result);
 		verifyQueriesV2();
 	}
@@ -815,7 +1024,7 @@ class MappingReindexerConverterTests {
 
 	@Data
 	@Namespace(name = "persons")
-	static class Person {
+	public static class Person {
 
 		@Id
 		Long id;
@@ -843,7 +1052,7 @@ class MappingReindexerConverterTests {
 
 	@Data
 	@Namespace(name = "accounts")
-	static class Account {
+	public static class Account {
 
 		@Id
 		Long id;
@@ -865,7 +1074,7 @@ class MappingReindexerConverterTests {
 
 	@Data
 	@Namespace(name = "roles")
-	static class Role {
+	public static class Role {
 
 		@Id
 		Long id;
@@ -876,7 +1085,7 @@ class MappingReindexerConverterTests {
 
 	@Data
 	@Namespace(name = "addresses")
-	static class Address {
+	public static class Address {
 
 		@Id
 		Long id;
@@ -891,7 +1100,7 @@ class MappingReindexerConverterTests {
 
 	@Data
 	@Namespace(name = "countries")
-	static class Country {
+	public static class Country {
 
 		@Id
 		Long id;

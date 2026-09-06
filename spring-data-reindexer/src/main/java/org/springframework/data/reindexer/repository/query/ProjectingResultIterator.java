@@ -22,19 +22,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.minidev.json.JSONObject;
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.AggregationResult;
 import ru.rt.restream.reindexer.AggregationResult.Facet;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.ResultIterator;
-import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
-import org.springframework.core.convert.ConversionService;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
-import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
-import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
-import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -44,15 +40,14 @@ import org.springframework.util.CollectionUtils;
  *
  * @author Evgeniy Cheban
  * @param <M> the mapped type to use
- * @param <D> the domain type to use
  */
-public final class ProjectingResultIterator<M, D> implements ReindexerResultAccessor<M> {
+public final class ProjectingResultIterator<M> implements ReindexerResultAccessor<M> {
 
-	private final ResultIterator<D> delegate;
+	private final ResultIterator<?> delegate;
 
 	private final Class<M> mappedType;
 
-	private final Class<D> domainType;
+	private final Class<?> domainType;
 
 	private final @Nullable AggregationResult aggregationFacet;
 
@@ -60,21 +55,18 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 
 	private final ReindexerConverter reindexerConverter;
 
-	private final ConversionService conversionService;
-
 	private final long size;
 
 	private int aggregationPosition;
 
-	ProjectingResultIterator(Query<D> query, ReturnedType projectionType, ReindexerConverter reindexerConverter) {
+	ProjectingResultIterator(Query<?> query, ReturnedType projectionType, ReindexerConverter reindexerConverter) {
 		this(query.execute(), projectionType, reindexerConverter);
 	}
 
 	@SuppressWarnings("unchecked")
-	ProjectingResultIterator(ResultIterator<D> delegate, ReturnedType projectionType,
+	ProjectingResultIterator(ResultIterator<?> delegate, ReturnedType projectionType,
 			ReindexerConverter reindexerConverter) {
-		this(delegate, (Class<M>) projectionType.getReturnedType(), (Class<D>) projectionType.getDomainType(),
-				reindexerConverter);
+		this(delegate, (Class<M>) projectionType.getReturnedType(), projectionType.getDomainType(), reindexerConverter);
 	}
 
 	/**
@@ -84,13 +76,12 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 	 * @param domainType the domain type to use
 	 * @param reindexerConverter the {@link ReindexerConverter} to use
 	 */
-	public ProjectingResultIterator(ResultIterator<D> delegate, Class<M> mappedType, Class<D> domainType,
+	public ProjectingResultIterator(ResultIterator<?> delegate, Class<M> mappedType, Class<?> domainType,
 			ReindexerConverter reindexerConverter) {
 		this.delegate = delegate;
 		this.mappedType = mappedType;
 		this.domainType = domainType;
 		this.reindexerConverter = reindexerConverter;
-		this.conversionService = reindexerConverter.getConversionService();
 		this.aggregationFacet = getAggregationFacet();
 		this.distinctAggregationResults = getDistinctAggregationResults();
 		this.size = this.aggregationFacet != null ? this.aggregationFacet.getFacets().size() : delegate.size();
@@ -141,28 +132,15 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 
 	@Override
 	public @Nullable M next() {
-		D entity = nextEntity();
-		if (entity == null) {
-			return null;
-		}
-		EntityProjection<M, D> descriptor = this.reindexerConverter.getProjectionIntrospector()
-			.introspect(this.mappedType, this.domainType);
-		return this.reindexerConverter.project(descriptor, entity);
+		return nextEntity();
 	}
 
-	private @Nullable D nextEntity() {
+	private @Nullable M nextEntity() {
 		if (this.aggregationFacet == null || this.distinctAggregationResults.isEmpty()) {
-			return this.delegate.next();
+			Object entity = this.delegate.next();
+			return project(entity);
 		}
-		D entity;
-		try {
-			entity = this.domainType.getDeclaredConstructor().newInstance();
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-		ReindexerMappingContext mappingContext = this.reindexerConverter.getMappingContext();
-		ReindexerPersistentEntity<?> persistentEntity = mappingContext.getRequiredPersistentEntity(this.domainType);
+		JSONObject document = new JSONObject();
 		int aggregationPosition = this.aggregationPosition++;
 		List<String> fields = this.aggregationFacet.getFields();
 		for (int i = 0; i < fields.size(); i++) {
@@ -171,15 +149,19 @@ public final class ProjectingResultIterator<M, D> implements ReindexerResultAcce
 			Set<String> distinctValues = this.distinctAggregationResults.get(field);
 			if (i < facet.getValues().size() && distinctValues != null
 					&& distinctValues.remove(facet.getValues().get(i))) {
-				ReindexerPersistentProperty persistentProperty = persistentEntity.getRequiredPersistentProperty(field);
-				Object value = this.conversionService.convert(facet.getValues().get(i), persistentProperty.getType());
-				BeanPropertyUtils.setProperty(entity, field, value);
+				document.put(field, facet.getValues().get(i));
 			}
 			else {
 				return null;
 			}
 		}
-		return entity;
+		return project(document);
+	}
+
+	private M project(Object entity) {
+		EntityProjection<M, ?> descriptor = this.reindexerConverter.getProjectionIntrospector()
+			.introspect(this.mappedType, this.domainType);
+		return this.reindexerConverter.project(descriptor, entity);
 	}
 
 	private Map<String, Set<String>> getDistinctAggregationResults() {

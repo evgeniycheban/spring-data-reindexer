@@ -484,7 +484,7 @@ final class ReindexerCodeBlocks {
 			String it = this.context.localVariable("it");
 			String reqTotalExpr = this.queryMethod.isPageQuery() ? "$3L.reqTotal()" : "$3L";
 			builder.addStatement(
-					"$1T<$5T, $6T> $2L = new $1T<>(%s.execute(), %s, $6T.class, $7L)".formatted(reqTotalExpr,
+					"$1T<$5T> $2L = new $1T<>(%s.execute(), %s, $6T.class, $7L)".formatted(reqTotalExpr,
 							dynamicProjectionParameterName != null ? "$4L" : "$4T.class"),
 					ProjectingResultIterator.class, it, root,
 					dynamicProjectionParameterName != null ? dynamicProjectionParameterName
@@ -575,7 +575,7 @@ final class ReindexerCodeBlocks {
 			String dynamicProjectionParameterName = this.context.getDynamicProjectionParameterName();
 			ReturnedType mappedType = this.context.getReturnedType();
 			builder.addStatement(
-					"$1T<$6T, $7T> $2L = new $1T<>($3L.execSql($4L), %s, $7T.class, $8L)"
+					"$1T<$6T> $2L = new $1T<>($3L.execSql($4L), %s, $7T.class, $8L)"
 						.formatted(dynamicProjectionParameterName != null ? "$5L" : "$5T.class"),
 					ProjectingResultIterator.class, this.context.localVariable("it"), ns, preparedQuery,
 					dynamicProjectionParameterName != null ? dynamicProjectionParameterName

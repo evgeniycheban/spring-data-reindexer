@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import net.minidev.json.JSONObject;
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
@@ -51,6 +52,7 @@ import org.springframework.data.convert.PropertyValueConverter;
 import org.springframework.data.convert.ValueConversionContext;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.mapping.PersistentProperty;
 import org.springframework.data.mapping.PersistentPropertyAccessor;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.EntityInstantiator;
@@ -173,7 +175,7 @@ public class MappingReindexerConverter
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <R, E> R project(EntityProjection<R, E> entityProjection, E entity) {
+	public <R> R project(EntityProjection<R, ?> entityProjection, Object entity) {
 		if (!entityProjection.isProjection()) {
 			return (R) read(entityProjection.getDomainType().getType(), entity);
 		}
@@ -181,19 +183,7 @@ public class MappingReindexerConverter
 			return this.projectionFactory.createProjection(entityProjection.getMappedType().getType(),
 					read(entityProjection.getDomainType().getType(), entity));
 		}
-		ReindexerPersistentEntity<?> domainEntity = this.mappingContext
-			.getRequiredPersistentEntity(entityProjection.getDomainType());
-		PersistentPropertyAccessor<E> domainAccessor = domainEntity.getPropertyAccessor(entity);
-		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext
-			.getRequiredPersistentEntity(entityProjection.getMappedType());
-		EntityInstantiator instantiator = this.instantiators.getInstantiatorFor(mappedEntity);
-		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, domainAccessor);
-		Object instance = instantiator.createInstance(mappedEntity, getParameterProvider(mappedEntity, valueProvider));
-		PersistentPropertyAccessor<?> mappedAccessor = mappedEntity.getPropertyAccessor(instance);
-		if (mappedEntity.requiresPropertyPopulation()) {
-			populateProperties(mappedEntity, mappedAccessor, valueProvider);
-		}
-		return (R) mappedAccessor.getBean();
+		return read(entityProjection.getMappedType().getType(), entityProjection.getDomainType().getType(), entity);
 	}
 
 	private ParameterValueProvider<ReindexerPersistentProperty> getParameterProvider(
@@ -204,21 +194,38 @@ public class MappingReindexerConverter
 		return new ValueExpressionParameterValueProvider<>(evaluator, this.conversionService, parameterProvider);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public <R> R read(Class<R> type, Object source) {
-		ReindexerPersistentEntity<?> entity = this.mappingContext.getRequiredPersistentEntity(type);
-		PersistentPropertyAccessor<?> accessor = entity.getPropertyAccessor(source);
-		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(entity, accessor);
-		populateProperties(entity, accessor, valueProvider);
-		return (R) accessor.getBean();
+		return read(type, type, source);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <R> R read(Class<R> mappedType, Class<?> domainType, Object source) {
+		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext.getRequiredPersistentEntity(mappedType);
+		ReindexerPersistentEntity<?> domainEntity = this.mappingContext.getRequiredPersistentEntity(domainType);
+		PersistentPropertyAccessor<?> accessor = source instanceof JSONObject document
+				? new JsonObjectPersistentPropertyAccessor(document) : domainEntity.getPropertyAccessor(source);
+		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, accessor);
+		Object instance = source;
+		if (!mappedType.isInstance(source)) {
+			EntityInstantiator instantiator = this.instantiators.getInstantiatorFor(mappedEntity);
+			instance = instantiator.createInstance(mappedEntity, getParameterProvider(mappedEntity, valueProvider));
+		}
+		if (mappedEntity.requiresPropertyPopulation()) {
+			populateProperties(mappedEntity, accessor, valueProvider);
+		}
+		return (R) instance;
 	}
 
 	private void populateProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor,
 			ReindexerPropertyValueProvider valueProvider) {
 		for (ReindexerPersistentProperty property : entity) {
-			if (!entity.isCreatorArgument(property) && property.isReadable()) {
-				accessor.setProperty(property, valueProvider.getPropertyValue(property));
+			if (entity.isCreatorArgument(property) || !property.isReadable()) {
+				continue;
+			}
+			Object value = valueProvider.getPropertyValue(property);
+			if (value != null) {
+				accessor.setProperty(property, value);
 			}
 		}
 	}
@@ -288,13 +295,6 @@ public class MappingReindexerConverter
 		private <T> @Nullable T readNamespaceReference(ReindexerPersistentProperty sourceProperty,
 				ReindexerPersistentProperty targetProperty) {
 			Object value = this.accessor.getProperty(sourceProperty);
-			if (ObjectUtils.isEmpty(value)) {
-				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
-				if (shouldCreateProxy(sourceProperty, namespaceReference)) {
-					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty);
-					return (T) (proxy != null ? (T) proxy : value);
-				}
-			}
 			// Unwrap the value if is a proxy, create a new proxy for the target type,
 			// propagating the underlying target object for further conversion and use,
 			// preserving the lazy-loading behavior of the original proxy.
@@ -302,6 +302,13 @@ public class MappingReindexerConverter
 				return (T) MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 						targetProperty.getType(), sourceProperty, proxy::getTarget, proxy.getSource(),
 						resolvedReference -> readPropertyValue(sourceProperty, targetProperty, resolvedReference));
+			}
+			if (ObjectUtils.isEmpty(value)) {
+				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
+				if (shouldCreateProxy(sourceProperty, namespaceReference)) {
+					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty);
+					return (T) (proxy != null ? (T) proxy : value);
+				}
 			}
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
@@ -394,8 +401,9 @@ public class MappingReindexerConverter
 		}
 
 		private @Nullable Object getSource(NamespaceReference namespaceReference) {
-			Object source = this.accessor
-				.getProperty(this.entity.getRequiredPersistentProperty(namespaceReference.indexName()));
+			ReindexerPersistentProperty property = this.entity
+				.getRequiredPersistentProperty(namespaceReference.indexName());
+			Object source = readPropertyValue(property, this.accessor.getProperty(property));
 			if (ObjectUtils.isEmpty(source)) {
 				return null;
 			}
@@ -429,6 +437,10 @@ public class MappingReindexerConverter
 
 		private ResultIterator<?> executeQuery(String query, ReindexerPersistentEntity<?> entity) {
 			return MappingReindexerConverter.this.reindexer.execSql(query, entity.getType());
+		}
+
+		private <T> @Nullable T readPropertyValue(ReindexerPersistentProperty property, @Nullable Object value) {
+			return readPropertyValue(property, property, value);
 		}
 
 		@SuppressWarnings("unchecked")
@@ -469,7 +481,8 @@ public class MappingReindexerConverter
 			if (target == null) {
 				return TypedValue.NULL;
 			}
-			Object value = BeanPropertyUtils.getProperty(target, name);
+			Object value = target instanceof JSONObject document ? document.get(name)
+					: BeanPropertyUtils.getProperty(target, name);
 			return value != null ? new TypedValue(value) : TypedValue.NULL;
 		}
 
@@ -486,6 +499,31 @@ public class MappingReindexerConverter
 		@Override
 		public Class<?>[] getSpecificTargetClasses() {
 			return new Class[] { Object.class };
+		}
+
+	}
+
+	private static final class JsonObjectPersistentPropertyAccessor implements PersistentPropertyAccessor<JSONObject> {
+
+		private final JSONObject document;
+
+		private JsonObjectPersistentPropertyAccessor(JSONObject document) {
+			this.document = document;
+		}
+
+		@Override
+		public void setProperty(PersistentProperty property, @Nullable Object value) {
+			// NOOP
+		}
+
+		@Override
+		public @Nullable Object getProperty(PersistentProperty property) {
+			return this.document.get(property.getName());
+		}
+
+		@Override
+		public JSONObject getBean() {
+			return this.document;
 		}
 
 	}

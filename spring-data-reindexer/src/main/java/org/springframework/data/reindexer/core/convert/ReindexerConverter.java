@@ -35,17 +35,16 @@ public interface ReindexerConverter
 		extends EntityConverter<ReindexerPersistentEntity<?>, ReindexerPersistentProperty, Object, Object> {
 
 	/**
-	 * Apply a projection to {@link E} and return the projection return type {@code R}.
-	 * {@link EntityProjection#isProjection() Non-projecting} descriptors fall back to
-	 * {@link #read(Class, Object) regular object materialization}.
+	 * Apply a projection to {@code entity} and return the projection return type
+	 * {@code R}. {@link EntityProjection#isProjection() Non-projecting} descriptors fall
+	 * back to {@link #read(Class, Object) regular object materialization}.
 	 * @param entityProjection the projection entity descriptor, must not be
 	 * {@literal null}.
 	 * @param entity must not be {@literal null}.
 	 * @param <R> projection type
-	 * @param <E> entity type
 	 * @return a new instance of the projection return type {@code R}.
 	 */
-	<R, E> R project(EntityProjection<R, E> entityProjection, E entity);
+	<R> R project(EntityProjection<R, ?> entityProjection, Object entity);
 
 	/**
 	 * Returns a {@link EntityProjectionIntrospector} that introspects the returned type.
