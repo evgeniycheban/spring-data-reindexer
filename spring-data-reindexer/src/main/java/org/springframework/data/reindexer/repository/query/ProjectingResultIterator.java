@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.minidev.json.JSONObject;
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.AggregationResult;
 import ru.rt.restream.reindexer.AggregationResult.Facet;
@@ -140,7 +139,7 @@ public final class ProjectingResultIterator<M> implements ReindexerResultAccesso
 			Object entity = this.delegate.next();
 			return project(entity);
 		}
-		JSONObject document = new JSONObject();
+		Map<String, Object> document = new HashMap<>();
 		int aggregationPosition = this.aggregationPosition++;
 		List<String> fields = this.aggregationFacet.getFields();
 		for (int i = 0; i < fields.size(); i++) {

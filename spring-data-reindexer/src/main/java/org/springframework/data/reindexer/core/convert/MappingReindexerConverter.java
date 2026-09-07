@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import net.minidev.json.JSONObject;
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
@@ -203,8 +202,8 @@ public class MappingReindexerConverter
 	private <R> R read(Class<R> mappedType, Class<?> domainType, Object source) {
 		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext.getRequiredPersistentEntity(mappedType);
 		ReindexerPersistentEntity<?> domainEntity = this.mappingContext.getRequiredPersistentEntity(domainType);
-		PersistentPropertyAccessor<?> accessor = source instanceof JSONObject document
-				? new JsonObjectPersistentPropertyAccessor(document) : domainEntity.getPropertyAccessor(source);
+		PersistentPropertyAccessor<?> accessor = source instanceof Map<?, ?> map
+				? new MapPersistentPropertyAccessor(map) : domainEntity.getPropertyAccessor(source);
 		ReindexerPropertyValueProvider valueProvider = new ReindexerPropertyValueProvider(domainEntity, accessor);
 		Object instance = source;
 		if (!mappedType.isInstance(source)) {
@@ -212,7 +211,7 @@ public class MappingReindexerConverter
 			instance = instantiator.createInstance(mappedEntity, getParameterProvider(mappedEntity, valueProvider));
 		}
 		if (mappedEntity.requiresPropertyPopulation()) {
-			populateProperties(mappedEntity, accessor, valueProvider);
+			populateProperties(mappedEntity, mappedEntity.getPropertyAccessor(instance), valueProvider);
 		}
 		return (R) instance;
 	}
@@ -481,7 +480,7 @@ public class MappingReindexerConverter
 			if (target == null) {
 				return TypedValue.NULL;
 			}
-			Object value = target instanceof JSONObject document ? document.get(name)
+			Object value = target instanceof Map<?, ?> map ? map.get(name)
 					: BeanPropertyUtils.getProperty(target, name);
 			return value != null ? new TypedValue(value) : TypedValue.NULL;
 		}
@@ -503,12 +502,12 @@ public class MappingReindexerConverter
 
 	}
 
-	private static final class JsonObjectPersistentPropertyAccessor implements PersistentPropertyAccessor<JSONObject> {
+	private static final class MapPersistentPropertyAccessor implements PersistentPropertyAccessor<Map<?, ?>> {
 
-		private final JSONObject document;
+		private final Map<?, ?> map;
 
-		private JsonObjectPersistentPropertyAccessor(JSONObject document) {
-			this.document = document;
+		private MapPersistentPropertyAccessor(Map<?, ?> map) {
+			this.map = map;
 		}
 
 		@Override
@@ -518,12 +517,12 @@ public class MappingReindexerConverter
 
 		@Override
 		public @Nullable Object getProperty(PersistentProperty property) {
-			return this.document.get(property.getName());
+			return this.map.get(property.getName());
 		}
 
 		@Override
-		public JSONObject getBean() {
-			return this.document;
+		public Map<?, ?> getBean() {
+			return this.map;
 		}
 
 	}
