@@ -139,9 +139,9 @@ public final class ProjectingResultIterator<M> implements ReindexerResultAccesso
 			Object entity = this.delegate.next();
 			return project(entity);
 		}
-		Map<String, Object> document = new HashMap<>();
 		int aggregationPosition = this.aggregationPosition++;
 		List<String> fields = this.aggregationFacet.getFields();
+		Map<String, Object> document = new HashMap<>(fields.size());
 		for (int i = 0; i < fields.size(); i++) {
 			String field = fields.get(i);
 			Facet facet = this.aggregationFacet.getFacets().get(aggregationPosition);
