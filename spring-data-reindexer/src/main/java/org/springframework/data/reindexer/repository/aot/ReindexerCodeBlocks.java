@@ -20,8 +20,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
+import ru.rt.restream.reindexer.binding.Consts;
 
 import org.jspecify.annotations.NullUnmarked;
 
@@ -55,6 +58,8 @@ import org.springframework.util.StringUtils;
  * @author Evgeniy Cheban
  */
 final class ReindexerCodeBlocks {
+
+	private static final Log logger = LogFactory.getLog(ReindexerCodeBlocks.class);
 
 	static DerivedQueryCodeBlockBuilder derivedQueryCodeBlockBuilder(PartTree tree,
 			AotQueryMethodGenerationContext context, ReindexerMappingContext mappingContext,
@@ -160,7 +165,12 @@ final class ReindexerCodeBlocks {
 		}
 
 		private CodeBlock createJoinCodeBlock(ReindexerPersistentEntity<?> entity) {
-			CodeBlock.Builder builder = CodeBlock.builder();
+			return createJoinCodeBlock(this.stringQueryBuilder, CodeBlock.builder().build(), entity);
+		}
+
+		private CodeBlock createJoinCodeBlock(StringQueryBuilder parentStringQueryBuilder, CodeBlock parent,
+				ReindexerPersistentEntity<?> entity) {
+			CodeBlock.Builder builder = parent.toBuilder();
 			for (ReindexerPersistentProperty persistentProperty : entity
 				.getPersistentProperties(NamespaceReference.class)) {
 				NamespaceReference namespaceReference = persistentProperty.getNamespaceReference();
@@ -173,18 +183,36 @@ final class ReindexerCodeBlocks {
 				}
 				ReindexerPersistentEntity<?> referencedEntity = this.mappingContext
 					.getRequiredPersistentEntity(persistentProperty.getActualType());
-				String indexName = StringUtils.hasText(namespaceReference.referencedIndexName())
-						? namespaceReference.referencedIndexName() : referencedEntity.getRequiredIdProperty().getName();
-				Query.Condition condition = persistentProperty.isCollectionLike() ? Query.Condition.SET
-						: Query.Condition.EQ;
-				CodeBlock onCodeBlock = CodeBlock.of("query($1T.class).on($2S, $3T.$4L, $5S)",
-						referencedEntity.getType(), namespaceReference.indexName(), Query.Condition.class, condition,
-						indexName);
+				boolean isSelfJoinV2 = this.mappingContext.getQueryFormatVersion() == Consts.QUERY_FORMAT_V2
+						&& referencedEntity.getType().isAssignableFrom(entity.getType());
+				if (isSelfJoinV2) {
+					if (logger.isTraceEnabled()) {
+						logger.trace(
+								"Circular reference detected: %s.%s; The self-join (V2) property will be fetched lazily using proxy"
+									.formatted(entity.getName(), persistentProperty.getName()));
+					}
+					continue;
+				}
+				ReindexerPersistentProperty referencedProperty = StringUtils
+					.hasText(namespaceReference.referencedIndexName())
+							? referencedEntity.getRequiredPersistentProperty(namespaceReference.referencedIndexName())
+							: referencedEntity.getRequiredIdProperty();
+				ReindexerPersistentProperty joinProperty = entity
+					.getRequiredPersistentProperty(namespaceReference.indexName());
+				Query.Condition condition = joinProperty.isCollectionLike() ? Query.Condition.SET : Query.Condition.EQ;
+				String joinIndexName = joinProperty.getIndexName();
+				String referencedIndexName = referencedProperty.getIndexName();
 				StringQueryBuilder joinStringQueryBuilder = new StringQueryBuilder();
 				joinStringQueryBuilder.namespace(referencedEntity.getNamespace());
-				joinStringQueryBuilder.on(StringQueryBuilder.Operation.AND, namespaceReference.indexName(), condition,
-						indexName);
-				this.stringQueryBuilder.join(joinStringQueryBuilder, namespaceReference.joinType());
+				joinStringQueryBuilder.on(StringQueryBuilder.Operation.AND, joinIndexName, condition,
+						referencedIndexName);
+				parentStringQueryBuilder.join(joinStringQueryBuilder, namespaceReference.joinType());
+				CodeBlock joinQueryCodeBlock = CodeBlock.of("query($1T.class)", referencedEntity.getType());
+				CodeBlock joinCodeBlock = this.mappingContext.getQueryFormatVersion() == Consts.QUERY_FORMAT_V2
+						? createJoinCodeBlock(joinStringQueryBuilder, joinQueryCodeBlock, referencedEntity)
+						: joinQueryCodeBlock;
+				CodeBlock onCodeBlock = CodeBlock.of("$1L.on($2S, $3T.$4L, $5S)", joinCodeBlock, joinIndexName,
+						Query.Condition.class, condition, referencedIndexName);
 				if (namespaceReference.joinType() == JoinType.LEFT) {
 					builder.add(".leftJoin($1L, $2S)", onCodeBlock, persistentProperty.getName());
 				}

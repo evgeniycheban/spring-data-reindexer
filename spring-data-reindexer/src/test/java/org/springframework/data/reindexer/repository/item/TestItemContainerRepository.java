@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.repository.item;
 
+import java.util.Optional;
+
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.item.entity.TestItemContainer;
 import org.springframework.stereotype.Repository;
@@ -24,5 +26,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface TestItemContainerRepository extends ReindexerRepository<TestItemContainer, Long> {
+
+	Optional<TestItemContainer> findByName(String name);
 
 }

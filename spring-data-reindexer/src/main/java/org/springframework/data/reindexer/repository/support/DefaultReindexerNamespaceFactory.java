@@ -45,7 +45,7 @@ import org.springframework.util.ConcurrentLruCache;
  */
 public final class DefaultReindexerNamespaceFactory implements ReindexerNamespaceFactory {
 
-	private static final Log LOGGER = LogFactory.getLog(DefaultReindexerNamespaceFactory.class);
+	private static final Log logger = LogFactory.getLog(DefaultReindexerNamespaceFactory.class);
 
 	// Copy of ReindexAnnotationScanner#MAPPED_TYPES
 	// @formatter:off
@@ -119,7 +119,7 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 
 	private void createMissingIndexesIfNeeded(ReindexerNamespace<?> namespace, ReindexerPersistentEntity<?> entity) {
 		if (!this.mappingContext.isAutoIndexCreation()) {
-			LOGGER.trace("Auto index creation is disabled; skipping");
+			logger.trace("Auto index creation is disabled; skipping");
 			return;
 		}
 		// Create missing indexes in Reindexer with the default configuration.
@@ -153,15 +153,15 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 	}
 
 	private void createIndex(String namespaceName, ReindexerIndex index) {
-		if (LOGGER.isTraceEnabled()) {
-			LOGGER.trace("Creating index: %s in namespace: %s".formatted(index.getName(), namespaceName));
+		if (logger.isTraceEnabled()) {
+			logger.trace("Creating index: %s in namespace: %s".formatted(index.getName(), namespaceName));
 		}
 		try {
 			this.reindexer.addIndex(namespaceName, index);
 		}
 		catch (IndexConflictException e) {
-			if (LOGGER.isWarnEnabled()) {
-				LOGGER.warn(
+			if (logger.isWarnEnabled()) {
+				logger.warn(
 						"Index: %s already exists in namespace: %s; skipping".formatted(index.getName(), namespaceName),
 						e);
 			}

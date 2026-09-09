@@ -65,6 +65,7 @@
 
 		<!-- Enabled in aot profile -->
 		<spring.aot.enabled>false</spring.aot.enabled>
+		<spring.data.reindexer.query-format-version>1</spring.data.reindexer.query-format-version>
 	</properties>
 
 	<profiles>
@@ -72,6 +73,12 @@
 			<id>aot</id>
 			<properties>
 				<spring.aot.enabled>true</spring.aot.enabled>
+			</properties>
+		</profile>
+		<profile>
+			<id>query-format-v2</id>
+			<properties>
+				<spring.data.reindexer.query-format-version>2</spring.data.reindexer.query-format-version>
 			</properties>
 		</profile>
 		<profile>

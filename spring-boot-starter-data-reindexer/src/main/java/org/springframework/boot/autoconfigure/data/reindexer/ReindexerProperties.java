@@ -65,12 +65,6 @@ public class ReindexerProperties {
 	private int connectionPoolSize = 8;
 
 	/**
-	 * Configure reindexer query format version. Defaults to
-	 * {@link Consts#QUERY_FORMAT_V1}.
-	 */
-	private int queryFormatVersion = Consts.QUERY_FORMAT_V1;
-
-	/**
 	 * Configure reindexer request timeout. Defaults to 60 seconds.
 	 */
 	private Duration requestTimeout = Duration.ofSeconds(60L);
@@ -129,14 +123,6 @@ public class ReindexerProperties {
 
 	public void setConnectionPoolSize(int connectionPoolSize) {
 		this.connectionPoolSize = connectionPoolSize;
-	}
-
-	public int getQueryFormatVersion() {
-		return this.queryFormatVersion;
-	}
-
-	public void setQueryFormatVersion(int queryFormatVersion) {
-		this.queryFormatVersion = queryFormatVersion;
 	}
 
 	public Duration getRequestTimeout() {

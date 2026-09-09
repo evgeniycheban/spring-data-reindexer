@@ -221,8 +221,9 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void getEagerItemWhenQueryFormatV2ThenNativeNestedJoinsSupportUsed() {
-		Assumptions.assumeTrue(this.reindexer.getBinding().queryFormatVersion() == Consts.QUERY_FORMAT_V2,
-				"Only query format v2 supports nested joins");
+		Assumptions.assumeTrue(
+				getQueryFormatVersion(TestItemContainerRepository.class, "findById") == Consts.QUERY_FORMAT_V2,
+				"Only query format V2 supports nested joins");
 		this.joinedItemRepository.save(TestJoinedItem.builder().id(1L).name("TestJoinedName1").build());
 		this.joinedItemRepository
 			.save(TestJoinedItem.builder().id(2L).name("TestJoinedName2").nestedJoinedItemId(1L).build());
@@ -231,6 +232,46 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(3L).build());
 		this.itemContainerRepository.save(TestItemContainer.builder().id(1L).mandatoryItemId(1L).build());
 		TestItemContainer found = this.itemContainerRepository.findById(1L).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(1L);
+		// Nested eager joins are fetched using native nested joins support.
+		TestItem eagerItem = found.getEagerItem();
+		assertThat(eagerItem).isNotNull();
+		assertThat(eagerItem).isNotInstanceOf(LazyLoadingProxy.class);
+		assertThat(eagerItem.getId()).isEqualTo(1L);
+		assertThat(eagerItem.getName()).isEqualTo("TestName");
+		TestJoinedItem joinedItem = eagerItem.getJoinedItem();
+		assertThat(joinedItem).isNotNull();
+		assertThat(joinedItem).isNotInstanceOf(LazyLoadingProxy.class);
+		assertThat(joinedItem.getId()).isEqualTo(3L);
+		assertThat(joinedItem.getName()).isEqualTo("TestJoinedName3");
+		// Self-joins are fetched lazily using proxies.
+		TestJoinedItem selfJoinedItem1 = joinedItem.getNestedJoinedItem();
+		assertThat(selfJoinedItem1).isNotNull();
+		assertThat(selfJoinedItem1).isInstanceOf(LazyLoadingProxy.class);
+		assertThat(selfJoinedItem1.getId()).isEqualTo(2L);
+		assertThat(selfJoinedItem1.getName()).isEqualTo("TestJoinedName2");
+		TestJoinedItem selfJoinedItem2 = selfJoinedItem1.getNestedJoinedItem();
+		assertThat(selfJoinedItem2).isNotNull();
+		assertThat(selfJoinedItem2).isInstanceOf(LazyLoadingProxy.class);
+		assertThat(selfJoinedItem2.getId()).isEqualTo(1L);
+		assertThat(selfJoinedItem2.getName()).isEqualTo("TestJoinedName1");
+	}
+
+	@Test
+	void findByNameWhenQueryFormatV2ThenNativeNestedJoinsSupportUsed() {
+		Assumptions.assumeTrue(
+				getQueryFormatVersion(TestItemContainerRepository.class, "findByName") == Consts.QUERY_FORMAT_V2,
+				"Only query format V2 supports nested joins");
+		this.joinedItemRepository.save(TestJoinedItem.builder().id(1L).name("TestJoinedName1").build());
+		this.joinedItemRepository
+			.save(TestJoinedItem.builder().id(2L).name("TestJoinedName2").nestedJoinedItemId(1L).build());
+		this.joinedItemRepository
+			.save(TestJoinedItem.builder().id(3L).name("TestJoinedName3").nestedJoinedItemId(2L).build());
+		this.repository.save(TestItem.builder().id(1L).name("TestName").joinedItemId(3L).build());
+		this.itemContainerRepository
+			.save(TestItemContainer.builder().id(1L).name("TestContainerName").mandatoryItemId(1L).build());
+		TestItemContainer found = this.itemContainerRepository.findByName("TestContainerName").orElse(null);
 		assertThat(found).isNotNull();
 		assertThat(found.getId()).isEqualTo(1L);
 		// Nested eager joins are fetched using native nested joins support.

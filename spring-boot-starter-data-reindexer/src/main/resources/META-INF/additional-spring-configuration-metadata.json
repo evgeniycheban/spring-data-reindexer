@@ -7,6 +7,12 @@
       ]
     },
     {
+      "name": "spring.data.reindexer.query-format-version",
+      "type": "java.lang.Integer",
+      "description": "Query format version to use. Only considered in AOT mode.",
+      "defaultValue": 1
+    },
+    {
       "name": "spring.data.reindexer.data-source-factory",
       "defaultValue": "next"
     },

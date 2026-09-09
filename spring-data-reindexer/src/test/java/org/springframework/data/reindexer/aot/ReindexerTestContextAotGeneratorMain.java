@@ -43,13 +43,13 @@ import org.springframework.util.StringUtils;
  */
 public class ReindexerTestContextAotGeneratorMain {
 
-	private static final Log LOG = LogFactory.getLog(ReindexerTestContextAotGeneratorMain.class);
+	private static final Log logger = LogFactory.getLog(ReindexerTestContextAotGeneratorMain.class);
 
 	public static void main(String[] args) {
 		Assert.isTrue(args.length >= 2, () -> "Usage: %s <sourceOutput> <basePackage>");
 		Path sourceOutput = Paths.get(args[0]);
 		String basePackage = args[1];
-		LOG.info(String.format("Generating AOT artifacts for: %s to: %s", basePackage, sourceOutput));
+		logger.info(String.format("Generating AOT artifacts for: %s to: %s", basePackage, sourceOutput));
 		GeneratedFiles generatedFiles = new FileSystemGeneratedFiles(sourceOutput);
 		TestContextAotGenerator generator = new TestContextAotGenerator(generatedFiles);
 		Stream<Class<?>> testClasses = scanForTestClasses(basePackage);

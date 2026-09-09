@@ -61,7 +61,7 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 	private static final boolean USE_VISITOR_BASED_QUERY = ClassUtils.isPresent("net.sf.jsqlparser.parser.CCJSqlParser",
 			ReindexerRepositoryContributor.class.getClassLoader());
 
-	private static final Log LOG = LogFactory.getLog(ReindexerRepositoryContributor.class);
+	private static final Log logger = LogFactory.getLog(ReindexerRepositoryContributor.class);
 
 	private final ReindexerMappingContext mappingContext;
 
@@ -101,7 +101,7 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 			return MethodContributor.forQueryMethod(queryMethod).metadataOnly(Collections::emptyMap);
 		}
 		if (queryMethod.hasQueryAnnotation() && USE_VISITOR_BASED_QUERY && !queryMethod.isNativeQuery()) {
-			LOG.warn("""
+			logger.warn("""
 					Using JSQLParser in AOT mode is not supported;
 					Falling back to standard mode; Offending method: %s;
 					Exclude JSQLParser or set `nativeQuery = true` to proceed in AOT mode.
@@ -134,6 +134,7 @@ public final class ReindexerRepositoryContributor extends RepositoryContributor 
 			body.add(";\n");
 			body.add(executionCodeBlock);
 			serialized.put("query", aotQuery.stringQuery());
+			serialized.put("queryFormatVersion", this.mappingContext.getQueryFormatVersion());
 			return body.build();
 		});
 	}

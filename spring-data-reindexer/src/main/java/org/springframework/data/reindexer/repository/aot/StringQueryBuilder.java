@@ -245,6 +245,7 @@ final class StringQueryBuilder {
 		if (joinStringQueryBuilder.onEntries.size() > 1) {
 			stringBuilder.append(")");
 		}
+		stringBuilder.append(joinStringQueryBuilder.getJoinPart());
 		return stringBuilder.toString();
 	}
 

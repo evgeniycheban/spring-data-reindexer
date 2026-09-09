@@ -23,5 +23,7 @@ jobs:
       #          sudo apt-get install reindexer-dev
       - name: Build spring-data-reindexer in AOT mode
         run: ./mvnw --batch-mode --update-snapshots clean verify -Pci,nullaway,aot
+      - name: Build spring-data-reindexer in AOT mode using query format V2
+        run: ./mvnw --batch-mode --update-snapshots clean verify -Pci,nullaway,aot,query-format-v2
       - name: Build spring-data-reindexer
         run: ./mvnw --batch-mode --update-snapshots clean verify -Pci,nullaway
