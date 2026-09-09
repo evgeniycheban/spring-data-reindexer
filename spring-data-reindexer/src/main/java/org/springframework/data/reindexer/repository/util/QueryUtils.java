@@ -44,7 +44,7 @@ import org.springframework.util.StringUtils;
  */
 public final class QueryUtils {
 
-	private static final Log LOG = LogFactory.getLog(QueryUtils.class);
+	private static final Log logger = LogFactory.getLog(QueryUtils.class);
 
 	private QueryUtils() {
 		throw new IllegalStateException("Cannot instantiate a utility class!");
@@ -121,8 +121,8 @@ public final class QueryUtils {
 			boolean isSelfJoinV2 = mappingContext.getQueryFormatVersion() == Consts.QUERY_FORMAT_V2
 					&& referencedEntity.getType().isAssignableFrom(domainType);
 			if (isSelfJoinV2) {
-				if (LOG.isTraceEnabled()) {
-					LOG.trace(
+				if (logger.isTraceEnabled()) {
+					logger.trace(
 							"Circular reference detected: %s.%s; The self-join (V2) property will be fetched lazily using proxy"
 								.formatted(persistentEntity.getName(), persistentProperty.getName()));
 				}

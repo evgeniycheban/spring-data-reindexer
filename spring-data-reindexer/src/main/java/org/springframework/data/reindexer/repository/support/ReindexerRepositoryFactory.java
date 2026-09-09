@@ -55,7 +55,7 @@ import org.springframework.util.ClassUtils;
  */
 public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 
-	private static final Log LOG = LogFactory.getLog(ReindexerRepositoryFactory.class);
+	private static final Log logger = LogFactory.getLog(ReindexerRepositoryFactory.class);
 
 	private static final boolean USE_VISITOR_BASED_QUERY = ClassUtils.isPresent("net.sf.jsqlparser.parser.CCJSqlParser",
 			ReindexerRepositoryFactory.class.getClassLoader());
@@ -141,8 +141,8 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 							ReindexerRepositoryFactory.this.namespaceFactory, accessor);
 				}
 				// Fallbacks to a lightweight implementation.
-				if (LOG.isWarnEnabled()) {
-					LOG.warn("""
+				if (logger.isWarnEnabled()) {
+					logger.warn("""
 							JSQLParser not found on the classpath. Falling back to %s for query method %s.
 							Only native Reindexer SQL is supported.
 							Add com.github.jsqlparser:jsqlparser or set `nativeQuery = true` on the query method."""

@@ -143,8 +143,8 @@ public class ReindexerDataAutoConfiguration {
 		context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
 		context.setAutoIndexCreation(properties.isAutoIndexCreation());
 		context.setQueryFormatVersion(() -> {
-			Reindexer rx = reindexer.getIfAvailable();
-			return rx != null ? rx.getBinding().queryFormatVersion() : properties.getQueryFormatVersion();
+			Reindexer rx = reindexer.getObject();
+			return rx.getBinding().queryFormatVersion();
 		});
 		return context;
 	}

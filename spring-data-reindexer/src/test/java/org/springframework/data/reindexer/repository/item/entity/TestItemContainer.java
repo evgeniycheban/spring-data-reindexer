@@ -44,6 +44,9 @@ public class TestItemContainer {
 	@Reindex(name = "id", isPrimaryKey = true)
 	private Long id;
 
+	@Reindex(name = "name")
+	private String name;
+
 	@Reindex(name = "mandatory_item_id")
 	private Long mandatoryItemId;
 

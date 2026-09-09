@@ -69,7 +69,7 @@ import org.springframework.util.Assert;
  */
 public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, ID> {
 
-	private static final Log LOGGER = LogFactory.getLog(SimpleReindexerRepository.class);
+	private static final Log logger = LogFactory.getLog(SimpleReindexerRepository.class);
 
 	private final ReindexerEntityInformation<T, ID> entityInformation;
 
@@ -315,8 +315,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 				if (value instanceof String s) {
 					StringMatcher stringMatcher = propertySpecifier.getStringMatcher();
 					if (stringMatcher == null) {
-						if (LOGGER.isTraceEnabled()) {
-							LOGGER.trace("No StringMatcher provided for property: " + propertyPath
+						if (logger.isTraceEnabled()) {
+							logger.trace("No StringMatcher provided for property: " + propertyPath
 									+ " defaults to `StringMatcher.DEFAULT`");
 						}
 						stringMatcher = StringMatcher.DEFAULT;

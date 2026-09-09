@@ -42,6 +42,7 @@ import org.springframework.data.reindexer.repository.item.converter.PriceReading
 import org.springframework.data.reindexer.repository.item.converter.PriceWritingConverter;
 import org.springframework.data.reindexer.repository.item.converter.PlaceReadingConverter;
 import org.springframework.data.reindexer.repository.item.entity.TestItem;
+import org.springframework.data.reindexer.util.RepositoryAotMetadataUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -61,6 +62,11 @@ public abstract class AbstractReindexerTest {
 	@AfterEach
 	void tearDown() {
 		reindexer.clear();
+	}
+
+	int getQueryFormatVersion(Class<?> repositoryClass, String methodName) {
+		return RepositoryAotMetadataUtils.getQueryFormatVersion(repositoryClass, methodName)
+			.orElseGet(() -> this.reindexer.getBinding().queryFormatVersion());
 	}
 
 	@Configuration(proxyBeanMethods = false)

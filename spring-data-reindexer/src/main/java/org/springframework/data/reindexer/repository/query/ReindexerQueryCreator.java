@@ -243,7 +243,8 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			// Include ranks to the query output.
 			criteria.withRank();
 		}
-		if (this.tree.isDelete()) {
+		// For delete, exists, and count operations, only inner joins are considered.
+		if (this.tree.isDelete() || this.tree.isExistsProjection() || this.tree.isCountProjection()) {
 			return QueryUtils.withInnerJoins(criteria, this.returnedType.getDomainType(), this.mappingContext,
 					this.namespaceFactory);
 		}

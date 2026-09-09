@@ -48,6 +48,12 @@
                                         <argument>${project.build.directory}/generated-test-sources/aot</argument>
                                         <argument>org.springframework.data.reindexer</argument>
                                     </arguments>
+                                    <systemProperties>
+                                        <systemProperty>
+                                            <key>spring.data.reindexer.query-format-version</key>
+                                            <value>${spring.data.reindexer.query-format-version}</value>
+                                        </systemProperty>
+                                    </systemProperties>
                                     <classpathScope>test</classpathScope>
                                 </configuration>
                             </execution>
@@ -67,6 +73,21 @@
                                     <sources>
                                         <source>${project.build.directory}/generated-test-sources/aot</source>
                                     </sources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>add-aot-test-recources</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>add-test-resource</goal>
+                                </goals>
+                                <configuration>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.build.directory}/generated-test-sources/aot/resources</directory>
+                                            <targetPath>aot/metadata</targetPath>
+                                        </resource>
+                                    </resources>
                                 </configuration>
                             </execution>
                         </executions>

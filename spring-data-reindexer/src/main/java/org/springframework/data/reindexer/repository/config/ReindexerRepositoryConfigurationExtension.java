@@ -19,10 +19,12 @@ import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Collections;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
+import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.beans.factory.aot.BeanRegistrationAotProcessor;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
@@ -37,6 +39,7 @@ import org.springframework.data.repository.config.AotRepositoryContext;
 import org.springframework.data.repository.config.RepositoryConfigurationExtension;
 import org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport;
 import org.springframework.data.repository.config.RepositoryRegistrationAotProcessor;
+import org.springframework.data.util.Lazy;
 
 /**
  * A {@link RepositoryConfigurationExtension} for Reindexer.
@@ -86,24 +89,31 @@ public class ReindexerRepositoryConfigurationExtension extends RepositoryConfigu
 
 	public static class ReindexerRepositoryRegistrationAotProcessor extends RepositoryRegistrationAotProcessor {
 
+		private static final Log logger = LogFactory.getLog(ReindexerRepositoryRegistrationAotProcessor.class);
+
 		private static final String REINDEXER_MODULE_NAME = "reindexer";
+
+		private static final String REINDEXER_QUERY_FORMAT_VERSION_KEY = "spring.data.reindexer.query-format-version";
 
 		@Override
 		protected @Nullable RepositoryContributor contributeAotRepository(AotRepositoryContext repositoryContext) {
 			if (!repositoryContext.isGeneratedRepositoriesEnabled(REINDEXER_MODULE_NAME)) {
 				return null;
 			}
-			ConfigurableListableBeanFactory beanFactory = repositoryContext.getBeanFactory();
-			ReindexerMappingContext context = beanFactory.getBeanProvider(ReindexerMappingContext.class)
-				.getIfAvailable(() -> {
-					ReindexerCustomConversions conversions = beanFactory
-						.getBeanProvider(ReindexerCustomConversions.class)
-						.getIfAvailable(ReindexerCustomConversions::new);
-					ReindexerMappingContext mappingContext = new ReindexerMappingContext();
-					mappingContext.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
-					return mappingContext;
-				});
-			return new ReindexerRepositoryContributor(repositoryContext, context);
+			ReindexerCustomConversions conversions = new ReindexerCustomConversions();
+			ReindexerMappingContext mappingContext = new ReindexerMappingContext();
+			mappingContext.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
+			mappingContext.setAutoIndexCreation(false);
+			mappingContext.setQueryFormatVersion(Lazy.of(() -> {
+				int queryFormatVersion = repositoryContext.getEnvironment()
+					.getProperty(REINDEXER_QUERY_FORMAT_VERSION_KEY, Integer.class, Consts.QUERY_FORMAT_V2);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Using query format version: " + queryFormatVersion);
+				}
+				return queryFormatVersion;
+			}));
+			mappingContext.afterPropertiesSet();
+			return new ReindexerRepositoryContributor(repositoryContext, mappingContext);
 		}
 
 	}

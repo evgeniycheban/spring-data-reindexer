@@ -55,7 +55,7 @@ import org.springframework.util.ReflectionUtils;
  */
 public final class LazyLoadingProxyFactory {
 
-	private static final Log LOGGER = LogFactory.getLog(LazyLoadingProxyFactory.class);
+	private static final Log logger = LogFactory.getLog(LazyLoadingProxyFactory.class);
 
 	private final SpringObjenesis objenesis = new SpringObjenesis();
 
@@ -239,15 +239,15 @@ public final class LazyLoadingProxyFactory {
 			}
 			try (AcquiredLock l = this.readLock.lock()) {
 				if (this.resolved) {
-					if (LOGGER.isTraceEnabled()) {
-						LOGGER.trace(String.format("Accessing already resolved lazy loading property %s.%s",
+					if (logger.isTraceEnabled()) {
+						logger.trace(String.format("Accessing already resolved lazy loading property %s.%s",
 								this.property.getOwner().getName(), this.property.getName()));
 					}
 					return this.result;
 				}
 			}
-			if (LOGGER.isTraceEnabled()) {
-				LOGGER.trace(String.format("Resolving lazy loading property %s.%s", this.property.getOwner().getName(),
+			if (logger.isTraceEnabled()) {
+				logger.trace(String.format("Resolving lazy loading property %s.%s", this.property.getOwner().getName(),
 						this.property.getName()));
 			}
 			try (AcquiredLock l = this.writeLock.lock()) {
