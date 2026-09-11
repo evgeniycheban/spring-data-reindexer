@@ -59,6 +59,7 @@ import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.StatementVisitorAdapter;
 import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.select.FromItemVisitorAdapter;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.Limit;
 import net.sf.jsqlparser.statement.select.OrderByElement;
@@ -329,10 +330,13 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		private final Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor;
 
+		private final ReindexerFromItemExpressionVisitor fromItemVisitor;
+
 		private ReindexerSelectVisitor(ReindexerParameterAccessor parameterAccessor,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor) {
 			this.parameterAccessor = parameterAccessor;
 			this.valueResolvingVisitor = valueResolvingVisitor;
+			this.fromItemVisitor = new ReindexerFromItemExpressionVisitor(this);
 		}
 
 		@SuppressWarnings("unchecked")
@@ -354,11 +358,10 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		@Override
 		public <S> Query<?> visit(PlainSelect plainSelect, S context) {
-			Table table = (Table) plainSelect.getFromItem();
-			ReindexerPersistentEntity<?> entity = StringBasedReindexerQuery.this.mappingContext
-				.getRequiredPersistentEntity(table.getName());
-			Namespace<?> namespace = openNamespace(entity.getNamespace());
-			Query<?> root = namespace.query();
+			QueryContext rootContext = context instanceof QueryContext queryContext ? queryContext : new QueryContext();
+			Query<?> root = plainSelect.getFromItem().accept(this.fromItemVisitor, rootContext);
+			Table table = rootContext.getRequiredTable();
+			ReindexerPersistentEntity<?> entity = rootContext.getRequiredEntity();
 			// Apply select.
 			ReindexerSelectItemExpressionVisitor selectItemVisitor = new ReindexerSelectItemExpressionVisitor(root,
 					this.valueResolvingVisitor);
@@ -366,11 +369,10 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			// Apply joins.
 			if (plainSelect.getJoins() != null) {
 				for (Join join : plainSelect.getJoins()) {
-					Table joinTable = (Table) join.getFromItem();
-					ReindexerPersistentEntity<?> joinEntity = StringBasedReindexerQuery.this.mappingContext
-						.getRequiredPersistentEntity(joinTable.getName());
-					Namespace<?> joinNamespace = openNamespace(joinEntity.getNamespace());
-					Query<?> joinQuery = joinNamespace.query();
+					QueryContext joinContext = new QueryContext();
+					Query<?> joinQuery = join.getFromItem().accept(this.fromItemVisitor, joinContext);
+					Table joinTable = joinContext.getRequiredTable();
+					ReindexerPersistentEntity<?> joinEntity = joinContext.getRequiredEntity();
 					ReindexerJoinOnExpressionVisitor joinOnVisitor = new ReindexerJoinOnExpressionVisitor(joinQuery,
 							Lazy.of(() -> createParameterMapper(joinEntity.getType())), this.valueResolvingVisitor,
 							this);
@@ -449,6 +451,38 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				throw new InvalidDataAccessApiUsageException("GROUP BY expression is not supported");
 			}
 			return root;
+		}
+
+	}
+
+	private final class ReindexerFromItemExpressionVisitor extends FromItemVisitorAdapter<Query<?>> {
+
+		private final ReindexerSelectVisitor selectVisitor;
+
+		private ReindexerFromItemExpressionVisitor(ReindexerSelectVisitor selectVisitor) {
+			this.selectVisitor = selectVisitor;
+		}
+
+		@Override
+		public <S> Query<?> visit(Table table, S context) {
+			QueryContext queryContext = getQueryContext(context);
+			queryContext.table = table;
+			queryContext.entity = StringBasedReindexerQuery.this.mappingContext
+				.getRequiredPersistentEntity(table.getName());
+			Namespace<?> namespace = openNamespace(queryContext.entity.getNamespace());
+			return namespace.query();
+		}
+
+		@Override
+		public <S> Query<?> visit(ParenthesedSelect select, S context) {
+			return select.accept(this.selectVisitor, context);
+		}
+
+		private <S> QueryContext getQueryContext(S ctx) {
+			if (ctx instanceof QueryContext queryContext) {
+				return queryContext;
+			}
+			throw new IllegalArgumentException("Unexpected context: " + ctx);
 		}
 
 	}
@@ -1063,6 +1097,24 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		private @Nullable Object resolveIndexed(int index) {
 			return this.parameterAccessor.getValue(index);
+		}
+
+	}
+
+	private static final class QueryContext {
+
+		private @Nullable Table table;
+
+		private @Nullable ReindexerPersistentEntity<?> entity;
+
+		private Table getRequiredTable() {
+			Assert.notNull(this.table, "Could not resolve table for the query");
+			return this.table;
+		}
+
+		private ReindexerPersistentEntity<?> getRequiredEntity() {
+			Assert.notNull(this.entity, "Could not resolve entity for the query");
+			return this.entity;
 		}
 
 	}

@@ -17,6 +17,7 @@ package org.springframework.data.reindexer.repository.item;
 
 import java.util.Optional;
 
+import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.item.entity.TestItemContainer;
 import org.springframework.stereotype.Repository;
@@ -28,5 +29,22 @@ import org.springframework.stereotype.Repository;
 public interface TestItemContainerRepository extends ReindexerRepository<TestItemContainer, Long> {
 
 	Optional<TestItemContainer> findByName(String name);
+
+	@Query("""
+			SELECT *
+			FROM test_item_container
+			         LEFT JOIN (SELECT *
+			                    FROM items eagerItem
+			                             LEFT JOIN test_joined_items joinedItem
+			                                       ON test_joined_items.id = items.joinedItemId)
+			                   ON items.id = test_item_container.mandatory_item_id
+			         LEFT JOIN (SELECT *
+			                    FROM items joinedItemsByName
+			                             LEFT JOIN test_joined_items joinedItem
+			                                       ON test_joined_items.id = items.joinedItemId)
+			                   ON items.name IN test_item_container.joinedItemNames
+			WHERE name = :name
+			""")
+	Optional<TestItemContainer> findByNameSql(String name);
 
 }
