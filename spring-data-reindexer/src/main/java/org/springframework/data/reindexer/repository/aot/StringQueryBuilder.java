@@ -249,15 +249,15 @@ final class StringQueryBuilder {
 		return stringBuilder.toString();
 	}
 
-	private boolean isBareSelect(StringQueryBuilder joinStringQueryBuilder, String joinSql) {
-		return joinSql.equals(QueryType.SELECT.name() + " * FROM " + joinStringQueryBuilder.namespace);
-	}
-
 	private String getJoinTypePart(JoinType joinType) {
 		return switch (joinType) {
 			case LEFT -> "LEFT JOIN";
 			case INNER -> "INNER JOIN";
 		};
+	}
+
+	private boolean isBareSelect(StringQueryBuilder joinStringQueryBuilder, String joinSql) {
+		return joinSql.equals(QueryType.SELECT.name() + " * FROM " + joinStringQueryBuilder.namespace);
 	}
 
 	private String getWherePart(List<QueryEntry> whereEntries) {
