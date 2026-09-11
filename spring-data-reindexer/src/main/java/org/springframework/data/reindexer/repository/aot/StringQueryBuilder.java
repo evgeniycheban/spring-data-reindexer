@@ -220,10 +220,11 @@ final class StringQueryBuilder {
 	private String getSingleJoinPart(JoinEntry joinEntry) {
 		StringQueryBuilder joinStringQueryBuilder = joinEntry.joinStringQueryBuilder;
 		StringBuilder stringBuilder = new StringBuilder();
+		String joinSql = joinStringQueryBuilder.getSql();
 		stringBuilder.append(getJoinTypePart(joinEntry.type))
 			.append(" ")
-			.append(joinStringQueryBuilder.whereEntries.isEmpty() ? joinStringQueryBuilder.namespace
-					: "(" + joinStringQueryBuilder.getSql() + ")")
+			.append(isBareSelect(joinStringQueryBuilder, joinSql) ? joinStringQueryBuilder.namespace
+					: "(" + joinSql + ")")
 			.append(" ON ");
 		if (joinStringQueryBuilder.onEntries.size() > 1) {
 			stringBuilder.append("(");
@@ -245,8 +246,11 @@ final class StringQueryBuilder {
 		if (joinStringQueryBuilder.onEntries.size() > 1) {
 			stringBuilder.append(")");
 		}
-		stringBuilder.append(joinStringQueryBuilder.getJoinPart());
 		return stringBuilder.toString();
+	}
+
+	private boolean isBareSelect(StringQueryBuilder joinStringQueryBuilder, String joinSql) {
+		return joinSql.equals(QueryType.SELECT.name() + " * FROM " + joinStringQueryBuilder.namespace);
 	}
 
 	private String getJoinTypePart(JoinType joinType) {
