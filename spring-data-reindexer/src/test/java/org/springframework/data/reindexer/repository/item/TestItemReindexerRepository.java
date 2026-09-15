@@ -165,6 +165,18 @@ public interface TestItemReindexerRepository extends ReindexerRepository<TestIte
 	@Query("SELECT * FROM items WHERE nestedItem->name = :name and nestedItem->value = :value")
 	Optional<TestItem> findOneSqlByNestedNameAndValue(String name, String value);
 
+	@Query("""
+			select ti.id,
+			 	   ti.name,
+			 	   ti.value,
+			 	   ti.nestedItem.name,
+			 	   ti.nestedItem.value
+			  from TestItem ti
+			 where ti.nestedItem.name = :name
+			   and nestedItem.value = :value
+			""")
+	Optional<TestItem> findOneJpqlByNestedNameAndValue(String name, String value);
+
 	@Query(value = "SELECT * FROM items WHERE name = ?1", nativeQuery = true)
 	Optional<TestItem> findOneNativeSqlByName(String name);
 
@@ -222,6 +234,9 @@ public interface TestItemReindexerRepository extends ReindexerRepository<TestIte
 
 	@Query("SELECT * FROM items WHERE id = ?1 AND name = ?2 AND value = ?3")
 	Optional<TestItem> findOneSqlByIdAndNameAndValue(Long id, String name, String value);
+
+	@Query("SELECT ti FROM TestItem ti WHERE ti.id = ?1 AND ti.name = ?2 AND value = ?3")
+	Optional<TestItem> findOneJpqlByIdAndNameAndValue(Long id, String name, String value);
 
 	@Query("SELECT * FROM items WHERE id = :id AND name = :name AND value = :value")
 	Optional<TestItem> findOneSqlByIdAndNameAndValueParam(@Param("id") Long id, @Param("name") String name,
@@ -354,6 +369,9 @@ public interface TestItemReindexerRepository extends ReindexerRepository<TestIte
 
 	@Query("SELECT id, name FROM items WHERE id IN :ids ORDER BY id DESC")
 	List<TestItemDto> findAllItemDtoByIdIn(List<Long> ids, Sort sort);
+
+	@Query("SELECT ti FROM TestItem ti WHERE ti.id IN :ids ORDER BY ti.id DESC")
+	List<TestItem> findAllItemsByIdIn(List<Long> ids, Sort sort);
 
 	@Query("SELECT id, name FROM items WHERE id IN :ids")
 	List<TestItemRecord> findAllItemRecordByIdIn(List<Long> ids);

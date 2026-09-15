@@ -595,6 +595,24 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 	}
 
 	@Test
+	void findAllItemsByIdIn() {
+		List<TestItem> expectedItems = new ArrayList<>();
+		for (long i = 0; i < 100; i++) {
+			expectedItems.add(this.repository.save(new TestItem(i, "TestName" + i, "TestValue" + i)));
+		}
+		List<TestItem> foundItems = this.repository.findAllItemsByIdIn(
+				expectedItems.stream().map(TestItem::getId).toList(), Sort.by(Sort.Direction.ASC, "name"));
+		assertThat(foundItems).hasSameSizeAs(expectedItems);
+		for (int i = 0; i < foundItems.size(); i++) {
+			TestItem foundItem = foundItems.get(i);
+			TestItem expectedItem = expectedItems.get(expectedItems.size() - 1 - i);
+			assertThat(foundItem.getId()).isEqualTo(expectedItem.getId());
+			assertThat(foundItem.getName()).isEqualTo(expectedItem.getName());
+			assertThat(foundItem.getValue()).isEqualTo(expectedItem.getValue());
+		}
+	}
+
+	@Test
 	void findAllItemRecordByIdIn() {
 		List<TestItem> expectedItems = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {

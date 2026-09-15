@@ -256,6 +256,18 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 	}
 
 	@Test
+	void findOneJpqlByNestedNameAndValue() {
+		TestItem expected = this.repository
+			.save(TestItem.builder().id(1L).nestedItem(new TestNestedItem("TestName", "TestValue")).build());
+		TestItem actual = this.repository.findOneJpqlByNestedNameAndValue("TestName", "TestValue").orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getNestedItem()).isNotNull();
+		assertThat(actual.getNestedItem().getName()).isEqualTo(expected.getNestedItem().getName());
+		assertThat(actual.getNestedItem().getValue()).isEqualTo(expected.getNestedItem().getValue());
+	}
+
+	@Test
 	void findOneNativeSqlByName() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
 		TestItem item = this.repository.findOneNativeSqlByName("TestName").orElse(null);
@@ -534,6 +546,16 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	void findOneJpqlByIdAndNameAndValue() {
+		TestItem expected = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItem actual = this.repository.findOneJpqlByIdAndNameAndValue(1L, "TestName", "TestValue").orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getName()).isEqualTo(expected.getName());
+		assertThat(actual.getValue()).isEqualTo(expected.getValue());
 	}
 
 	@Test
