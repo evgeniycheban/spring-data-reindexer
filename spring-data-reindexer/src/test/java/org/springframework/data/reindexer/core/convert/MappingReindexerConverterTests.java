@@ -39,6 +39,7 @@ import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.binding.Consts;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.convert.ValueConverter;
 import org.springframework.data.projection.EntityProjection;
@@ -524,6 +525,7 @@ class MappingReindexerConverterTests {
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
 		assertThat(result.getLastName()).isEqualTo("Smith");
+		assertThat(result.getFullName()).isEqualTo("John Smith");
 		assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
 		assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 2, 1, 15, 30));
 		assertThat(result.getManagerId()).isEqualTo(1L);
@@ -533,6 +535,7 @@ class MappingReindexerConverterTests {
 		assertThat(manager.getId()).isEqualTo(1L);
 		assertThat(manager.getFirstName()).isEqualTo("Alex");
 		assertThat(manager.getLastName()).isEqualTo("Jones");
+		assertThat(manager.getFullName()).isEqualTo("Alex Jones");
 		assertThat(manager.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 1, 1));
 		assertThat(manager.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 1, 1, 15, 30));
 		assertThat(manager.getManagerId()).isNull();
@@ -976,6 +979,7 @@ class MappingReindexerConverterTests {
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
 		assertThat(result.getLastName()).isEqualTo("Smith");
+		assertThat(result.getFullName()).isEqualTo("John Smith");
 		assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
 		assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 2, 1, 15, 30));
 		assertThat(result.getManagerId()).isEqualTo(1L);
@@ -984,6 +988,7 @@ class MappingReindexerConverterTests {
 		assertThat(manager.getId()).isEqualTo(1L);
 		assertThat(manager.getFirstName()).isEqualTo("Alex");
 		assertThat(manager.getLastName()).isEqualTo("Jones");
+		assertThat(manager.getFullName()).isEqualTo("Alex Jones");
 		assertThat(manager.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 1, 1));
 		assertThat(manager.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 1, 1, 15, 30));
 		assertThat(manager.getManagerId()).isNull();
@@ -1147,6 +1152,9 @@ class MappingReindexerConverterTests {
 		String firstName;
 
 		String lastName;
+
+		@Value("#{firstName + ' ' + lastName}")
+		String fullName;
 
 		@ValueConverter(LocalDatePropertyValueConverter.class)
 		LocalDate dateOfBirth;

@@ -276,17 +276,16 @@ public class MappingReindexerConverter
 
 		@Override
 		public <T> @Nullable T getPropertyValue(ReindexerPersistentProperty targetProperty) {
-			ReindexerPersistentProperty sourceProperty = this.entity.getPersistentProperty(targetProperty.getName());
-			if (sourceProperty == null) {
-				// in case the target property is calculated using @Value annotation.
-				sourceProperty = targetProperty;
+			String expression = targetProperty.getSpelExpression();
+			if (expression != null) {
+				return this.evaluator.evaluate(expression);
 			}
+			ReindexerPersistentProperty sourceProperty = this.entity
+				.getRequiredPersistentProperty(targetProperty.getName());
 			if (sourceProperty.isNamespaceReference()) {
 				return readNamespaceReference(sourceProperty, targetProperty);
 			}
-			String expression = targetProperty.getSpelExpression();
-			Object value = expression != null ? this.evaluator.evaluate(expression)
-					: this.accessor.getProperty(sourceProperty);
+			Object value = this.accessor.getProperty(sourceProperty);
 			return readPropertyValue(sourceProperty, targetProperty, value);
 		}
 
