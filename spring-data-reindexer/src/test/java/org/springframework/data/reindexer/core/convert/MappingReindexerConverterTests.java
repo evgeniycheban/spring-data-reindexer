@@ -103,11 +103,6 @@ class MappingReindexerConverterTests {
 	@InjectMocks
 	MappingReindexerConverter converter;
 
-	@BeforeEach
-	void setUp() {
-		converter.afterPropertiesSet();
-	}
-
 	static Map<String, Object> toMap(Person person) {
 		Map<String, Object> map = new LinkedHashMap<>();
 		map.put("id", person.getId());
@@ -262,6 +257,11 @@ class MappingReindexerConverterTests {
 		account.setType("business");
 		account.setRoleIds(List.of(2L));
 		return account;
+	}
+
+	@BeforeEach
+	void setUp() {
+		converter.afterPropertiesSet();
 	}
 
 	@SuppressWarnings("unchecked")
