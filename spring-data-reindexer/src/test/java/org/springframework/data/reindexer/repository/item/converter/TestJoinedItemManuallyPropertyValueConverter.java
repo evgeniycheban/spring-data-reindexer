@@ -28,14 +28,15 @@ public class TestJoinedItemManuallyPropertyValueConverter
 
 	@Override
 	public TestJoinedItemProjection read(TestJoinedItem value, ReindexerConversionContext context) {
-		if (value == null) {
+		TestJoinedItem joinedItem = context.read(value, TestJoinedItem.class);
+		if (joinedItem == null) {
 			return null;
 		}
-		TestJoinedItemProjection nestedJoinedItem = read(value.getNestedJoinedItem(), context);
-		TestJoinedItemProjection nestedJoinedItemFetch = read(value.getNestedJoinedItemFetch(), context);
-		TestJoinedItemProjection nestedJoinedItemLazy = read(value.getNestedJoinedItemLazy(), context);
-		return new TestJoinedItemProjection(value.getId(), value.getName(), nestedJoinedItem, nestedJoinedItemFetch,
-				nestedJoinedItemLazy);
+		TestJoinedItemProjection nestedJoinedItem = read(joinedItem.getNestedJoinedItem(), context);
+		TestJoinedItemProjection nestedJoinedItemFetch = read(joinedItem.getNestedJoinedItemFetch(), context);
+		TestJoinedItemProjection nestedJoinedItemLazy = read(joinedItem.getNestedJoinedItemLazy(), context);
+		return new TestJoinedItemProjection(joinedItem.getId(), joinedItem.getName(), nestedJoinedItem,
+				nestedJoinedItemFetch, nestedJoinedItemLazy);
 	}
 
 	@Override

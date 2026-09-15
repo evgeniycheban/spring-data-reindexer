@@ -453,14 +453,12 @@ public class MappingReindexerConverter
 			if (valueConversions != null && valueConversions.hasValueConverter(targetProperty)) {
 				PropertyValueConverter<Object, Object, ValueConversionContext<ReindexerPersistentProperty>> valueConverter = valueConversions
 					.getValueConverter(targetProperty);
-				// Initialize lazy-loaded properties with proxies.
-				Object source = conversionContext.read(value, sourceProperty.getTypeInformation());
-				// If the domain entity is being read the converters have already been
+				// If the domain entity is being read, the converters have already been
 				// applied during deserialization in reindexer-java connector.
-				if (sourceProperty == targetProperty) {
-					return (T) source;
+				if (targetProperty.getOwner().getType().isInstance(this.accessor.getBean())) {
+					return (T) value;
 				}
-				return (T) (source != null ? valueConverter.read(source, conversionContext)
+				return (T) (value != null ? valueConverter.read(value, conversionContext)
 						: valueConverter.readNull(conversionContext));
 			}
 			return (T) conversionContext.read(value, targetProperty.getTypeInformation());

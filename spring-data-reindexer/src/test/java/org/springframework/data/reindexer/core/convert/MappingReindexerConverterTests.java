@@ -15,11 +15,16 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import lombok.Data;
-import net.minidev.json.JSONObject;
-import net.minidev.json.JSONValue;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -35,10 +40,12 @@ import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.convert.ValueConverter;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.repository.item.converter.LocalDatePropertyValueConverter;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.util.ListBackedResultIterator;
 
@@ -96,6 +103,84 @@ class MappingReindexerConverterTests {
 	@InjectMocks
 	MappingReindexerConverter converter;
 
+	@BeforeEach
+	void setUp() {
+		converter.afterPropertiesSet();
+	}
+
+	static Map<String, Object> toMap(Person person) {
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("id", person.getId());
+		map.put("firstName", person.getFirstName());
+		map.put("lastName", person.getLastName());
+		if (person.getDateOfBirth() != null) {
+			map.put("dateOfBirth", person.getDateOfBirth().toString());
+		}
+		if (person.getCreatedAt() != null) {
+			map.put("createdAt", writeLocalDateTime(person.getCreatedAt()));
+		}
+		map.put("addressId", person.getAddressId());
+		if (person.getAddress() != null) {
+			map.put("address", toMap(person.getAddress()));
+		}
+		map.put("managerId", person.getManagerId());
+		if (person.getManager() != null) {
+			map.put("manager", toMap(person.getManager()));
+		}
+		if (person.getAccounts() != null) {
+			List<Map<String, Object>> accounts = new ArrayList<>();
+			for (Account account : person.getAccounts()) {
+				accounts.add(toMap(account));
+			}
+			map.put("accounts", accounts);
+		}
+		return map;
+	}
+
+	static long writeLocalDateTime(LocalDateTime source) {
+		return source.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+	}
+
+	static Map<String, Object> toMap(Address address) {
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("id", address.getId());
+		map.put("countryId", address.getCountryId());
+		if (address.getCountry() != null) {
+			map.put("country", toMap(address.getCountry()));
+		}
+		return map;
+	}
+
+	static Map<String, Object> toMap(Country country) {
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("id", country.getId());
+		map.put("name", country.getName());
+		return map;
+	}
+
+	static Map<String, Object> toMap(Account account) {
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("id", account.getId());
+		map.put("number", account.getNumber());
+		map.put("type", account.getType());
+		map.put("roleIds", account.getRoleIds());
+		if (account.getRoles() != null) {
+			List<Map<String, Object>> roles = new ArrayList<>();
+			for (Role role : account.getRoles()) {
+				roles.add(toMap(role));
+			}
+			map.put("roles", roles);
+		}
+		return map;
+	}
+
+	static Map<String, Object> toMap(Role role) {
+		Map<String, Object> map = new LinkedHashMap<>();
+		map.put("id", role.getId());
+		map.put("name", role.getName());
+		return map;
+	}
+
 	static Person createManagerPerson() {
 		Country country = new Country();
 		country.setId(1L);
@@ -109,6 +194,8 @@ class MappingReindexerConverterTests {
 		person.setAddressId(1L);
 		person.setFirstName("Alex");
 		person.setLastName("Jones");
+		person.setDateOfBirth(LocalDate.of(1980, 1, 1));
+		person.setCreatedAt(LocalDateTime.of(2021, 1, 1, 15, 30));
 		person.setAddress(address);
 		return person;
 	}
@@ -127,6 +214,8 @@ class MappingReindexerConverterTests {
 		person.setAddressId(2L);
 		person.setFirstName("John");
 		person.setLastName("Smith");
+		person.setDateOfBirth(LocalDate.of(1990, 1, 1));
+		person.setCreatedAt(LocalDateTime.of(2021, 2, 1, 15, 30));
 		person.setAddress(address);
 		return person;
 	}
@@ -240,7 +329,7 @@ class MappingReindexerConverterTests {
 						new ListBackedResultIterator<>(userRole)
 				);
 		// @formatter:on
-		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Map<String, Object> document = toMap(person);
 		PersonDto result = this.converter.project(projection, document);
 		assertPersonDto(result);
 		verifyQueries();
@@ -251,12 +340,16 @@ class MappingReindexerConverterTests {
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
 		assertThat(result.getLastName()).isEqualTo("Smith");
+		assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
+		assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 2, 1, 15, 30));
 		PersonDto manager = result.getManager();
 		assertThat(manager).isNotNull();
 		assertThat(manager).isNotInstanceOf(LazyLoadingProxy.class);
 		assertThat(manager.getId()).isEqualTo(1L);
 		assertThat(manager.getFirstName()).isEqualTo("Alex");
 		assertThat(manager.getLastName()).isEqualTo("Jones");
+		assertThat(manager.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 1, 1));
+		assertThat(manager.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 1, 1, 15, 30));
 		assertThat(manager.getManager()).isNull();
 		List<AccountRecordDto> managerAccounts = manager.getAccounts();
 		assertThat(managerAccounts).isInstanceOf(LazyLoadingProxy.class);
@@ -420,7 +513,7 @@ class MappingReindexerConverterTests {
 						new ListBackedResultIterator<>(userRole)
 				);
 		// @formatter:on
-		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Map<String, Object> document = toMap(person);
 		Person result = this.converter.read(Person.class, document);
 		assertPerson(result);
 		verifyQueries();
@@ -431,6 +524,8 @@ class MappingReindexerConverterTests {
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
 		assertThat(result.getLastName()).isEqualTo("Smith");
+		assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
+		assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 2, 1, 15, 30));
 		assertThat(result.getManagerId()).isEqualTo(1L);
 		Person manager = result.getManager();
 		assertThat(manager).isNotNull();
@@ -438,6 +533,8 @@ class MappingReindexerConverterTests {
 		assertThat(manager.getId()).isEqualTo(1L);
 		assertThat(manager.getFirstName()).isEqualTo("Alex");
 		assertThat(manager.getLastName()).isEqualTo("Jones");
+		assertThat(manager.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 1, 1));
+		assertThat(manager.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 1, 1, 15, 30));
 		assertThat(manager.getManagerId()).isNull();
 		assertThat(manager.getManager()).isNull();
 		List<Account> managerAccounts = manager.getAccounts();
@@ -615,7 +712,7 @@ class MappingReindexerConverterTests {
 						new ListBackedResultIterator<>(userRole)
 				);
 		// @formatter:on
-		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Map<String, Object> document = toMap(person);
 		PersonDto result = this.converter.project(projection, document);
 		assertPersonDtoV2(result);
 		verifyQueriesV2();
@@ -626,11 +723,15 @@ class MappingReindexerConverterTests {
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
 		assertThat(result.getLastName()).isEqualTo("Smith");
+		assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
+		assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 2, 1, 15, 30));
 		PersonDto manager = result.getManager();
 		assertThat(manager).isInstanceOf(LazyLoadingProxy.class);
 		assertThat(manager.getId()).isEqualTo(1L);
 		assertThat(manager.getFirstName()).isEqualTo("Alex");
 		assertThat(manager.getLastName()).isEqualTo("Jones");
+		assertThat(manager.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 1, 1));
+		assertThat(manager.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 1, 1, 15, 30));
 		assertThat(manager.getManager()).isNull();
 		List<AccountRecordDto> managerAccounts = manager.getAccounts();
 		assertThat(managerAccounts).isInstanceOf(LazyLoadingProxy.class);
@@ -778,7 +879,7 @@ class MappingReindexerConverterTests {
 						new ListBackedResultIterator<>(userRole)
 				);
 		// @formatter:on
-		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Map<String, Object> document = toMap(person);
 		Person result = this.converter.project(projection, document);
 		assertPersonV2(result);
 		verifyQueriesV2();
@@ -864,7 +965,7 @@ class MappingReindexerConverterTests {
 						new ListBackedResultIterator<>(userRole)
 				);
 		// @formatter:on
-		JSONObject document = (JSONObject) JSONValue.parse(JSONValue.toJSONString(person));
+		Map<String, Object> document = toMap(person);
 		Person result = this.converter.project(projection, document);
 		assertPersonV2(result);
 		verifyQueriesV2();
@@ -875,12 +976,16 @@ class MappingReindexerConverterTests {
 		assertThat(result.getId()).isEqualTo(2L);
 		assertThat(result.getFirstName()).isEqualTo("John");
 		assertThat(result.getLastName()).isEqualTo("Smith");
+		assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
+		assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 2, 1, 15, 30));
 		assertThat(result.getManagerId()).isEqualTo(1L);
 		Person manager = result.getManager();
 		assertThat(manager).isInstanceOf(LazyLoadingProxy.class);
 		assertThat(manager.getId()).isEqualTo(1L);
 		assertThat(manager.getFirstName()).isEqualTo("Alex");
 		assertThat(manager.getLastName()).isEqualTo("Jones");
+		assertThat(manager.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 1, 1));
+		assertThat(manager.getCreatedAt()).isEqualTo(LocalDateTime.of(2021, 1, 1, 15, 30));
 		assertThat(manager.getManagerId()).isNull();
 		assertThat(manager.getManager()).isNull();
 		List<Account> managerAccounts = manager.getAccounts();
@@ -1002,6 +1107,10 @@ class MappingReindexerConverterTests {
 
 		String lastName;
 
+		LocalDate dateOfBirth;
+
+		LocalDateTime createdAt;
+
 		PersonDto manager;
 
 		List<AccountRecordDto> accounts;
@@ -1038,6 +1147,11 @@ class MappingReindexerConverterTests {
 		String firstName;
 
 		String lastName;
+
+		@ValueConverter(LocalDatePropertyValueConverter.class)
+		LocalDate dateOfBirth;
+
+		LocalDateTime createdAt;
 
 		@NamespaceReference(indexName = "manager_id")
 		Person manager;
