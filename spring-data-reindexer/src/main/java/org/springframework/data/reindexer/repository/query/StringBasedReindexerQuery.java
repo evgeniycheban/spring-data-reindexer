@@ -31,6 +31,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.DoubleValue;
@@ -294,7 +295,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			}
 			if (update.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
-						criteria, () -> parameterMapper, this.valueResolvingVisitor, this.selectVisitor.get());
+						criteria, update.getTable(), () -> parameterMapper, this.valueResolvingVisitor,
+						this.selectVisitor.get());
 				update.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			return criteria;
@@ -308,8 +310,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			Query<?> criteria = createModifyingQuery(namespace);
 			if (delete.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
-						criteria, Lazy.of(() -> createParameterMapper(entity.getType())), this.valueResolvingVisitor,
-						this.selectVisitor.get());
+						criteria, delete.getTable(), Lazy.of(() -> createParameterMapper(entity.getType())),
+						this.valueResolvingVisitor, this.selectVisitor.get());
 				delete.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			return criteria;
@@ -364,7 +366,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			ReindexerPersistentEntity<?> entity = rootContext.getRequiredEntity();
 			// Apply select.
 			ReindexerSelectItemExpressionVisitor selectItemVisitor = new ReindexerSelectItemExpressionVisitor(root,
-					this.valueResolvingVisitor);
+					table, this.valueResolvingVisitor);
 			plainSelect.getSelectItems().forEach(item -> item.accept(selectItemVisitor, context));
 			// Apply joins.
 			if (plainSelect.getJoins() != null) {
@@ -374,8 +376,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 					Table joinTable = joinContext.getRequiredTable();
 					ReindexerPersistentEntity<?> joinEntity = joinContext.getRequiredEntity();
 					ReindexerJoinOnExpressionVisitor joinOnVisitor = new ReindexerJoinOnExpressionVisitor(joinQuery,
-							Lazy.of(() -> createParameterMapper(joinEntity.getType())), this.valueResolvingVisitor,
-							this);
+							joinTable, Lazy.of(() -> createParameterMapper(joinEntity.getType())),
+							this.valueResolvingVisitor, this);
 					// Reindexer does not support joining namespaces whose parent is not a
 					// root namespace, therefore, the root namespace is always passed as a
 					// parent table to the visitor's context.
@@ -399,7 +401,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			// Apply where.
 			if (plainSelect.getWhere() != null) {
 				ReindexerConditionalExpressionVisitor conditionalVisitor = new ReindexerConditionalExpressionVisitor(
-						root, Lazy.of(() -> createParameterMapper(entity.getType())), this.valueResolvingVisitor, this);
+						root, table, Lazy.of(() -> createParameterMapper(entity.getType())), this.valueResolvingVisitor,
+						this);
 				plainSelect.getWhere().accept(conditionalVisitor, new ConditionContext());
 			}
 			// Apply paging.
@@ -412,7 +415,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			// Apply sorting.
 			if (plainSelect.getOrderByElements() != null) {
 				for (OrderByElement order : plainSelect.getOrderByElements()) {
-					String indexName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(order.getExpression());
+					String indexName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(table, order.getExpression());
 					root.sort(indexName, !order.isAsc());
 				}
 			}
@@ -491,17 +494,25 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		private final Query<?> root;
 
+		private final Table table;
+
 		private final Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor;
 
-		private ReindexerSelectItemExpressionVisitor(Query<?> root,
+		private ReindexerSelectItemExpressionVisitor(Query<?> root, Table table,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor) {
 			this.root = root;
+			this.table = table;
 			this.valueResolvingVisitor = valueResolvingVisitor;
 		}
 
 		@Override
 		public <S> Query<?> visit(Column column, S context) {
-			return this.root.select(column.getColumnName());
+			Alias alias = this.table.getAlias();
+			if (alias != null && alias.getName().equals(column.getColumnName())) {
+				return this.root;
+			}
+			String indexName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(this.table, column);
+			return this.root.select(indexName);
 		}
 
 		@Override
@@ -579,16 +590,20 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 		final Query<?> criteria;
 
+		private final Table table;
+
 		private final Supplier<QueryParameterMapper> parameterMapper;
 
 		private final Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor;
 
 		private final SelectVisitor<Query<?>> selectVisitor;
 
-		private ReindexerConditionalExpressionVisitor(Query<?> criteria, Supplier<QueryParameterMapper> parameterMapper,
+		private ReindexerConditionalExpressionVisitor(Query<?> criteria, Table table,
+				Supplier<QueryParameterMapper> parameterMapper,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor,
 				SelectVisitor<Query<?>> selectVisitor) {
 			this.criteria = criteria;
+			this.table = table;
 			this.parameterMapper = parameterMapper;
 			this.valueResolvingVisitor = valueResolvingVisitor;
 			this.selectVisitor = selectVisitor;
@@ -746,8 +761,8 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				ReindexerWhereExpression resolvedExpr = resolveExpression(left, ctx);
 				return buildExpressionCondition(resolvedExpr, condition, rightExpr);
 			}
-			Column leftColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(left);
-			Column rightColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(right);
+			Column leftColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(this.table, left);
+			Column rightColumn = COLUMN_RESOLVING_VISITOR.resolveColumn(this.table, right);
 			if (leftColumn != null && rightColumn != null) {
 				return this.criteria.whereBetweenFields(leftColumn.getColumnName(), condition,
 						rightColumn.getColumnName());
@@ -843,10 +858,11 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 
 	private static final class ReindexerJoinOnExpressionVisitor extends ReindexerConditionalExpressionVisitor {
 
-		private ReindexerJoinOnExpressionVisitor(Query<?> query, Supplier<QueryParameterMapper> parameterMapper,
+		private ReindexerJoinOnExpressionVisitor(Query<?> query, Table table,
+				Supplier<QueryParameterMapper> parameterMapper,
 				Supplier<ReindexerValueResolvingExpressionVisitor> valueResolvingVisitor,
 				SelectVisitor<Query<?>> selectVisitor) {
-			super(query, parameterMapper, valueResolvingVisitor, selectVisitor);
+			super(query, table, parameterMapper, valueResolvingVisitor, selectVisitor);
 		}
 
 		@Override
@@ -948,6 +964,34 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 		@Override
 		public @Nullable <S> Column visit(CastExpression castExpression, S context) {
 			return castExpression.getLeftExpression().accept(this, context);
+		}
+
+		private String resolveRequiredIndexName(Table table, Expression expr) {
+			Column column = resolveColumn(table, expr);
+			Assert.notNull(column, () -> "Could not resolve a column for expression: " + expr);
+			return column.getColumnName();
+		}
+
+		private @Nullable Column resolveColumn(Table table, Expression expr) {
+			Column column = expr.accept(this, null);
+			if (column == null) {
+				return null;
+			}
+			// Normalize nested property expressions e.g., ti.nestedItem.name, omitting a
+			// table alias if used within the path as follows:
+			// ti.nestedItem.name -> nestedItem.name
+			// nestedItem.name -> nestedItem.name
+			// name -> name
+			String fullyQualifiedName = column.getFullyQualifiedName();
+			int firstDot = fullyQualifiedName.indexOf(".");
+			if (firstDot != -1) {
+				Alias alias = table.getAlias();
+				String normalizedPath = alias != null
+						&& alias.getName().equals(fullyQualifiedName.substring(0, firstDot))
+								? fullyQualifiedName.substring(firstDot + 1) : fullyQualifiedName;
+				return new Column(normalizedPath);
+			}
+			return column;
 		}
 
 		private String resolveRequiredIndexName(Expression expr) {

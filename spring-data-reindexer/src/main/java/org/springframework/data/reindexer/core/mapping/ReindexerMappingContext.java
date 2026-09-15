@@ -29,6 +29,7 @@ import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.Property;
 import org.springframework.data.mapping.model.SimpleTypeHolder;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
 
 /**
  * Default implementation of a {@link MappingContext} for Reindexer using
@@ -107,8 +108,23 @@ public class ReindexerMappingContext
 	@Override
 	protected Optional<ReindexerPersistentEntity<?>> addPersistentEntity(TypeInformation<?> typeInformation) {
 		Optional<ReindexerPersistentEntity<?>> entity = super.addPersistentEntity(typeInformation);
-		entity.ifPresent((e) -> this.namespaceEntityMap.putIfAbsent(e.getNamespace(), e));
+		entity.ifPresent((e) -> {
+			this.namespaceEntityMap.putIfAbsent(e.getNamespace(), e);
+			String entityName = getEntityName(e.getType());
+			if (this.namespaceEntityMap.computeIfAbsent(entityName, it -> e) != e) {
+				throw new MappingException("Entity: %s already exists in MappingContext");
+			}
+		});
 		return entity;
+	}
+
+	private String getEntityName(Class<?> entityClass) {
+		String shortName = ClassUtils.getShortName(entityClass);
+		int lastDot = shortName.lastIndexOf(".");
+		if (lastDot != -1) {
+			return shortName.substring(lastDot + 1);
+		}
+		return shortName;
 	}
 
 	@Override
