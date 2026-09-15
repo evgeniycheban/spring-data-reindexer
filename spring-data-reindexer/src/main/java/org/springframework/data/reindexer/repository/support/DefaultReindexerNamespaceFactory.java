@@ -15,10 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
-import java.math.BigInteger;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 import ru.rt.restream.reindexer.CollateMode;
 import ru.rt.restream.reindexer.FieldType;
@@ -31,6 +28,7 @@ import ru.rt.restream.reindexer.exceptions.IndexConflictException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.data.reindexer.core.convert.ReindexerSimpleTypes;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
@@ -46,32 +44,6 @@ import org.springframework.util.ConcurrentLruCache;
 public final class DefaultReindexerNamespaceFactory implements ReindexerNamespaceFactory {
 
 	private static final Log logger = LogFactory.getLog(DefaultReindexerNamespaceFactory.class);
-
-	// Copy of ReindexAnnotationScanner#MAPPED_TYPES
-	// @formatter:off
-	private static final Map<Class<?>, FieldType> MAPPED_TYPES = Map.ofEntries(
-			Map.entry(boolean.class, FieldType.BOOL),
-			Map.entry(Boolean.class, FieldType.BOOL),
-			Map.entry(byte.class, FieldType.INT),
-			Map.entry(Byte.class, FieldType.INT),
-			Map.entry(short.class, FieldType.INT),
-			Map.entry(Short.class, FieldType.INT),
-			Map.entry(int.class, FieldType.INT),
-			Map.entry(Integer.class, FieldType.INT),
-			Map.entry(long.class, FieldType.INT64),
-			Map.entry(Long.class, FieldType.INT64),
-			Map.entry(float.class, FieldType.FLOAT),
-			Map.entry(Float.class, FieldType.FLOAT),
-			Map.entry(double.class, FieldType.DOUBLE),
-			Map.entry(Double.class, FieldType.DOUBLE),
-			Map.entry(String.class, FieldType.STRING),
-			Map.entry(char.class, FieldType.STRING),
-			Map.entry(Character.class, FieldType.STRING),
-			// TODO: Consider using CollateMode.NUMERIC for BigInteger after INT64 overflow is fixed at Reindexer core.
-			Map.entry(BigInteger.class, FieldType.STRING),
-			Map.entry(UUID.class, FieldType.UUID)
-	);
-	// @formatter:on
 
 	private final ConcurrentLruCache<Class<?>, Namespace<?>> cache = new ConcurrentLruCache<>(32,
 			this::doOpenNamespace);
@@ -131,7 +103,7 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 	}
 
 	private void createDefaultPkIndex(ReindexerNamespace<?> namespace, ReindexerPersistentProperty property) {
-		FieldType fieldType = MAPPED_TYPES.get(property.getType());
+		FieldType fieldType = ReindexerSimpleTypes.MAPPED_TYPES.get(property.getType());
 		Assert.notNull(fieldType, () -> "Unmapped type: %s for property: %s.%s".formatted(property.getType(),
 				property.getOwner().getName(), property.getName()));
 		boolean validPkFieldType = switch (fieldType) {

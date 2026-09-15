@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import ru.rt.restream.reindexer.ResultIterator;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.reindexer.repository.item.dto.Place;
+import org.springframework.data.reindexer.repository.item.dto.TestNestedItem;
 import org.springframework.data.reindexer.repository.item.entity.TestItem;
 import org.springframework.data.reindexer.repository.item.TestItemReindexerRepository;
 import org.springframework.data.reindexer.repository.item.dto.TestEnum;
@@ -68,6 +70,76 @@ class ReindexerDerivedQueryRepositoryTests extends AbstractReindexerTest {
 		assertEquals(testItem.getId(), item.getId());
 		assertEquals(testItem.getName(), item.getName());
 		assertEquals(testItem.getValue(), item.getValue());
+	}
+
+	@Test
+	void findByNonIndexValue() {
+		TestItem expected = this.repository.save(TestItem.builder().id(1L).nonIndexValue("TestValue").build());
+		TestItem actual = this.repository.findByNonIndexValue("TestValue").orElse(null);
+		assertThat(actual);
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getNonIndexValue()).isEqualTo(expected.getNonIndexValue());
+	}
+
+	@Test
+	void findByNestedItem_Name() {
+		TestItem expected = this.repository
+			.save(TestItem.builder().id(1L).nonIndexNestedItem(new TestNestedItem("TestName", "TestValue")).build());
+		TestItem actual = this.repository.findByNonIndexNestedItem_Name("TestName").orElse(null);
+		assertThat(actual);
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getNonIndexNestedItem()).isNotNull();
+		assertThat(actual.getNonIndexNestedItem().getName()).isEqualTo(expected.getNonIndexNestedItem().getName());
+		assertThat(actual.getNonIndexNestedItem().getValue()).isEqualTo(expected.getNonIndexNestedItem().getValue());
+	}
+
+	@Test
+	void findByNonIndexValueAndNestedItem_Name() {
+		TestItem expected = this.repository.save(TestItem.builder()
+			.id(1L)
+			.nonIndexValue("TestValue")
+			.nonIndexNestedItem(new TestNestedItem("TestName", "TestValue"))
+			.build());
+		TestItem actual = this.repository.findByNonIndexValueAndNonIndexNestedItem_Name("TestValue", "TestName")
+			.orElse(null);
+		assertThat(actual);
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getNonIndexValue()).isEqualTo(expected.getNonIndexValue());
+		assertThat(actual.getNonIndexNestedItem()).isNotNull();
+		assertThat(actual.getNonIndexNestedItem().getName()).isEqualTo(expected.getNonIndexNestedItem().getName());
+		assertThat(actual.getNonIndexNestedItem().getValue()).isEqualTo(expected.getNonIndexNestedItem().getValue());
+	}
+
+	@Test
+	void findByNestedItem_NameAndPlace_Country() {
+		TestItem expected = this.repository.save(TestItem.builder()
+			.id(1L)
+			.nonIndexNestedItem(new TestNestedItem("TestName", "TestValue"))
+			.place(new Place("TestCountry", List.of()))
+			.build());
+		TestItem actual = this.repository.findByNonIndexNestedItem_NameAndPlace_Country("TestName", "TestCountry")
+			.orElse(null);
+		assertThat(actual);
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getNonIndexNestedItem()).isNotNull();
+		assertThat(actual.getNonIndexNestedItem().getName()).isEqualTo(expected.getNonIndexNestedItem().getName());
+		assertThat(actual.getNonIndexNestedItem().getValue()).isEqualTo(expected.getNonIndexNestedItem().getValue());
+		assertThat(actual.getPlace()).isNotNull();
+		assertThat(actual.getPlace().getCountry()).isEqualTo(expected.getPlace().getCountry());
+		assertThat(actual.getPlace().getCities()).isEmpty();
+	}
+
+	@Test
+	void findByNestedItem_NameAndPlace_CitiesContaining() {
+		TestItem expected = this.repository
+			.save(TestItem.builder().id(1L).place(new Place("TestCountry", List.of("TestCity"))).build());
+		TestItem actual = this.repository.findByPlace_CountryAndPlace_CitiesContaining("TestCountry", "TestCity")
+			.orElse(null);
+		assertThat(actual);
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getPlace()).isNotNull();
+		assertThat(actual.getPlace().getCountry()).isEqualTo(expected.getPlace().getCountry());
+		assertThat(actual.getPlace().getCities()).containsExactlyElementsOf(expected.getPlace().getCities());
 	}
 
 	@Test

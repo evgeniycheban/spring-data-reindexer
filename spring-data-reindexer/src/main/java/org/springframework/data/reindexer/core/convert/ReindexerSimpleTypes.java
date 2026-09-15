@@ -15,8 +15,13 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import ru.rt.restream.reindexer.FieldType;
 
 import org.springframework.data.mapping.model.SimpleTypeHolder;
 
@@ -35,6 +40,34 @@ public final class ReindexerSimpleTypes {
 	 * A {@link SimpleTypeHolder} enriched with Reindexer specific simple types.
 	 */
 	public static final SimpleTypeHolder HOLDER = new SimpleTypeHolder(REINDEXER_SIMPLE_TYPES, true);
+
+	/**
+	 * A mapped Java types to internal Reindexer types.
+	 */
+	// @formatter:off
+	public static final Map<Class<?>, FieldType> MAPPED_TYPES = Map.ofEntries(
+			Map.entry(boolean.class, FieldType.BOOL),
+			Map.entry(Boolean.class, FieldType.BOOL),
+			Map.entry(byte.class, FieldType.INT),
+			Map.entry(Byte.class, FieldType.INT),
+			Map.entry(short.class, FieldType.INT),
+			Map.entry(Short.class, FieldType.INT),
+			Map.entry(int.class, FieldType.INT),
+			Map.entry(Integer.class, FieldType.INT),
+			Map.entry(long.class, FieldType.INT64),
+			Map.entry(Long.class, FieldType.INT64),
+			Map.entry(float.class, FieldType.FLOAT),
+			Map.entry(Float.class, FieldType.FLOAT),
+			Map.entry(double.class, FieldType.DOUBLE),
+			Map.entry(Double.class, FieldType.DOUBLE),
+			Map.entry(String.class, FieldType.STRING),
+			Map.entry(char.class, FieldType.STRING),
+			Map.entry(Character.class, FieldType.STRING),
+			Map.entry(BigDecimal.class, FieldType.STRING),
+			Map.entry(BigInteger.class, FieldType.STRING),
+			Map.entry(UUID.class, FieldType.UUID)
+	);
+	// @formatter:on
 
 	private ReindexerSimpleTypes() {
 	}

@@ -80,6 +80,7 @@ public class ReindexerRepositoryConfigurationExtension extends RepositoryConfigu
 		builder.addPropertyReference("mappingContext", "reindexerMappingContext");
 		builder.addPropertyReference("namespaceFactory", "reindexerNamespaceFactory");
 		builder.addPropertyReference("reindexerConverter", "reindexerConverter");
+		builder.addPropertyValue("createIndexesForQueryMethods", attributes.getBoolean("createIndexesForQueryMethods"));
 	}
 
 	@Override

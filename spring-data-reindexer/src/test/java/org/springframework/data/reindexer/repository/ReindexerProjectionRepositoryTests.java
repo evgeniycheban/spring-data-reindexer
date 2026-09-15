@@ -379,6 +379,55 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 	}
 
 	@Test
+	void findDynamicItemProjectionById() {
+		TestItem expected = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemProjection actual = this.repository.findById(1L, TestItemProjection.class).orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getName()).isEqualTo(expected.getName());
+	}
+
+	@Test
+	void findDynamicItemDtoById() {
+		TestItem expected = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemDto actual = this.repository.findById(1L, TestItemDto.class).orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getName()).isEqualTo(expected.getName());
+		assertThat(actual.getValue()).isEqualTo(expected.getValue());
+	}
+
+	@Test
+	void findDynamicItemPreferredConstructorDtoById() {
+		TestItem expected = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemPreferredConstructorDto actual = this.repository.findById(1L, TestItemPreferredConstructorDto.class)
+			.orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getName()).isEqualTo(expected.getName());
+	}
+
+	@Test
+	void findDynamicItemRecordById() {
+		TestItem expected = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemRecord actual = this.repository.findById(1L, TestItemRecord.class).orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.id()).isEqualTo(expected.getId());
+		assertThat(actual.name()).isEqualTo(expected.getName());
+	}
+
+	@Test
+	void findDynamicItemPreferredConstructorRecordById() {
+		TestItem expected = this.repository.save(new TestItem(1L, "TestName", "TestValue"));
+		TestItemPreferredConstructorRecord actual = this.repository
+			.findById(1L, TestItemPreferredConstructorRecord.class)
+			.orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.id()).isNull();
+		assertThat(actual.name()).isEqualTo(expected.getName());
+	}
+
+	@Test
 	void findDistinctNameRecordByIdIn() {
 		this.repository.save(new TestItem(1L, "TestName1", "TestValue1"));
 		this.repository.save(new TestItem(2L, "TestName1", "TestValue2"));

@@ -51,6 +51,8 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 
 	private @Nullable ApplicationContext ctx;
 
+	private boolean createIndexesForQueryMethods = false;
+
 	/**
 	 * Creates an instance.
 	 * @param repositoryInterface the repository interface to use
@@ -95,14 +97,31 @@ public class ReindexerRepositoryFactoryBean<T extends Repository<S, ID>, S, ID e
 		this.reindexerConverter = reindexerConverter;
 	}
 
+	/**
+	 * Sets whether to automatically create indexes for derived query methods defined in
+	 * the repository interface.
+	 * @param createIndexesForQueryMethods whether to automatically create indexes for
+	 * derived query methods defined in the repository interface
+	 * @since 1.7
+	 */
+	public void setCreateIndexesForQueryMethods(boolean createIndexesForQueryMethods) {
+		this.createIndexesForQueryMethods = createIndexesForQueryMethods;
+	}
+
 	@Override
 	protected RepositoryFactorySupport createRepositoryFactory() {
+		Assert.notNull(this.reindexer, "Reindexer cannot be null");
 		Assert.notNull(this.mappingContext, "MappingContext cannot be null");
 		Assert.notNull(this.reindexerConverter, "ReindexerConverter cannot be null");
 		Assert.notNull(this.namespaceFactory, "ReindexerNamespaceFactory cannot be null");
 		Assert.notNull(this.ctx, "ApplicationContext cannot be null");
-		return new ReindexerRepositoryFactory(this.mappingContext, this.namespaceFactory, this.reindexerConverter,
-				this.ctx);
+		ReindexerRepositoryFactory factory = new ReindexerRepositoryFactory(this.mappingContext, this.namespaceFactory,
+				this.reindexerConverter, this.ctx);
+		if (this.createIndexesForQueryMethods) {
+			factory.addQueryCreationListener(
+					new ReindexerIndexEnsuringQueryCreationListener(this.mappingContext, this.reindexer));
+		}
+		return factory;
 	}
 
 	@Override

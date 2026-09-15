@@ -24,7 +24,6 @@ import ru.rt.restream.reindexer.Query;
 import org.springframework.data.domain.SearchResult;
 import org.springframework.data.domain.SearchResults;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
-import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.ReturnedType;
@@ -61,7 +60,7 @@ abstract class AbstractReindexerQuery implements RepositoryQuery {
 	}
 
 	@Override
-	public final QueryMethod getQueryMethod() {
+	public final ReindexerQueryMethod getQueryMethod() {
 		return this.method;
 	}
 

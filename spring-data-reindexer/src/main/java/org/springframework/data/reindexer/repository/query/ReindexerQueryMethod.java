@@ -15,14 +15,21 @@
  */
 package org.springframework.data.reindexer.repository.query;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
 
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.data.projection.ProjectionFactory;
+import org.springframework.data.reindexer.core.annotation.Collation;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.util.Lazy;
+import org.springframework.util.ConcurrentReferenceHashMap;
+import org.springframework.util.StringUtils;
 
 /**
  * Reindexer-specific {@link QueryMethod}.
@@ -35,6 +42,10 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	private final Lazy<Query> queryAnnotationExtractor;
 
+	private final Method method;
+
+	private final Map<Class<? extends Annotation>, Optional<Annotation>> annotationCache;
+
 	/**
 	 * Creates a new {@link QueryMethod} from the given parameters. Looks up the correct
 	 * query to use for following invocations of the method given.
@@ -46,6 +57,8 @@ public final class ReindexerQueryMethod extends QueryMethod {
 		super(method, metadata, factory, ReindexerParameters::new);
 		this.isIteratorQuery = Lazy.of(() -> Iterator.class.isAssignableFrom(method.getReturnType()));
 		this.queryAnnotationExtractor = Lazy.of(() -> method.getAnnotation(Query.class));
+		this.method = method;
+		this.annotationCache = new ConcurrentReferenceHashMap<>();
 	}
 
 	/**
@@ -94,6 +107,29 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	}
 
 	/**
+	 * Check if the query method is decorated with a non-empty {@link Collation#value()}.
+	 * @return true if method annotated with {@link Collation} having a non-empty
+	 * collation attribute
+	 * @since 1.7
+	 */
+	public boolean hasAnnotatedCollation() {
+		return doFindAnnotation(Collation.class).map(Collation::value).filter(StringUtils::hasText).isPresent();
+	}
+
+	/**
+	 * Get the collation value extracted from the {@link Collation} annotation.
+	 * @return the {@link Collation#value()} to use
+	 * @throws IllegalStateException if method not annotated with {@link Collation} or
+	 * having an empty value. Make sure to check {@link #hasAnnotatedCollation()}} first.
+	 * @since 1.7
+	 */
+	public String getAnnotatedCollation() {
+		return doFindAnnotation(Collation.class).map(Collation::value) //
+			.orElseThrow(() -> new IllegalStateException(
+					"Expected to find @Collation annotation but did not; Make sure to check hasAnnotatedCollation() before."));
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	@Override
@@ -109,6 +145,12 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	@Override
 	public ReindexerParameters getParameters() {
 		return (ReindexerParameters) super.getParameters();
+	}
+
+	@SuppressWarnings("unchecked")
+	private <A extends Annotation> Optional<A> doFindAnnotation(Class<A> annotationType) {
+		return (Optional<A>) this.annotationCache.computeIfAbsent(annotationType,
+				it -> Optional.ofNullable(AnnotatedElementUtils.findMergedAnnotation(this.method, annotationType)));
 	}
 
 }
