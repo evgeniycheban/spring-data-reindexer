@@ -350,11 +350,13 @@ public class MappingReindexerConverter
 					if (namespaceReference.lookup().contains("#sort")) {
 						variables.put("sort", SortUtils.getSort(namespaceReference.sort()));
 					}
+					if (namespaceReference.lookup().contains("#sortString")) {
+						variables.put("sortString", namespaceReference.sort());
+					}
 					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup(), variables);
 					if (!(evaluated instanceof String preparedQuery)) {
 						return evaluated;
 					}
-					preparedQuery = SortUtils.applySort(preparedQuery, namespaceReference.sort());
 					try (ResultIterator<?> iterator = executeQuery(preparedQuery, referenceEntity)) {
 						if (targetProperty.isCollectionLike()) {
 							List<Object> result = new ArrayList<>();

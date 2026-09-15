@@ -74,30 +74,29 @@ public @interface NamespaceReference {
 	/**
 	 * Defines a specific sort orders to be applied to the target query.
 	 * <p>
-	 * If the {@link #lookup()} query already defines ORDER BY clause the orders will be
-	 * merged with the ones specified in this attribute: <pre>
-	 * &#064;NamespaceReference(indexName  = "joinedItemIds", lookup = """
+	 * If the {@link #lookup()} query defines ORDER BY clause the sort attribute can be
+	 * accessed using #sortString variable: <pre>
+	 * &#064;NamespaceReference(indexName = "joinedItemIds", lookup = """
 	 *             select *
 	 *               from joined_items
 	 *              where id in (#{joinedItemIds})
 	 *              order by
 	 *                    price desc,
-	 *                    name asc
+	 *                    name asc,
+	 *                    #{#sortString}
 	 *              limit 10
 	 *         """, sort = "value, id asc")
-	 * </pre> it will be rewritten as follows:<pre>
+	 * </pre> it will be evaluated into the following:<pre>
 	 *  select *
 	 *    from joined_items
-	 *   where id in (#{joinedItemIds})
+	 *   where id in (1, 2, 3)
 	 *   order by
 	 *         price desc,
 	 *         name asc,
 	 *         value,
 	 *         id asc
 	 *  limit 10
-	 * </pre> if ORDER BY clause is not defined in the {@link #lookup()} query, the
-	 * specified orders will be appended at the end of the query string within ORDER BY
-	 * clause.
+	 * </pre>
 	 * <p>
 	 * You can use the sort object in the SpEL expression by using reference #sort to
 	 * access it, the target type of sort object is
@@ -106,6 +105,10 @@ public @interface NamespaceReference {
 	 * <p>
 	 * {@code #{@joinedItemRepository.findAllById(joinedItemIds, #sort)}}
 	 * </p>
+	 * Note: since 1.7 the sort object is no longer merged into the existing ORDER BY
+	 * clause nor is appended to the query, use #sortString reference instead to append
+	 * the sort clause into the query along with the ORDER BY clause as shown in the
+	 * example above.
 	 * @since 1.5
 	 */
 	String sort() default "";

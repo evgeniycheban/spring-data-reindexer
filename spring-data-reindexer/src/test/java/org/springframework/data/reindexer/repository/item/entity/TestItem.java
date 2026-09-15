@@ -133,7 +133,8 @@ public class TestItem {
 			     where id in (#{joinedItemIds})
 			     order by
 			           price desc,
-			           name asc
+			           name asc,
+			           #{#sortString}
 			     limit 10
 			""", sort = "value, id asc")
 	private List<TestJoinedItem> joinedItemsOrderByPriceDescNameValueIdAscLimit10 = new ArrayList<>();
@@ -144,6 +145,7 @@ public class TestItem {
 			    select *
 			      from test_joined_items
 			     where id in (#{joinedItemIds})
+			     order by #{#sortString}
 			     limit 5
 			""", sort = "price desc, id")
 	private List<TestJoinedItem> joinedItemsOrderByPriceDescIdAscLimit5 = new ArrayList<>();

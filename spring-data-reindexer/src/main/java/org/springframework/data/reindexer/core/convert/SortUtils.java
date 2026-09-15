@@ -17,8 +17,6 @@ package org.springframework.data.reindexer.core.convert;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -34,36 +32,8 @@ import org.springframework.util.StringUtils;
  */
 final class SortUtils {
 
-	/*
-	 * Finds ORDER BY clause in the given string query, stopping if any of 'LIMIT',
-	 * 'OFFSET', 'LEFT', 'INNER', 'JOIN', 'MERGE', 'WHERE' keyword occurs.
-	 * Case-insensitive, supports new-lined queries (i.e. pretty-printed query strings).
-	 */
-	private static final Pattern ORDER_BY_PATTERN = Pattern.compile(
-			"\\bORDER\\s+BY\\s+(.*?)(?=\\s+LIMIT|\\s+OFFSET|\\s+LEFT|\\s+INNER|\\s+JOIN|\\s+MERGE|\\s+WHERE|$)",
-			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-
 	private static final ConcurrentLruCache<String, Sort> SORT_CACHE = new ConcurrentLruCache<>(64,
 			SortUtils::parseSort);
-
-	static String applySort(String queryString, String sortString) {
-		Sort sort = getSort(sortString);
-		if (sort.isUnsorted()) {
-			return queryString;
-		}
-		/*
-		 * In case the provided query already contains ORDER BY clause, it should be
-		 * rewritten in order to include properties from the sort attribute. Otherwise,
-		 * fallbacks to applying ORDER BY clause at the end of the query with properties
-		 * from the sort attribute.
-		 */
-		// TODO: Consider the same approach for Query annotation.
-		Matcher matcher = ORDER_BY_PATTERN.matcher(queryString);
-		if (matcher.find()) {
-			return matcher.replaceFirst(matcher.group() + "," + sortString);
-		}
-		return queryString + " order by " + sortString;
-	}
 
 	static Sort getSort(String sortString) {
 		return SORT_CACHE.get(sortString);
