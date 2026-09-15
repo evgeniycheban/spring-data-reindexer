@@ -22,8 +22,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Allows to define a specific collation for created indexes within a derived query
- * method.
+ * Allows defining a specific collation for created indexes within a derived query method.
  *
  * @author Evgeniy Cheban
  * @since 1.7
@@ -35,9 +34,9 @@ public @interface Collation {
 
 	/**
 	 * Index collate mode. Possible values - numeric, ascii, utf8, or custom. If custom
-	 * collate mode used, provide a sequence of letters which defines an index sort order
-	 * e.g., a-zA-Z0-9.
-	 * @return the collate mode which defines an index sort order
+	 * collation mode is used, provide a sequence of letters which defines an index sort
+	 * order e.g., a-zA-Z0-9.
+	 * @return the collation mode which defines an index sort order
 	 */
 	String value() default "";
 
