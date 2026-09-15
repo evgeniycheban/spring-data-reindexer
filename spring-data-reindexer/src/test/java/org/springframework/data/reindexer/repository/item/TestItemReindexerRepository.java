@@ -31,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.reindexer.core.annotation.Collation;
 import org.springframework.data.reindexer.core.mapping.Query;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.item.dto.TestItemNameValueJoinedItemProjection;
@@ -70,6 +71,17 @@ public interface TestItemReindexerRepository extends ReindexerRepository<TestIte
 	Optional<TestItemDto> findTestItemDTOByName(String name);
 
 	Optional<TestItem> findByNameAndValue(String name, String value);
+
+	@Collation("utf8")
+	Optional<TestItem> findByNonIndexValue(String nonIndexValue);
+
+	Optional<TestItem> findByNonIndexNestedItem_Name(String nestedItemName);
+
+	Optional<TestItem> findByNonIndexValueAndNonIndexNestedItem_Name(String nonIndexValue, String nestedItemName);
+
+	Optional<TestItem> findByNonIndexNestedItem_NameAndPlace_Country(String nestedItemName, String placeCountry);
+
+	Optional<TestItem> findByPlace_CountryAndPlace_CitiesContaining(String placeCountry, String placeCity);
 
 	Optional<TestItem> findByNameOrValue(String name, String value);
 

@@ -154,7 +154,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	}
 
 	@Override
-	Function<ReindexerQuery, Object> getQueryExecution(ReindexerQueryMethod method) {
+	Function<ReindexerQuery, @Nullable Object> getQueryExecution(ReindexerQueryMethod method) {
 		ReindexerQueryExecutionResolvingVisitor visitor = new ReindexerQueryExecutionResolvingVisitor();
 		return this.statement.accept(visitor, null);
 	}
@@ -181,7 +181,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 			extends StatementVisitorAdapter<Function<ReindexerQuery, Object>> {
 
 		@Override
-		public <S> Function<ReindexerQuery, Object> visit(Select select, S context) {
+		public <S> Function<ReindexerQuery, @Nullable Object> visit(Select select, S context) {
 			ReindexerSelectQueryExecutionResolvingVisitor selectResolvingVisitor = new ReindexerSelectQueryExecutionResolvingVisitor();
 			return select.accept(selectResolvingVisitor, context);
 		}

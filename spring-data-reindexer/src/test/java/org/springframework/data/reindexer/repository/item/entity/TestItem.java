@@ -69,6 +69,8 @@ public class TestItem {
 	@Reindex(name = "value")
 	private String value;
 
+	private String nonIndexValue;
+
 	@Reindex(name = "price")
 	private Price price;
 
@@ -99,6 +101,8 @@ public class TestItem {
 
 	@Reindex(name = "nested")
 	private TestNestedItem nestedItem;
+
+	private TestNestedItem nonIndexNestedItem;
 
 	@EqualsAndHashCode.Exclude
 	@Transient

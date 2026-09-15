@@ -17,6 +17,7 @@ package org.springframework.data.reindexer.repository.query;
 
 import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
@@ -32,7 +33,7 @@ import org.springframework.data.repository.query.parser.PartTree;
  * @author Evgeniy Cheban
  * @author Daniil Cheban
  */
-public class PartTreeReindexerQuery extends AbstractReindexerQuery {
+public final class PartTreeReindexerQuery extends AbstractReindexerQuery {
 
 	private final ReindexerQueryMethod method;
 
@@ -79,7 +80,7 @@ public class PartTreeReindexerQuery extends AbstractReindexerQuery {
 	}
 
 	@Override
-	Function<ReindexerQuery, Object> getQueryExecution(ReindexerQueryMethod method) {
+	Function<ReindexerQuery, @Nullable Object> getQueryExecution(ReindexerQueryMethod method) {
 		if (this.tree.isCountProjection()) {
 			return (query) -> query.criteria().count();
 		}
@@ -93,6 +94,15 @@ public class PartTreeReindexerQuery extends AbstractReindexerQuery {
 			};
 		}
 		return super.getQueryExecution(method);
+	}
+
+	/**
+	 * Returns a {@link PartTree} that represents a derived query method parts.
+	 * @return the {@link PartTree} to use
+	 * @since 1.7
+	 */
+	public PartTree getTree() {
+		return this.tree;
 	}
 
 }

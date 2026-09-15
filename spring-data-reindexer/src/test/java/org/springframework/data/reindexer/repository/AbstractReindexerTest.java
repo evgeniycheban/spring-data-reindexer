@@ -70,7 +70,8 @@ public abstract class AbstractReindexerTest {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@EnableReindexerRepositories(basePackageClasses = AbstractReindexerTest.class, considerNestedRepositories = true)
+	@EnableReindexerRepositories(basePackageClasses = AbstractReindexerTest.class, considerNestedRepositories = true,
+			createIndexesForQueryMethods = true)
 	@EnableTransactionManagement
 	@ComponentScan(basePackageClasses = AbstractReindexerTest.class)
 	static class ReindexerTestConfig extends ReindexerConfigurationSupport {
