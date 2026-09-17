@@ -61,7 +61,7 @@
 		<commons-lang3.version>3.20.0</commons-lang3.version>
 		<httpclient.version>5.6.4</httpclient.version>
 		<lombok.version>1.18.48</lombok.version>
-		<jsqlparser.version>5.3</jsqlparser.version>
+		<jsqlparser.version>5.4</jsqlparser.version>
 
 		<!-- Enabled in aot profile -->
 		<spring.aot.enabled>false</spring.aot.enabled>
