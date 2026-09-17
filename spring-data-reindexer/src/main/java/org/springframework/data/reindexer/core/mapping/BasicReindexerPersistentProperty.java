@@ -17,7 +17,6 @@ package org.springframework.data.reindexer.core.mapping;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 import org.apache.commons.logging.Log;
@@ -32,9 +31,6 @@ import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.mapping.model.AnnotationBasedPersistentProperty;
 import org.springframework.data.mapping.model.Property;
 import org.springframework.data.mapping.model.SimpleTypeHolder;
-import org.springframework.data.util.Lock;
-import org.springframework.data.util.Lock.AcquiredLock;
-import org.springframework.data.util.ReadWriteLock;
 import org.springframework.data.util.Lazy;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ParserContext;
@@ -134,15 +130,9 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 		private static final Log logger = LogFactory.getLog(ExpressionVariablesExtractor.class);
 
-		private final ReadWriteLock readWriteLock = ReadWriteLock.of(new ReentrantReadWriteLock());
-
-		private final Lock readLock = readWriteLock.readLock();
-
-		private final Lock writeLock = readWriteLock.writeLock();
-
 		private final String expression;
 
-		private @Nullable Set<String> lookupVariables;
+		private volatile @Nullable Set<String> lookupVariables;
 
 		private ExpressionVariablesExtractor(String expression) {
 			this.expression = expression;
@@ -150,26 +140,27 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 		@Override
 		public Set<String> get() {
-			try (AcquiredLock l = this.readLock.lock()) {
-				if (this.lookupVariables != null) {
-					if (logger.isTraceEnabled()) {
-						logger.trace("Accessing already resolved variables: %s from lookup expression: %s"
-							.formatted(this.lookupVariables, this.expression));
-					}
-					return this.lookupVariables;
+			Set<String> lookupVariables = this.lookupVariables;
+			if (lookupVariables != null) {
+				if (logger.isTraceEnabled()) {
+					logger.trace("Accessing already resolved variables: %s from lookup expression: %s"
+						.formatted(this.lookupVariables, this.expression));
 				}
+				return lookupVariables;
 			}
 			if (logger.isTraceEnabled()) {
 				logger.trace("Resolving variables from lookup expression: %s".formatted(this.expression));
 			}
-			try (AcquiredLock l = this.writeLock.lock()) {
-				if (this.lookupVariables == null) {
-					Set<String> lookupVariables = new HashSet<>();
+			synchronized (this) {
+				lookupVariables = this.lookupVariables;
+				if (lookupVariables == null) {
+					Set<String> variables = new HashSet<>();
 					Expression expression = PARSER.parseExpression(this.expression, ParserContext.TEMPLATE_EXPRESSION);
-					traverseAndPopulateLookupVariables(expression, lookupVariables);
-					this.lookupVariables = Set.copyOf(lookupVariables);
+					traverseAndPopulateLookupVariables(expression, variables);
+					lookupVariables = Set.copyOf(variables);
+					this.lookupVariables = lookupVariables;
 				}
-				return this.lookupVariables;
+				return lookupVariables;
 			}
 		}
 
