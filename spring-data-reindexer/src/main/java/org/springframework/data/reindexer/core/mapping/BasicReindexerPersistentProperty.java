@@ -144,7 +144,7 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 			if (lookupVariables != null) {
 				if (logger.isTraceEnabled()) {
 					logger.trace("Accessing already resolved variables: %s from lookup expression: %s"
-						.formatted(this.lookupVariables, this.expression));
+						.formatted(lookupVariables, this.expression));
 				}
 				return lookupVariables;
 			}
