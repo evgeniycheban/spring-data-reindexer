@@ -21,7 +21,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -42,6 +41,7 @@ import org.springframework.data.reindexer.LazyLoadingException;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.util.Lock;
 import org.springframework.data.util.Lock.AcquiredLock;
+import org.springframework.data.util.ReadWriteLock;
 import org.springframework.objenesis.SpringObjenesis;
 import org.springframework.util.ReflectionUtils;
 
@@ -121,11 +121,11 @@ public final class LazyLoadingProxyFactory {
 			}
 		}
 
-		private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+		private final ReadWriteLock readWriteLock = ReadWriteLock.of(new ReentrantReadWriteLock());
 
-		private final Lock readLock = Lock.of(this.rwLock.readLock());
+		private final Lock readLock = readWriteLock.readLock();
 
-		private final Lock writeLock = Lock.of(this.rwLock.writeLock());
+		private final Lock writeLock = readWriteLock.writeLock();
 
 		private final ReindexerPersistentProperty property;
 
