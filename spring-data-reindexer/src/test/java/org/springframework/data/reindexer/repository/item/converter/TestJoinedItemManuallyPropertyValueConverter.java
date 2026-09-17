@@ -35,8 +35,8 @@ public class TestJoinedItemManuallyPropertyValueConverter
 		TestJoinedItemProjection nestedJoinedItem = read(joinedItem.getNestedJoinedItem(), context);
 		TestJoinedItemProjection nestedJoinedItemFetch = read(joinedItem.getNestedJoinedItemFetch(), context);
 		TestJoinedItemProjection nestedJoinedItemLazy = read(joinedItem.getNestedJoinedItemLazy(), context);
-		return new TestJoinedItemProjection(joinedItem.getId(), joinedItem.getName(), nestedJoinedItem,
-				nestedJoinedItemFetch, nestedJoinedItemLazy);
+		return new TestJoinedItemProjection(joinedItem.getId(), joinedItem.getName(), joinedItem.getValue(),
+				nestedJoinedItem, nestedJoinedItemFetch, nestedJoinedItemLazy);
 	}
 
 	@Override

@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import java.util.Set;
+
 import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.data.mapping.PersistentProperty;
@@ -67,5 +69,15 @@ public interface ReindexerPersistentProperty extends PersistentProperty<Reindexe
 	 * @since 1.7
 	 */
 	Reindex getReindex();
+
+	/**
+	 * Returns lookup veriables used within {@link NamespaceReference#lookup()}
+	 * expression. Empty if no {@link NamespaceReference} or {@code lookup} value is
+	 * empty.
+	 * @return the lookup veriables used within {@link NamespaceReference#lookup()}
+	 * expression
+	 * @since 1.7
+	 */
+	Set<String> getLookupVariables();
 
 }

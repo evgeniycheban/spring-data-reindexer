@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
@@ -348,10 +349,11 @@ public class MappingReindexerConverter
 			Supplier<@Nullable Object> callback = () -> {
 				if (StringUtils.hasText(namespaceReference.lookup())) {
 					Map<String, Object> variables = new HashMap<>();
-					if (namespaceReference.lookup().contains("#sort")) {
+					Set<String> lookupVariables = sourceProperty.getLookupVariables();
+					if (lookupVariables.contains("#sort")) {
 						variables.put("sort", SortUtils.getSort(namespaceReference.sort()));
 					}
-					if (namespaceReference.lookup().contains("#sortString")) {
+					if (lookupVariables.contains("#sortString")) {
 						variables.put("sortString", namespaceReference.sort());
 					}
 					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup(), variables);

@@ -61,4 +61,6 @@ public class TestItemProjectionWithJoinedItems {
 
 	private final Collection<TestJoinedItemProjection> joinedItemsRepository;
 
+	private final TestJoinedItemProjection lookupByNameJoinedItem;
+
 }

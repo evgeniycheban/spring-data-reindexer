@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.reindexer.core.convert.LazyLoadingProxy;
 import org.springframework.data.reindexer.repository.item.TestItemReindexerRepository;
 import org.springframework.data.reindexer.repository.item.TestJoinedItemRepository;
 import org.springframework.data.reindexer.repository.item.dto.Place;
@@ -672,6 +673,21 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 		List<TestItemRecord> foundItems = this.repository
 			.findAllItemRecordByIdNotIn(expectedItems.stream().map(TestItem::getId).toList());
 		assertThat(foundItems).isEmpty();
+	}
+
+	@Test
+	void getLookupByNameJoinedItem() {
+		TestJoinedItem joinedItem = this.joinedItemRepository
+			.save(TestJoinedItem.builder().id(1L).name("TestName").value("TestValue").build());
+		TestItem expected = this.repository.save(TestItem.builder().id(1L).name("TestName").value("TestValue").build());
+		TestItemProjectionWithJoinedItems actual = this.repository.findById(1L, TestItemProjectionWithJoinedItems.class)
+			.orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getLookupByNameJoinedItem()).isInstanceOf(LazyLoadingProxy.class);
+		assertThat(actual.getLookupByNameJoinedItem().getId()).isEqualTo(joinedItem.getId());
+		assertThat(actual.getLookupByNameJoinedItem().getName()).isEqualTo(joinedItem.getName());
+		assertThat(actual.getLookupByNameJoinedItem().getValue()).isEqualTo(joinedItem.getValue());
 	}
 
 }

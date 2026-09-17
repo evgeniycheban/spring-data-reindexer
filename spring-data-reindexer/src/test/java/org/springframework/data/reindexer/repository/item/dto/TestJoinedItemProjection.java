@@ -27,6 +27,8 @@ public class TestJoinedItemProjection {
 
 	private final String name;
 
+	private final String value;
+
 	private final TestJoinedItemProjection nestedJoinedItem;
 
 	private final TestJoinedItemProjection nestedJoinedItemFetch;

@@ -167,17 +167,11 @@ public final class QueryUtils {
 				continue;
 			}
 			NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
-			if (StringUtils.hasText(namespaceReference.lookup())) {
-				/*
-				 * The indexName is added to the input properties passively if a lookup
-				 * query contains SpEL expression and indexName, therefore, indexName is
-				 * considered being used within the expression.
-				 */
-				if (namespaceReference.lookup().contains("#{") && StringUtils.hasText(namespaceReference.indexName())
-						&& namespaceReference.lookup().contains(namespaceReference.indexName())) {
-					result.add(namespaceReference.indexName());
+			for (String lookupVariable : referenceProperty.getLookupVariables()) {
+				ReindexerPersistentProperty property = entity.getPersistentProperty(lookupVariable);
+				if (property != null) {
+					result.add(property.getName());
 				}
-				continue;
 			}
 			if (namespaceReference.lazy() || distinct) {
 				result.add(namespaceReference.indexName());

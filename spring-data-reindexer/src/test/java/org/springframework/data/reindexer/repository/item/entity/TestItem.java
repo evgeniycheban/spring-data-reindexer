@@ -98,8 +98,10 @@ public class TestItem {
 	@Reindex(name = "joinedItemId")
 	private Long joinedItemId;
 
+	@Reindex(name = "joinedItemIds")
 	private List<Long> joinedItemIds = new ArrayList<>();
 
+	@Reindex(name = "joinedItemIdsEmpty")
 	private List<Long> joinedItemIdsEmpty = Collections.emptyList();
 
 	@Reindex(name = "nested")
@@ -187,6 +189,11 @@ public class TestItem {
 	@Transient
 	@NamespaceReference(lookup = "#{@testJoinedItemRepository.findAllById(joinedItemIds)}")
 	private List<TestJoinedItem> joinedItemsRepository = new ArrayList<>();
+
+	@EqualsAndHashCode.Exclude
+	@Transient
+	@NamespaceReference(lookup = "select * from test_joined_items where name = '#{name}' and value = '#{value}'")
+	private TestJoinedItem lookupByNameJoinedItem;
 
 	private String localDate;
 

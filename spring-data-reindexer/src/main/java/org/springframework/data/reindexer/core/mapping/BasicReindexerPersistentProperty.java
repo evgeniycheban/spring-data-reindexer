@@ -15,6 +15,14 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.annotations.Transient;
 
@@ -24,7 +32,19 @@ import org.springframework.data.mapping.PersistentEntity;
 import org.springframework.data.mapping.model.AnnotationBasedPersistentProperty;
 import org.springframework.data.mapping.model.Property;
 import org.springframework.data.mapping.model.SimpleTypeHolder;
+import org.springframework.data.util.Lock;
+import org.springframework.data.util.Lock.AcquiredLock;
+import org.springframework.data.util.ReadWriteLock;
 import org.springframework.data.util.Lazy;
+import org.springframework.expression.Expression;
+import org.springframework.expression.ParserContext;
+import org.springframework.expression.common.CompositeStringExpression;
+import org.springframework.expression.spel.SpelNode;
+import org.springframework.expression.spel.ast.PropertyOrFieldReference;
+import org.springframework.expression.spel.ast.VariableReference;
+import org.springframework.expression.spel.standard.SpelExpression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.util.StringUtils;
 
 /**
  * Reindexer specific {@link org.springframework.data.mapping.PersistentProperty}
@@ -36,9 +56,7 @@ import org.springframework.data.util.Lazy;
 public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentProperty<ReindexerPersistentProperty>
 		implements ReindexerPersistentProperty {
 
-	private final Lazy<NamespaceReference> getReference = Lazy.of(() -> findAnnotation(NamespaceReference.class));
-
-	private final Lazy<Reindex> getReindex = Lazy.of(() -> findAnnotation(Reindex.class));
+	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
 
 	private final Lazy<Boolean> isIdProperty = Lazy.of(() -> {
 		if (super.isIdProperty()) {
@@ -51,6 +69,8 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	private final Lazy<Boolean> isTransient = Lazy.of(() -> !isNamespaceReference() && !isAnnotationPresent(Value.class)
 			&& (super.isTransient() || isAnnotationPresent(Transient.class)));
 
+	private final Supplier<Set<String>> lookupVariables;
+
 	/**
 	 * Creates a new {@link BasicReindexerPersistentProperty}.
 	 * @param property must not be {@literal null}
@@ -60,6 +80,14 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	public BasicReindexerPersistentProperty(Property property, PersistentEntity<?, ReindexerPersistentProperty> owner,
 			SimpleTypeHolder simpleTypeHolder) {
 		super(property, owner, simpleTypeHolder);
+		if (isNamespaceReference()) {
+			NamespaceReference namespaceReference = getNamespaceReference();
+			this.lookupVariables = StringUtils.hasText(namespaceReference.lookup())
+					? new ExpressionVariablesExtractor(namespaceReference.lookup()) : Set::of;
+		}
+		else {
+			this.lookupVariables = Set::of;
+		}
 	}
 
 	@Override
@@ -69,22 +97,22 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 	@Override
 	public boolean isNamespaceReference() {
-		return this.getReference.getNullable() != null;
+		return findAnnotation(NamespaceReference.class) != null;
 	}
 
 	@Override
 	public boolean isIndexedProperty() {
-		return this.getReindex.getNullable() != null;
+		return findAnnotation(Reindex.class) != null;
 	}
 
 	@Override
 	public NamespaceReference getNamespaceReference() {
-		return this.getReference.get();
+		return getRequiredAnnotation(NamespaceReference.class);
 	}
 
 	@Override
 	public Reindex getReindex() {
-		return this.getReindex.get();
+		return getRequiredAnnotation(Reindex.class);
 	}
 
 	@Override
@@ -95,6 +123,82 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	@Override
 	public boolean isTransient() {
 		return this.isTransient.get();
+	}
+
+	@Override
+	public Set<String> getLookupVariables() {
+		return this.lookupVariables.get();
+	}
+
+	private static final class ExpressionVariablesExtractor implements Supplier<Set<String>> {
+
+		private static final Log logger = LogFactory.getLog(ExpressionVariablesExtractor.class);
+
+		private final ReadWriteLock readWriteLock = ReadWriteLock.of(new ReentrantReadWriteLock());
+
+		private final Lock readLock = readWriteLock.readLock();
+
+		private final Lock writeLock = readWriteLock.writeLock();
+
+		private final String expression;
+
+		private @Nullable Set<String> lookupVariables;
+
+		private ExpressionVariablesExtractor(String expression) {
+			this.expression = expression;
+		}
+
+		@Override
+		public Set<String> get() {
+			try (AcquiredLock l = this.readLock.lock()) {
+				if (this.lookupVariables != null) {
+					if (logger.isTraceEnabled()) {
+						logger.trace("Accessing already resolved variables: %s from lookup expression: %s"
+							.formatted(this.lookupVariables, this.expression));
+					}
+					return this.lookupVariables;
+				}
+			}
+			if (logger.isTraceEnabled()) {
+				logger.trace("Resolving variables from lookup expression: %s".formatted(this.expression));
+			}
+			try (AcquiredLock l = this.writeLock.lock()) {
+				if (this.lookupVariables == null) {
+					Set<String> lookupVariables = new HashSet<>();
+					Expression expression = PARSER.parseExpression(this.expression, ParserContext.TEMPLATE_EXPRESSION);
+					traverseAndPopulateLookupVariables(expression, lookupVariables);
+					this.lookupVariables = Set.copyOf(lookupVariables);
+				}
+				return this.lookupVariables;
+			}
+		}
+
+		private void traverseAndPopulateLookupVariables(Expression expression, Set<String> variables) {
+			if (expression instanceof CompositeStringExpression compositeStringExpression) {
+				for (Expression expr : compositeStringExpression.getExpressions()) {
+					traverseAndPopulateLookupVariables(expr, variables);
+				}
+			}
+			else if (expression instanceof SpelExpression spelExpression) {
+				traverseAndPopulateLookupVariables(spelExpression.getAST(), variables);
+			}
+		}
+
+		private void traverseAndPopulateLookupVariables(SpelNode node, Set<String> variables) {
+			if (node instanceof PropertyOrFieldReference reference) {
+				variables.add(reference.toStringAST());
+			}
+			else if (node instanceof VariableReference reference) {
+				variables.add(reference.toStringAST());
+			}
+			else {
+				int childCount = node.getChildCount();
+				for (int i = 0; i < childCount; i++) {
+					traverseAndPopulateLookupVariables(node.getChild(i), variables);
+				}
+			}
+		}
+
 	}
 
 }
