@@ -36,6 +36,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.CollectionFactory;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.convert.support.GenericConversionService;
@@ -305,7 +306,7 @@ public class MappingReindexerConverter
 				NamespaceReference namespaceReference = sourceProperty.getNamespaceReference();
 				if (shouldCreateProxy(sourceProperty, namespaceReference)) {
 					Object proxy = createProxyIfNeeded(namespaceReference, sourceProperty, targetProperty);
-					return (T) (proxy != null ? (T) proxy : value);
+					return (T) (proxy != null ? proxy : emptyNamespaceReference(targetProperty));
 				}
 			}
 			return readPropertyValue(sourceProperty, targetProperty, value);
@@ -463,6 +464,16 @@ public class MappingReindexerConverter
 						: valueConverter.readNull(conversionContext));
 			}
 			return (T) conversionContext.read(value, targetProperty.getTypeInformation());
+		}
+
+		private static @Nullable Object emptyNamespaceReference(ReindexerPersistentProperty property) {
+			if (property.isArray()) {
+				return Array.newInstance(property.getComponentType(), 0);
+			}
+			if (property.isCollectionLike()) {
+				return CollectionFactory.createCollection(property.getType(), property.getComponentType(), 0);
+			}
+			return null;
 		}
 
 	}

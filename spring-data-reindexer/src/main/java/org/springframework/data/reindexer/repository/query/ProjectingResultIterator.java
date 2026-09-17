@@ -44,15 +44,13 @@ public final class ProjectingResultIterator<M> implements ReindexerResultAccesso
 
 	private final ResultIterator<?> delegate;
 
-	private final Class<M> mappedType;
-
-	private final Class<?> domainType;
-
 	private final @Nullable AggregationResult aggregationFacet;
 
 	private final Map<String, Set<String>> distinctAggregationResults;
 
 	private final ReindexerConverter reindexerConverter;
+
+	private final EntityProjection<M, ?> descriptor;
 
 	private final long size;
 
@@ -78,11 +76,10 @@ public final class ProjectingResultIterator<M> implements ReindexerResultAccesso
 	public ProjectingResultIterator(ResultIterator<?> delegate, Class<M> mappedType, Class<?> domainType,
 			ReindexerConverter reindexerConverter) {
 		this.delegate = delegate;
-		this.mappedType = mappedType;
-		this.domainType = domainType;
 		this.reindexerConverter = reindexerConverter;
 		this.aggregationFacet = getAggregationFacet();
 		this.distinctAggregationResults = getDistinctAggregationResults();
+		this.descriptor = reindexerConverter.getProjectionIntrospector().introspect(mappedType, domainType);
 		this.size = this.aggregationFacet != null ? this.aggregationFacet.getFacets().size() : delegate.size();
 	}
 
@@ -137,7 +134,7 @@ public final class ProjectingResultIterator<M> implements ReindexerResultAccesso
 	private @Nullable M nextEntity() {
 		if (this.aggregationFacet == null || this.distinctAggregationResults.isEmpty()) {
 			Object entity = this.delegate.next();
-			return project(entity);
+			return this.reindexerConverter.project(this.descriptor, entity);
 		}
 		int aggregationPosition = this.aggregationPosition++;
 		List<String> fields = this.aggregationFacet.getFields();
@@ -154,13 +151,7 @@ public final class ProjectingResultIterator<M> implements ReindexerResultAccesso
 				return null;
 			}
 		}
-		return project(document);
-	}
-
-	private M project(Object entity) {
-		EntityProjection<M, ?> descriptor = this.reindexerConverter.getProjectionIntrospector()
-			.introspect(this.mappedType, this.domainType);
-		return this.reindexerConverter.project(descriptor, entity);
+		return this.reindexerConverter.project(this.descriptor, document);
 	}
 
 	private Map<String, Set<String>> getDistinctAggregationResults() {

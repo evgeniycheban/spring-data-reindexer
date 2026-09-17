@@ -88,7 +88,7 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 			.isEqualTo(nestedJoinedItem.getName());
 		assertThat(foundItem.getJoinedItems()).hasSize(expectedJoinedItems.size());
 		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItems()) {
-			TestJoinedItem expectedJoinedItem = expectedJoinedItems.remove(foundJoinedItem.getId());
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(foundJoinedItem.getId());
 			assertThat(expectedJoinedItem).isNotNull();
 			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
 			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
@@ -99,7 +99,34 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
-		assertThat(expectedJoinedItems).hasSize(0);
+		assertThat(foundItem.getJoinedItemsArray()).hasSize(expectedJoinedItems.size());
+		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItemsArray()) {
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(foundJoinedItem.getId());
+			assertThat(expectedJoinedItem).isNotNull();
+			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
+			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
+		}
+		assertThat(foundItem.getJoinedItemsArrayToList()).hasSize(expectedJoinedItems.size());
+		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItemsArrayToList()) {
+			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(foundJoinedItem.getId());
+			assertThat(expectedJoinedItem).isNotNull();
+			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
+			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
+			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
+		}
+		assertThat(foundItem.getJoinedItemsArrayEmpty()).isEmpty();
+		assertThat(foundItem.getJoinedItemsArrayEmptyList()).isEmpty();
 	}
 
 	@Test

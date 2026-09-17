@@ -18,6 +18,7 @@ package org.springframework.data.reindexer.repository.item.dto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 import lombok.Data;
@@ -47,6 +48,14 @@ public class TestItemProjectionWithJoinedItems {
 	private final TestJoinedItemProjection joinedItemLazy;
 
 	private final Set<TestJoinedItemProjection> joinedItems;
+
+	private final TestJoinedItemProjection[] joinedItemsArray;
+
+	private final List<TestJoinedItemProjection> joinedItemsArrayToList;
+
+	private final TestJoinedItemProjection[] joinedItemsArrayEmpty;
+
+	private final List<TestJoinedItemProjection> joinedItemsArrayEmptyList;
 
 	private final Collection<TestJoinedItemProjection> joinedItemsReverseOrder;
 

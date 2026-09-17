@@ -15,7 +15,9 @@
  */
 package org.springframework.data.reindexer.core.convert;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -107,16 +109,28 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 			.getProjectionIntrospector()
 			.introspect(target.getRequiredActualType().getType(), this.property.getActualType());
 		if (value instanceof Iterable<?> referenceEntities) {
-			List<Object> projectionEntities = new ArrayList<>();
+			List<Object> projectionEntities = new ArrayList<>(value instanceof Collection<?> coll ? coll.size() : 10);
 			for (Object projectionEntity : referenceEntities) {
 				projectionEntities.add(this.reindexerConverter.project(projection, projectionEntity));
 			}
-			if (this.conversionService.canConvert(this.property.getType(), target.getType())) {
-				return this.conversionService.convert(projectionEntities, target.getType());
+			return doConvert(projectionEntities, target);
+		}
+		if (value.getClass().isArray()) {
+			int length = Array.getLength(value);
+			final Object projectionEntities = Array.newInstance(projection.getMappedType().getType(), length);
+			for (int i = 0; i < length; i++) {
+				Array.set(projectionEntities, i, this.reindexerConverter.project(projection, Array.get(value, i)));
 			}
-			return projectionEntities;
+			return doConvert(projectionEntities, target);
 		}
 		return this.reindexerConverter.project(projection, value);
+	}
+
+	private @Nullable Object doConvert(Object value, TypeInformation<?> target) {
+		if (this.conversionService.canConvert(value.getClass(), target.getType())) {
+			return this.conversionService.convert(value, target.getType());
+		}
+		return value;
 	}
 
 }

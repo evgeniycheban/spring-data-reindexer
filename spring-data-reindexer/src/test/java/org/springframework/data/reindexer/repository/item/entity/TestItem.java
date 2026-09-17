@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -99,6 +100,8 @@ public class TestItem {
 
 	private List<Long> joinedItemIds = new ArrayList<>();
 
+	private List<Long> joinedItemIdsEmpty = Collections.emptyList();
+
 	@Reindex(name = "nested")
 	private TestNestedItem nestedItem;
 
@@ -121,13 +124,32 @@ public class TestItem {
 
 	@EqualsAndHashCode.Exclude
 	@Transient
-	@NamespaceReference(indexName = "joinedItemIds",
-			lookup = "select * from test_joined_items where id in (#{joinedItemIds}) order by id desc")
+	@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT)
+	private TestJoinedItem[] joinedItemsArray;
+
+	@EqualsAndHashCode.Exclude
+	@Transient
+	@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT)
+	private TestJoinedItem[] joinedItemsArrayToList;
+
+	@EqualsAndHashCode.Exclude
+	@Transient
+	@NamespaceReference(indexName = "joinedItemIdsEmpty", joinType = JoinType.LEFT, lazy = true)
+	private TestJoinedItem[] joinedItemsArrayEmpty;
+
+	@EqualsAndHashCode.Exclude
+	@Transient
+	@NamespaceReference(indexName = "joinedItemIdsEmpty", joinType = JoinType.LEFT, lazy = true)
+	private List<TestJoinedItem> joinedItemsArrayEmptyList;
+
+	@EqualsAndHashCode.Exclude
+	@Transient
+	@NamespaceReference(lookup = "select * from test_joined_items where id in (#{joinedItemIds}) order by id desc")
 	private List<TestJoinedItem> joinedItemsReverseOrder = new ArrayList<>();
 
 	@EqualsAndHashCode.Exclude
 	@Transient
-	@NamespaceReference(indexName = "joinedItemIds", lookup = """
+	@NamespaceReference(lookup = """
 			    select *
 			      from test_joined_items
 			     where id in (#{joinedItemIds})
@@ -141,7 +163,7 @@ public class TestItem {
 
 	@EqualsAndHashCode.Exclude
 	@Transient
-	@NamespaceReference(indexName = "joinedItemIds", lookup = """
+	@NamespaceReference(lookup = """
 			    select *
 			      from test_joined_items
 			     where id in (#{joinedItemIds})
