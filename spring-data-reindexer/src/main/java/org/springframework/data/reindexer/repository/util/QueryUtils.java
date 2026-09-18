@@ -34,6 +34,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.repository.query.ReturnedType;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -167,14 +168,22 @@ public final class QueryUtils {
 				continue;
 			}
 			NamespaceReference namespaceReference = referenceProperty.getNamespaceReference();
-			for (String lookupVariable : referenceProperty.getLookupVariables()) {
-				ReindexerPersistentProperty property = entity.getPersistentProperty(lookupVariable);
-				if (property != null) {
-					result.add(property.getName());
+			if (StringUtils.hasText(namespaceReference.lookup())) {
+				for (String lookupVariable : referenceProperty.getLookupVariables()) {
+					ReindexerPersistentProperty property = entity.getPersistentProperty(lookupVariable);
+					if (property != null) {
+						result.add(property.getName());
+					}
 				}
+				continue;
 			}
 			if (namespaceReference.lazy() || distinct) {
-				result.add(namespaceReference.indexName());
+				Assert.hasText(namespaceReference.indexName(),
+						() -> "@NamespaceReference must have indexName; Offending property: %s.%s"
+							.formatted(entity.getName(), referenceProperty.getName()));
+				ReindexerPersistentProperty property = entity
+					.getRequiredPersistentProperty(namespaceReference.indexName());
+				result.add(property.getName());
 			}
 		}
 		return result;

@@ -15,6 +15,7 @@
  */
 package org.springframework.data.reindexer.repository.util;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,7 +25,9 @@ import org.mockito.Answers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.reindexer.core.mapping.JoinType;
+import org.springframework.data.repository.query.ReturnedType;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.annotations.Reindex;
@@ -38,6 +41,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -203,6 +207,41 @@ class QueryUtilsTests {
 		verifyNoInteractions(this.personNamespace);
 	}
 
+	@Test
+	void getSelectFieldsWhenDistinctFalseThenReturnsSelectFields() {
+		SpelAwareProxyProjectionFactory factory = new SpelAwareProxyProjectionFactory();
+		Collection<String> selectFields = QueryUtils.getSelectFields(this.mappingContext,
+				ReturnedType.of(PersonDtoWithLazyAddress.class, Person.class, factory), false);
+		assertThat(selectFields).containsExactlyInAnyOrder("id", "addressId", "countryId");
+	}
+
+	@Test
+	void getSelectFieldsWhenDistinctTrueThenReturnsSelectFields() {
+		SpelAwareProxyProjectionFactory factory = new SpelAwareProxyProjectionFactory();
+		Collection<String> selectFields = QueryUtils.getSelectFields(this.mappingContext,
+				ReturnedType.of(PersonDto.class, Person.class, factory), true);
+		assertThat(selectFields).containsExactlyInAnyOrder("id", "addressId", "countryId");
+	}
+
+	@Test
+	void getSelectFieldsWhenLazyPropertyDoesNotHaveIndexNameThenException() {
+		SpelAwareProxyProjectionFactory factory = new SpelAwareProxyProjectionFactory();
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> QueryUtils.getSelectFields(this.mappingContext,
+					ReturnedType.of(PersonDtoWithLazyAddressWithoutIndexName.class, Person.class, factory), false))
+			.withMessageContaining("@NamespaceReference must have indexName; Offending property: %s.%s"
+				.formatted(Person.class.getName(), "addressLazyWithoutIndexName"));
+	}
+
+	record PersonDto(Long id, Address address, List<Address> addressLookupByCountry) {
+	}
+
+	record PersonDtoWithLazyAddress(Long id, Address addressLazy, List<Address> addressLookupByCountry) {
+	}
+
+	record PersonDtoWithLazyAddressWithoutIndexName(Long id, Address addressLazyWithoutIndexName) {
+	}
+
 	@Namespace(name = "persons")
 	static class Person {
 
@@ -215,11 +254,24 @@ class QueryUtilsTests {
 		@Reindex(name = "address_id")
 		Long addressId;
 
+		@Reindex(name = "country_id")
+		Long countryId;
+
 		@NamespaceReference(indexName = "id", referencedIndexName = "person_id")
 		List<Account> accounts;
 
 		@NamespaceReference(indexName = "address_id", joinType = JoinType.INNER)
 		Address address;
+
+		@NamespaceReference(indexName = "address_id", lazy = true)
+		Address addressLazy;
+
+		@NamespaceReference(lazy = true)
+		Address addressLazyWithoutIndexName;
+
+		@NamespaceReference(lookup = "select * from addresses where countryId = #{countryId} order by #{#sortString}",
+				sort = "id asc")
+		List<Address> addressLookupByCountry;
 
 		@NamespaceReference(indexName = "manager_id", joinType = JoinType.LEFT)
 		Person manager;
