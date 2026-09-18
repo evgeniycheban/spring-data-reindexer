@@ -143,20 +143,20 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 			Set<String> resolvedVariables = this.resolvedVariables;
 			if (resolvedVariables != null) {
 				if (logger.isTraceEnabled()) {
-					logger.trace("Accessing already resolved variables: %s from lookup expression: %s"
+					logger.trace("Accessing already resolved variables: %s from expression: %s"
 						.formatted(resolvedVariables, this.expression));
 				}
 				return resolvedVariables;
 			}
 			if (logger.isTraceEnabled()) {
-				logger.trace("Resolving variables from lookup expression: %s".formatted(this.expression));
+				logger.trace("Resolving variables from expression: %s".formatted(this.expression));
 			}
 			synchronized (this) {
 				resolvedVariables = this.resolvedVariables;
 				if (resolvedVariables == null) {
 					Set<String> variables = new HashSet<>();
 					Expression expression = PARSER.parseExpression(this.expression, ParserContext.TEMPLATE_EXPRESSION);
-					traverseAndPopulateLookupVariables(expression, variables);
+					traverseAndPopulateVariables(expression, variables);
 					resolvedVariables = Set.copyOf(variables);
 					this.resolvedVariables = resolvedVariables;
 				}
@@ -164,18 +164,18 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 			}
 		}
 
-		private void traverseAndPopulateLookupVariables(Expression expression, Set<String> variables) {
+		private void traverseAndPopulateVariables(Expression expression, Set<String> variables) {
 			if (expression instanceof CompositeStringExpression compositeStringExpression) {
 				for (Expression expr : compositeStringExpression.getExpressions()) {
-					traverseAndPopulateLookupVariables(expr, variables);
+					traverseAndPopulateVariables(expr, variables);
 				}
 			}
 			else if (expression instanceof SpelExpression spelExpression) {
-				traverseAndPopulateLookupVariables(spelExpression.getAST(), variables);
+				traverseAndPopulateVariables(spelExpression.getAST(), variables);
 			}
 		}
 
-		private void traverseAndPopulateLookupVariables(SpelNode node, Set<String> variables) {
+		private void traverseAndPopulateVariables(SpelNode node, Set<String> variables) {
 			if (node instanceof PropertyOrFieldReference reference) {
 				variables.add(reference.toStringAST());
 			}
@@ -183,9 +183,8 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 				variables.add(reference.toStringAST());
 			}
 			else {
-				int childCount = node.getChildCount();
-				for (int i = 0; i < childCount; i++) {
-					traverseAndPopulateLookupVariables(node.getChild(i), variables);
+				for (int i = 0; i < node.getChildCount(); i++) {
+					traverseAndPopulateVariables(node.getChild(i), variables);
 				}
 			}
 		}
