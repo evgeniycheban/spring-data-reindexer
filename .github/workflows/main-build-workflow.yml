@@ -1,6 +1,8 @@
-name: PR Build
+name: Main Build
 
-on: pull_request
+on:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
