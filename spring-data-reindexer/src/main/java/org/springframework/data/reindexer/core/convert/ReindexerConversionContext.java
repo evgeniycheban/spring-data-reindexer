@@ -117,7 +117,7 @@ public class ReindexerConversionContext implements ValueConversionContext<Reinde
 		}
 		if (value.getClass().isArray()) {
 			int length = Array.getLength(value);
-			final Object projectionEntities = Array.newInstance(projection.getMappedType().getType(), length);
+			Object projectionEntities = Array.newInstance(projection.getMappedType().getType(), length);
 			for (int i = 0; i < length; i++) {
 				Array.set(projectionEntities, i, this.reindexerConverter.project(projection, Array.get(value, i)));
 			}

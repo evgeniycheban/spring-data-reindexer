@@ -67,6 +67,7 @@ import org.springframework.data.mapping.model.ValueExpressionParameterValueProvi
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.projection.EntityProjectionIntrospector;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
+import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
@@ -380,6 +381,11 @@ public class MappingReindexerConverter
 					.openNamespace(referenceEntity.getType());
 				Query<?> query = QueryUtils.withJoins(namespace.query(), referenceEntity.getType(),
 						MappingReindexerConverter.this.mappingContext, MappingReindexerConverter.this.namespaceFactory);
+				Collection<String> selectFields = QueryUtils.getSelectFields(
+						MappingReindexerConverter.this.mappingContext, ReturnedType.of(targetProperty.getActualType(),
+								referenceEntity.getType(), MappingReindexerConverter.this.projectionFactory),
+						false);
+				selectFields.forEach(query::select);
 				Sort sort = SortUtils.getSort(namespaceReference.sort());
 				if (sort.isSorted()) {
 					for (Order order : sort) {
