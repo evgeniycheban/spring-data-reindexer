@@ -53,10 +53,6 @@ public class TestItemProjectionWithJoinedItems {
 
 	private final List<TestJoinedItemProjection> joinedItemsArrayToList;
 
-	private final TestJoinedItemProjection[] joinedItemsArrayEmpty;
-
-	private final List<TestJoinedItemProjection> joinedItemsArrayEmptyList;
-
 	private final Collection<TestJoinedItemProjection> joinedItemsReverseOrder;
 
 	private final Collection<TestJoinedItemProjection> joinedItemsRepository;

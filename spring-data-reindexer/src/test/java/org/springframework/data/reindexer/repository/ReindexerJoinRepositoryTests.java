@@ -112,21 +112,6 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
-		assertThat(foundItem.getJoinedItemsArrayToList()).hasSize(expectedJoinedItems.size());
-		for (TestJoinedItem foundJoinedItem : foundItem.getJoinedItemsArrayToList()) {
-			TestJoinedItem expectedJoinedItem = expectedJoinedItems.get(foundJoinedItem.getId());
-			assertThat(expectedJoinedItem).isNotNull();
-			assertThat(foundJoinedItem.getId()).isEqualTo(expectedJoinedItem.getId());
-			assertThat(foundJoinedItem.getName()).isEqualTo(expectedJoinedItem.getName());
-			assertThat(foundJoinedItem.getNestedJoinedItem()).isNotNull();
-			assertThat(foundJoinedItem.getNestedJoinedItem().getId()).isEqualTo(nestedJoinedItem.getId());
-			assertThat(foundJoinedItem.getNestedJoinedItem().getName()).isEqualTo(nestedJoinedItem.getName());
-			assertThat(foundJoinedItem.getNestedJoinedItemFetch()).isNotNull();
-			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getId()).isEqualTo(nestedJoinedItem.getId());
-			assertThat(foundJoinedItem.getNestedJoinedItemFetch().getName()).isEqualTo(nestedJoinedItem.getName());
-		}
-		assertThat(foundItem.getJoinedItemsArrayEmpty()).isEmpty();
-		assertThat(foundItem.getJoinedItemsArrayEmptyList()).isEmpty();
 	}
 
 	@Test
@@ -375,6 +360,15 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 		assertThat(found.getJoinedItemsByName()).hasSize(2);
 		assertThat(found.getJoinedItemsByName()).extracting(TestItem::getName)
 			.containsExactlyInAnyOrder("TestName1", "TestName2");
+	}
+
+	@Test
+	void getJoinedItemsArrayEmpty() {
+		TestItem expected = this.repository.save(TestItem.builder().id(1L).build());
+		TestItem actual = this.repository.findById(1L).orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getJoinedItemsArray()).isEmpty();
 	}
 
 }

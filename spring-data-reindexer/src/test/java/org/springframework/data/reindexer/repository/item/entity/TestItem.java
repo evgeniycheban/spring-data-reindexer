@@ -101,9 +101,6 @@ public class TestItem {
 	@Reindex(name = "joinedItemIds")
 	private List<Long> joinedItemIds = new ArrayList<>();
 
-	@Reindex(name = "joinedItemIdsEmpty")
-	private List<Long> joinedItemIdsEmpty = Collections.emptyList();
-
 	@Reindex(name = "nested")
 	private TestNestedItem nestedItem;
 
@@ -133,16 +130,6 @@ public class TestItem {
 	@Transient
 	@NamespaceReference(indexName = "joinedItemIds", joinType = JoinType.LEFT)
 	private TestJoinedItem[] joinedItemsArrayToList;
-
-	@EqualsAndHashCode.Exclude
-	@Transient
-	@NamespaceReference(indexName = "joinedItemIdsEmpty", joinType = JoinType.LEFT, lazy = true)
-	private TestJoinedItem[] joinedItemsArrayEmpty;
-
-	@EqualsAndHashCode.Exclude
-	@Transient
-	@NamespaceReference(indexName = "joinedItemIdsEmpty", joinType = JoinType.LEFT, lazy = true)
-	private List<TestJoinedItem> joinedItemsArrayEmptyList;
 
 	@EqualsAndHashCode.Exclude
 	@Transient

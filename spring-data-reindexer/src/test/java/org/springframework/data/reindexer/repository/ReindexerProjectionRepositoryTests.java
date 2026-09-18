@@ -197,8 +197,6 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getId()).isEqualTo(nestedJoinedItem.getId());
 			assertThat(foundJoinedItem.getNestedJoinedItemLazy().getName()).isEqualTo(nestedJoinedItem.getName());
 		}
-		assertThat(foundItem.getJoinedItemsArrayEmpty()).isEmpty();
-		assertThat(foundItem.getJoinedItemsArrayEmptyList()).isEmpty();
 	}
 
 	@Test
@@ -688,6 +686,26 @@ class ReindexerProjectionRepositoryTests extends AbstractReindexerTest {
 		assertThat(actual.getLookupByNameJoinedItem().getId()).isEqualTo(joinedItem.getId());
 		assertThat(actual.getLookupByNameJoinedItem().getName()).isEqualTo(joinedItem.getName());
 		assertThat(actual.getLookupByNameJoinedItem().getValue()).isEqualTo(joinedItem.getValue());
+	}
+
+	@Test
+	void getJoinedItemsArrayEmpty() {
+		TestItem expected = this.repository.save(TestItem.builder().id(1L).build());
+		TestItemProjectionWithJoinedItems actual = this.repository.findById(1L, TestItemProjectionWithJoinedItems.class)
+			.orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getJoinedItemsArray()).isEmpty();
+	}
+
+	@Test
+	void getJoinedItemsArrayToListEmpty() {
+		TestItem expected = this.repository.save(TestItem.builder().id(1L).build());
+		TestItemProjectionWithJoinedItems actual = this.repository.findById(1L, TestItemProjectionWithJoinedItems.class)
+			.orElse(null);
+		assertThat(actual).isNotNull();
+		assertThat(actual.getId()).isEqualTo(expected.getId());
+		assertThat(actual.getJoinedItemsArrayToList()).isEmpty();
 	}
 
 }

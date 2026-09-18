@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.core.mapping;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import ru.rt.restream.reindexer.annotations.Reindex;
 
@@ -70,15 +72,54 @@ class BasicReindexerPersistentPropertyTests {
 		assertThat(property.getIndexName()).isEqualTo("lastName");
 	}
 
+	@Test
+	void getLookupVariablesWhenHasNamespaceReferenceValueThenResolves() {
+		ReindexerPersistentProperty property = this.entity.getRequiredPersistentProperty("friends");
+		assertThat(property.getLookupVariables()).containsExactlyInAnyOrder("friendIds", "#sortString");
+	}
+
+	@Test
+	void getLookupVariablesWhenDoesNotHaveNamespaceReferenceAnnotationThenEmpty() {
+		ReindexerPersistentProperty property = this.entity.getRequiredPersistentProperty("friendIds");
+		assertThat(property.getLookupVariables()).isEmpty();
+	}
+
+	@Test
+	void getLookupVariablesWhenNamespaceReferenceValueEmptyThenEmpty() {
+		ReindexerPersistentProperty property = this.entity.getRequiredPersistentProperty("manager");
+		assertThat(property.getLookupVariables()).isEmpty();
+	}
+
+	@Test
+	void getLookupVariablesWhenNamespaceReferenceValueDoesNotHaveVariablesThenEmpty() {
+		ReindexerPersistentProperty property = this.entity.getRequiredPersistentProperty("allPersons");
+		assertThat(property.getLookupVariables()).isEmpty();
+	}
+
 	static class Person {
 
 		@Id
 		Long id;
 
+		@Reindex(name = "manager_id")
+		Long managerId;
+
+		@Reindex(name = "friend_ids")
+		List<Long> friendIds;
+
 		@Reindex(name = "first_name")
 		String firstName;
 
 		String lastName;
+
+		@NamespaceReference(lookup = "select * from persons where id in (#{friendIds}) order by #{#sortString}")
+		List<Person> friends;
+
+		@NamespaceReference(indexName = "manager_id")
+		Person manager;
+
+		@NamespaceReference(lookup = "select * from persons")
+		Person allPersons;
 
 	}
 

@@ -354,6 +354,8 @@ public class MappingReindexerConverter
 						variables.put("sort", SortUtils.getSort(namespaceReference.sort()));
 					}
 					if (lookupVariables.contains("#sortString")) {
+						Assert.hasText(namespaceReference.sort(),
+								"'#sortString' is used, but no 'sort' attribute specified in @NamespaceReference");
 						variables.put("sortString", namespaceReference.sort());
 					}
 					Object evaluated = this.evaluator.evaluate(namespaceReference.lookup(), variables);
