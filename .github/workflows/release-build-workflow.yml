@@ -8,7 +8,6 @@ jobs:
     if: github.repository == 'evgeniycheban/spring-data-reindexer'
     env:
       MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -18,15 +17,6 @@ jobs:
           distribution: 'temurin'
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-
-      # TODO: Repo's SSL certificate has expired.
-      #      - name: Install Reindexer
-      #        run: |
-      #          curl https://repo.reindexer.io/RX-KEY.GPG | sudo apt-key add
-      #          echo 'deb https://repo.reindexer.io/ubuntu-bionic /' | sudo tee -a /etc/apt/sources.list
-      #          sudo apt-get update
-      #          sudo apt-get install reindexer-dev
-
       - name: Prepare release
         run: |
           git config user.name "GitHub Actions"
@@ -34,7 +24,6 @@ jobs:
           ./mvnw --batch-mode release:prepare -Pci,pre-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set up Apache Maven Central
         uses: actions/setup-java@v4
         with:
@@ -44,7 +33,6 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-
       - name: Perform release
         run: |
           ./mvnw --batch-mode release:perform -Pci,release
