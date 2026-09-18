@@ -989,7 +989,9 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 				String normalizedPath = alias != null
 						&& alias.getName().equals(fullyQualifiedName.substring(0, firstDot))
 								? fullyQualifiedName.substring(firstDot + 1) : fullyQualifiedName;
-				return new Column(normalizedPath);
+				Column normalizedColumn = new Column();
+				normalizedColumn.setName(normalizedPath, false);
+				return normalizedColumn;
 			}
 			return column;
 		}
