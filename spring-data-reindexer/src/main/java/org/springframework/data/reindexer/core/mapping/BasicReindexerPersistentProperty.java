@@ -132,7 +132,7 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 		private final String expression;
 
-		private volatile @Nullable Set<String> lookupVariables;
+		private volatile @Nullable Set<String> resolvedVariables;
 
 		private ExpressionVariablesExtractor(String expression) {
 			this.expression = expression;
@@ -140,27 +140,27 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 
 		@Override
 		public Set<String> get() {
-			Set<String> lookupVariables = this.lookupVariables;
-			if (lookupVariables != null) {
+			Set<String> resolvedVariables = this.resolvedVariables;
+			if (resolvedVariables != null) {
 				if (logger.isTraceEnabled()) {
 					logger.trace("Accessing already resolved variables: %s from lookup expression: %s"
-						.formatted(lookupVariables, this.expression));
+						.formatted(resolvedVariables, this.expression));
 				}
-				return lookupVariables;
+				return resolvedVariables;
 			}
 			if (logger.isTraceEnabled()) {
 				logger.trace("Resolving variables from lookup expression: %s".formatted(this.expression));
 			}
 			synchronized (this) {
-				lookupVariables = this.lookupVariables;
-				if (lookupVariables == null) {
+				resolvedVariables = this.resolvedVariables;
+				if (resolvedVariables == null) {
 					Set<String> variables = new HashSet<>();
 					Expression expression = PARSER.parseExpression(this.expression, ParserContext.TEMPLATE_EXPRESSION);
 					traverseAndPopulateLookupVariables(expression, variables);
-					lookupVariables = Set.copyOf(variables);
-					this.lookupVariables = lookupVariables;
+					resolvedVariables = Set.copyOf(variables);
+					this.resolvedVariables = resolvedVariables;
 				}
-				return lookupVariables;
+				return resolvedVariables;
 			}
 		}
 
