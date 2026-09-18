@@ -4,7 +4,7 @@
 
 	<groupId>io.github.evgeniycheban</groupId>
 	<artifactId>spring-data-reindexer-parent</artifactId>
-	<version>1.7-SNAPSHOT</version>
+	<version>1.7</version>
 	<packaging>pom</packaging>
 
 	<name>Spring Data Reindexer Parent</name>
@@ -46,7 +46,7 @@
 		<developerConnection>
 			scm:git:https://github.com/evgeniycheban/spring-data-reindexer.git
 		</developerConnection>
-	  <tag>HEAD</tag>
+	  <tag>spring-data-reindexer-parent-1.7</tag>
   </scm>
 
 	<properties>
