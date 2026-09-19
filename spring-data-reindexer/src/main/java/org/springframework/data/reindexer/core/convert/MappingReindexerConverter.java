@@ -46,7 +46,6 @@ import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.convert.PropertyValueConversions;
 import org.springframework.data.convert.PropertyValueConverter;
@@ -364,14 +363,8 @@ public class MappingReindexerConverter
 					if (!(evaluated instanceof String preparedQuery)) {
 						return evaluated;
 					}
-					try (ResultIterator<?> iterator = executeQuery(preparedQuery, referenceEntity)) {
-						if (targetProperty.isCollectionLike()) {
-							List<Object> result = new ArrayList<>();
-							iterator.forEachRemaining(result::add);
-							return result;
-						}
-						return getSingleResult(iterator, namespaceReference.nullable());
-					}
+					ResultIterator<?> iterator = executeQuery(preparedQuery, referenceEntity);
+					return getResults(iterator, targetProperty, namespaceReference.nullable());
 				}
 				ReindexerPersistentProperty referencedProperty = StringUtils
 					.hasText(namespaceReference.referencedIndexName())
@@ -399,12 +392,7 @@ public class MappingReindexerConverter
 					query.where(referencedProperty.getIndexName(), Condition.EQ, source);
 				}
 				ResultIterator<?> iterator = query.execute();
-				if (targetProperty.isCollectionLike()) {
-					return ReindexerQueryExecutions.toList(iterator);
-				}
-				try (iterator) {
-					return getSingleResult(iterator, namespaceReference.nullable());
-				}
+				return getResults(iterator, targetProperty, namespaceReference.nullable());
 			};
 			return MappingReindexerConverter.this.lazyLoadingProxyFactory.createLazyLoadingProxy(
 					targetProperty.getType(), sourceProperty, callback,
@@ -436,15 +424,20 @@ public class MappingReindexerConverter
 			return source;
 		}
 
+		private @Nullable Object getResults(ResultIterator<?> iterator, ReindexerPersistentProperty property,
+				boolean nullable) {
+			if (property.isCollectionLike()) {
+				return ReindexerQueryExecutions.toList(iterator);
+			}
+			return getSingleResult(iterator, nullable);
+		}
+
 		private @Nullable Object getSingleResult(ResultIterator<?> iterator, boolean nullable) {
-			Object result = iterator.hasNext() ? iterator.next() : null;
-			if (result == null && !nullable) {
+			Object entity = ReindexerQueryExecutions.toEntity(iterator);
+			if (entity == null && !nullable) {
 				throw new EmptyResultDataAccessException(1);
 			}
-			if (iterator.hasNext()) {
-				throw new IncorrectResultSizeDataAccessException(1);
-			}
-			return result;
+			return entity;
 		}
 
 		private ResultIterator<?> executeQuery(String query, ReindexerPersistentEntity<?> entity) {
