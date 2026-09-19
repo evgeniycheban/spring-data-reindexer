@@ -31,7 +31,8 @@ public interface ReindexerResultAccessor<E> extends ResultIterator<E> {
 	/**
 	 * Returns a {@literal double} value of the {@link AggregationResult} for the given
 	 * {@code type} and {@code field}. Defaults to {@literal null} if no
-	 * {@code AggregationResult} found or {@literal value} is {@literal null}.
+	 * {@code AggregationResult} found or {@link AggregationResult#getValue()} is
+	 * {@literal null}.
 	 * @param type the aggregation type e.g., min, max, sum, avg
 	 * @param field the field an aggregation function being called for
 	 * @return the {@code AggregationResult}'s value to use
