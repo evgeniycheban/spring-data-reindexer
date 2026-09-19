@@ -30,15 +30,15 @@ public interface ReindexerResultAccessor<E> extends ResultIterator<E> {
 
 	/**
 	 * Returns a {@literal double} value of the {@link AggregationResult} for the given
-	 * {@code type} and {@code field}. Defaults to {@literal 0.0} if no
-	 * {@code AggregationResult} found.
+	 * {@code type} and {@code field}. Defaults to {@literal null} if no
+	 * {@code AggregationResult} found or {@literal value} is {@literal null}.
 	 * @param type the aggregation type e.g., min, max, sum, avg
 	 * @param field the field an aggregation function being called for
 	 * @return the {@code AggregationResult}'s value to use
 	 */
-	default double aggregationValue(String type, String field) {
+	default @Nullable Double aggregationValue(String type, String field) {
 		AggregationResult result = aggregationResult(type, field);
-		return result != null ? result.getValue() : 0.0d;
+		return result != null ? result.getValue() : null;
 	}
 
 	/**
