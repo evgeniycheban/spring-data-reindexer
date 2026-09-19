@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Function;
@@ -230,19 +231,26 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 	}
 
 	private final class ReindexerSelectItemQueryExecutionResolvingVisitor
-			extends ExpressionVisitorAdapter<@Nullable Function<ReindexerQuery, Object>> {
+			extends ExpressionVisitorAdapter<@Nullable Function<ReindexerQuery, @Nullable Object>> {
 
 		@Override
-		public <S> Function<ReindexerQuery, Object> visit(net.sf.jsqlparser.expression.Function function, S context) {
+		public <S> Function<ReindexerQuery, @Nullable Object> visit(net.sf.jsqlparser.expression.Function function,
+				S context) {
 			String functionName = function.getName().toLowerCase(Locale.ROOT);
 			return switch (functionName) {
 				case "count", "count_cached" -> (query) -> query.criteria().count();
-				case "sum", "min", "max", "avg" -> (query) -> {
-					try (ReindexerResultAccessor<?> it = toResultAccessor(query)) {
-						return it.aggregationValue(functionName,
-								COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function));
-					}
-				};
+				case "sum", "min", "max", "avg" -> {
+					Class<?> returnedObjectType = StringBasedReindexerQuery.this.method.getReturnedObjectType();
+					boolean isPrimitive = returnedObjectType != void.class && returnedObjectType.isPrimitive();
+					UnaryOperator<@Nullable Double> aggregationValueExtractor = isPrimitive
+							? value -> Objects.requireNonNullElse(value, 0.0d) : UnaryOperator.identity();
+					String indexName = COLUMN_RESOLVING_VISITOR.resolveRequiredIndexName(function);
+					yield (query) -> {
+						try (ReindexerResultAccessor<?> it = toResultAccessor(query)) {
+							return aggregationValueExtractor.apply(it.aggregationValue(functionName, indexName));
+						}
+					};
+				}
 				default -> StringBasedReindexerQuery.super.getQueryExecution(StringBasedReindexerQuery.this.method);
 			};
 		}

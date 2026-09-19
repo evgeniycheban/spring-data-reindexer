@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -125,6 +126,27 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		assertThat(sum).isEqualTo(6L);
 	}
 
+	// gh-198
+	@Test
+	void sumSqlByNameEmptyNamespace() {
+		long sum = this.repository.sumSqlByName("TestName");
+		assertThat(sum).isEqualTo(0);
+	}
+
+	// gh-198
+	@Test
+	void sumSqlByNameNullableEmptyNamespace() {
+		Long sum = this.repository.sumSqlByNameNullable("TestName");
+		assertThat(sum).isNull();
+	}
+
+	// gh-198
+	@Test
+	void sumSqlByNameOptionalEmptyNamespace() {
+		Optional<Long> sum = this.repository.sumSqlByNameOptional("TestName");
+		assertThat(sum).isEmpty();
+	}
+
 	@Test
 	void minSqlByName() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
@@ -132,6 +154,27 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
 		long min = this.repository.minSqlByName("TestName");
 		assertThat(min).isEqualTo(1L);
+	}
+
+	// gh-198
+	@Test
+	void minSqlByNameEmptyNamespace() {
+		long min = this.repository.minSqlByName("TestName");
+		assertThat(min).isEqualTo(0L);
+	}
+
+	// gh-198
+	@Test
+	void minSqlByNameNullableEmptyNamespace() {
+		Long min = this.repository.minSqlByNameNullable("TestName");
+		assertThat(min).isNull();
+	}
+
+	// gh-198
+	@Test
+	void minSqlByNameOptionalEmptyNamespace() {
+		Optional<Long> min = this.repository.minSqlByNameOptional("TestName");
+		assertThat(min).isEmpty();
 	}
 
 	@Test
@@ -143,6 +186,27 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		assertThat(max).isEqualTo(3L);
 	}
 
+	// gh-198
+	@Test
+	void maxSqlByNameEmptyNamespace() {
+		long max = this.repository.maxSqlByName("TestName");
+		assertThat(max).isEqualTo(0L);
+	}
+
+	// gh-198
+	@Test
+	void maxSqlByNameNullableEmptyNamespace() {
+		Long max = this.repository.maxSqlByNameNullable("TestName");
+		assertThat(max).isNull();
+	}
+
+	// gh-198
+	@Test
+	void maxSqlByNameOptionalEmptyNamespace() {
+		Optional<Long> max = this.repository.maxSqlByNameOptional("TestName");
+		assertThat(max).isEmpty();
+	}
+
 	@Test
 	void avgSqlByName() {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
@@ -150,6 +214,27 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		this.repository.save(TestItem.builder().id(3L).name("TestName").build());
 		long avg = this.repository.avgSqlByName("TestName");
 		assertThat(avg).isEqualTo(2L);
+	}
+
+	// gh-198
+	@Test
+	void avgSqlByNameEmptyNamespace() {
+		long avg = this.repository.avgSqlByName("TestName");
+		assertThat(avg).isEqualTo(0L);
+	}
+
+	// gh-198
+	@Test
+	void avgSqlByNameNullableEmptyNamespace() {
+		Long avg = this.repository.avgSqlByNameNullable("TestName");
+		assertThat(avg).isNull();
+	}
+
+	// gh-198
+	@Test
+	void avgSqlByNameOptionalEmptyNamespace() {
+		Optional<Long> avg = this.repository.avgSqlByNameOptional("TestName");
+		assertThat(avg).isEmpty();
 	}
 
 	@Test

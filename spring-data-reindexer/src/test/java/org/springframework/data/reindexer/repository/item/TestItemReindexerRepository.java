@@ -135,14 +135,38 @@ public interface TestItemReindexerRepository extends ReindexerRepository<TestIte
 	@Query("SELECT SUM(id) from items WHERE name = ?1")
 	long sumSqlByName(String name);
 
+	@Query("SELECT SUM(id) from items WHERE name = ?1")
+	Long sumSqlByNameNullable(String name);
+
+	@Query("SELECT SUM(id) from items WHERE name = ?1")
+	Optional<Long> sumSqlByNameOptional(String name);
+
 	@Query("SELECT MIN(id) from items WHERE name = ?1")
 	long minSqlByName(String name);
+
+	@Query("SELECT MIN(id) from items WHERE name = ?1")
+	Long minSqlByNameNullable(String name);
+
+	@Query("SELECT MIN(id) from items WHERE name = ?1")
+	Optional<Long> minSqlByNameOptional(String name);
 
 	@Query("SELECT MAX(id) from items WHERE name = ?1")
 	long maxSqlByName(String name);
 
+	@Query("SELECT MAX(id) from items WHERE name = ?1")
+	Long maxSqlByNameNullable(String name);
+
+	@Query("SELECT MAX(id) from items WHERE name = ?1")
+	Optional<Long> maxSqlByNameOptional(String name);
+
 	@Query("SELECT AVG(id) from items WHERE name = ?1")
 	long avgSqlByName(String name);
+
+	@Query("SELECT AVG(id) from items WHERE name = ?1")
+	Long avgSqlByNameNullable(String name);
+
+	@Query("SELECT AVG(id) from items WHERE name = ?1")
+	Optional<Long> avgSqlByNameOptional(String name);
 
 	@Query("SELECT FACET(id, name ORDER BY id DESC) from items WHERE name = ?1")
 	ReindexerResultAccessor<TestItem> facetOrderByIdDescSqlByName(String name);
