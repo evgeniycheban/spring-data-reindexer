@@ -211,6 +211,14 @@ class QueryUtilsTests {
 	void getSelectFieldsWhenDistinctFalseThenReturnsSelectFields() {
 		SpelAwareProxyProjectionFactory factory = new SpelAwareProxyProjectionFactory();
 		Collection<String> selectFields = QueryUtils.getSelectFields(this.mappingContext,
+				ReturnedType.of(PersonDto.class, Person.class, factory), false);
+		assertThat(selectFields).containsExactlyInAnyOrder("id", "countryId");
+	}
+
+	@Test
+	void getSelectFieldsWhenLazyPropertyDistinctFalseThenReturnsSelectFields() {
+		SpelAwareProxyProjectionFactory factory = new SpelAwareProxyProjectionFactory();
+		Collection<String> selectFields = QueryUtils.getSelectFields(this.mappingContext,
 				ReturnedType.of(PersonDtoWithLazyAddress.class, Person.class, factory), false);
 		assertThat(selectFields).containsExactlyInAnyOrder("id", "addressId", "countryId");
 	}

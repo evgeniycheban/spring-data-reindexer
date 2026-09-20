@@ -42,7 +42,7 @@ public final class ReindexerSimpleTypes {
 	public static final SimpleTypeHolder HOLDER = new SimpleTypeHolder(REINDEXER_SIMPLE_TYPES, true);
 
 	/**
-	 * A mapped Java types to internal Reindexer types.
+	 * Mapped Java types to internal Reindexer types.
 	 */
 	// @formatter:off
 	public static final Map<Class<?>, FieldType> MAPPED_TYPES = Map.ofEntries(

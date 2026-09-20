@@ -114,7 +114,7 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		this.repository.save(TestItem.builder().id(1L).name("TestName").build());
 		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
 		long count = this.repository.countSqlByName("TestName");
-		assertThat(count).isEqualTo(2);
+		assertThat(count).isEqualTo(2L);
 	}
 
 	@Test
@@ -130,7 +130,7 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 	@Test
 	void sumSqlByNameEmptyNamespace() {
 		long sum = this.repository.sumSqlByName("TestName");
-		assertThat(sum).isEqualTo(0);
+		assertThat(sum).isEqualTo(0L);
 	}
 
 	// gh-198
