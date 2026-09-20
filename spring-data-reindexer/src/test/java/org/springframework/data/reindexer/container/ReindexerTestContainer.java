@@ -22,6 +22,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
+import eu.rekawek.toxiproxy.model.ToxicDirection;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -80,7 +81,7 @@ public class ReindexerTestContainer {
 	 */
 	public static void disable() {
 		try {
-			PROXY.disable();
+			PROXY.toxics().timeout("rx-connection-timeout", ToxicDirection.DOWNSTREAM, 0L);
 		}
 		catch (IOException ex) {
 			throw new RuntimeException(ex);
@@ -92,7 +93,7 @@ public class ReindexerTestContainer {
 	 */
 	public static void enable() {
 		try {
-			PROXY.enable();
+			PROXY.toxics().get("rx-connection-timeout").remove();
 		}
 		catch (IOException ex) {
 			throw new RuntimeException(ex);

@@ -23,6 +23,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import ru.rt.restream.reindexer.binding.Consts;
+import ru.rt.restream.reindexer.exceptions.ReindexerException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -207,7 +208,8 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 		assertThatExceptionOfType(LazyLoadingException.class).isThrownBy(() -> found.getJoinedItemLazy().getName())
 			.withMessage("Unable to lazily resolve reference")
 			.havingCause()
-			.withMessage("Connection timeout: no available data source to connect");
+			.isInstanceOf(ReindexerException.class)
+			.withMessage("Request timeout");
 		// enable proxy and verify that no exception is thrown when accessing lazy
 		// namespace reference.
 		ReindexerTestContainer.enable();
