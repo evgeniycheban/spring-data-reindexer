@@ -21,7 +21,9 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          ./mvnw --batch-mode release:prepare -Pci,pre-release
+          ./mvnw --batch-mode release:prepare -Pci,pre-release \
+                  -DreleaseVersion=1.7.1 \
+                  -DdevelopmentVersion=1.8.0-SNAPSHOT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Apache Maven Central
