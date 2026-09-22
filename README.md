@@ -2,8 +2,7 @@ Spring Data Reindexer
 ====================
 [![Sonatype Central](https://maven-badges.sml.io/sonatype-central/io.github.evgeniycheban/spring-data-reindexer/badge.svg)](https://maven-badges.sml.io/sonatype-central/io.github.evgeniycheban/spring-data-reindexer/)
 
-Provides Spring Data approach to work with Reindexer database.
-To use with Spring Boot, consider [Spring Boot Starter Data Reindexer](https://github.com/evgeniycheban/spring-data-reindexer/tree/main/spring-boot-starter-data-reindexer).
+Provides the Spring Data approach to work with the Reindexer database.
 
 ## Maven
 
@@ -15,6 +14,29 @@ To use with Spring Boot, consider [Spring Boot Starter Data Reindexer](https://g
 	<version>${spring-data-reindexer.version}</version>
 </dependency>
 ```
+
+To use with Spring Boot, consider Spring Boot Starter Data Reindexer:
+
+```xml
+
+<dependency>
+	<groupId>io.github.evgeniycheban</groupId>
+	<artifactId>spring-boot-starter-data-reindexer</artifactId>
+	<version>${spring-boot-starter-data-reindexer.version}</version>
+</dependency>
+```
+
+## application.properties
+
+A minimal configuration example using Spring Boot:
+```properties
+spring.application.name=demo
+# Reindexer url(s) to connect, defaults to cproto://localhost:6534/test
+spring.data.reindexer.urls=cproto://localhost:6534/demo
+# Other properties can be found in org.springframework.boot.autoconfigure.data.reindexer.ReindexerProperties class
+# with the description that is also available from your favorite IDE.
+```
+See the configuration example below for using Spring Data Reindexer without Spring Boot.
 
 ## Usage
 
@@ -50,35 +72,24 @@ public class ReindexerConfig extends ReindexerConfigurationSupport {
 ```java
 import ru.rt.restream.reindexer.annotations.Reindex;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.reindexer.core.mapping.Namespace;
 
 @Namespace(name = "items")
 public class Item {
 
-	@Reindex(name = "id", isPrimaryKey = true)
+	@Id
 	private Long id;
 
 	@Reindex(name = "name")
 	private String name;
 
-	public Long getId() {
-		return this.id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public String getName() {
-		return this.name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
+	// getters/setters.
 
 }
 ```
+The `@Id` annotation can be used as a shortcut for `@Reindex(name = "id", isPrimaryKey = true)` to specify the primary
+key of the entity, it will automatically create a primary-key index if none exists.
 
 ### Repository
 
@@ -95,6 +106,13 @@ public interface ItemRepository extends ReindexerRepository<Item, Long> {
 
 }
 ```
+If `@Reindex` annotation is not defined, indexes used within the derived query method are created automatically when
+`@EnableReindexerRepositories#createIndexesForQueryMethods` is `true`.  
+The `@Collation` annotation can be used to specify the collation for the index created within the derived query method.
+
+**Note that once the index is created, it cannot be modified, therefore, the `@Collation` annotation is applied only to
+the first usage of the index within the derived query method.  
+More information can be read in Javadoc of `@Collation` annotation.**
 
 The `ItemRepository` can be injected into spring-managed beans using `@Autowired` or
 another Spring Framework approach.
@@ -104,9 +122,6 @@ another Spring Framework approach.
 private ItemRepository repository;
 ```
 
-More examples can be found
-[here](https://github.com/evgeniycheban/spring-data-reindexer/blob/main/src/test/java/org/springframework/data/reindexer/repository/ReindexerRepositoryTests.java).
-
 ## Transactions
 
 Transactions are implemented using `@Transactional` annotation approach, to enable
@@ -114,9 +129,20 @@ transaction management support `@EnableTransactionManagement` annotation should 
 on the `@Configuration` class and `ReindexerTransactionManager` bean should be defined in
 the context.
 
-Note that `ReindexerTransactionManager` manages transactions for a single namespace,
-therefore it should be defined with a domain class that is mapped to a Reindexer
-namespace.
+**Note that `ReindexerTransactionManager` manages transactions for a single namespace, therefore, it should be defined
+with a domain class that is mapped to a Reindexer namespace.**
+
+### Supported propagation levels
+The `ReindexerTransactionManager` supports the following transaction propagation levels:
+* `REQUIRED` (default) Support a current transaction, create a new one if none exists.
+* `REQUIRES_NEW` Create a new transaction, and suspend the current transaction if one exists.
+
+**Note: `NESTED` is not supported as there is no native support for nested transactions in Reindexer.**
+
+### Readonly transactions
+The `ReindexerTransactionManager` supports readonly transactions using the `readOnly` attribute.  
+If the `readOnly` attribute is set to `true`, the transaction is marked as read-only and executing
+a write operation will result in an exception.
 
 Here is an example of basic transaction management usage:
 
@@ -180,16 +206,60 @@ public class ItemTransactionalService {
 The `@Query` annotation is used to declare SQL-based Reindexer queries
 directly on repository methods.
 
-Parameter binding supports named parameters using `@Param` annotation as well
-as parameter number links.
+Parameter binding supports named parameters as well as parameter references using `?1` style placeholders.
 
 ```java
 @Query("SELECT * FROM items WHERE name = :name")
 Optional<Item> findOneByName(@Param("name") String name);
 
+@Query("SELECT * FROM items WHERE name = :name")
+Optional<Item> findOneByName(String name);
+
 @Query("SELECT * FROM items WHERE name = ?1")
 Optional<Item> findOneByName(String name);
 ```
+
+### Advanced @Query annotation support with extra type-safety using `JSQLParser`.
+The `@Query` annotation supports `JSQLParser` to provide type-safe query bindings.  
+To enable `JSQLParser` support, it should be added to the classpath:
+```xml
+<dependency>
+    <groupId>com.github.jsqlparser</groupId>
+    <artifactId>jsqlparser</artifactId>
+    <version>5.4</version>
+</dependency>
+```
+When `JSQLParser` is available on the classpath, the `@Query` annotation support infrastructure will parse and validate
+the query before execution, providing type-safe bindings, and parameter conversion.  
+The provided query must be compliant with the ANSI SQL standard, the Reindexer specific functions e.g., `KNN`, `RANGE`
+are available as SQL functions, for example:
+```java
+@Query("SELECT *, vectors(), rank() FROM item_float_vectors WHERE knn(float_vector_index, :vector, :knnSearchParam)")
+List<ItemFloatVector> findAllByVectorIndex(Vector vector, KnnSearchParam knnSearchParam);
+```
+**Note that for `vector` parameter, either `float[]` or `org.springframework.data.domain.Vector` can be used.**
+
+The `RANGE` can be used as a standard SQL function:
+```java
+@Query("SELECT * FROM items WHERE range(defaultDate, :start, :end)")
+List<Item> findAllByDefaultDateBetween(LocalDate start, LocalDate end);
+```
+Additionally, JPQL-like query syntax is supported, for example:
+```java
+@Query("select it from Item it where it.name = :name")
+Optional<Item> findByName(String name);
+```
+**Note that `JSQLParser` is not supported when using AOT (Ahead-of-Time) optimizations, so it will fall back to using
+the native Reindexer query.  
+To force a certain query to execute a native Reindexer query, use the `nativeQuery=true` attribute.**  
+
+To execute a modifying query, use the `update=true` attribute:
+```java
+@Query(value = "UPDATE items SET name = ?1 WHERE id = ?2", update = true)
+void updateNameSql(String name, Long id);
+```
+
+More information can be read in Javadoc of `@Query` annotation.
 
 ## Query By Example
 Query by Example (QBE) is a user-friendly querying technique with a simple interface.
@@ -219,7 +289,26 @@ typically this index stores a child-namespace `id` value.
   * `JoinType.LEFT (default)` Returns all records from the left (parent) namespace, and the matched records from the right (child) namespace.
   * `JoinType.RIGHT` Returns records that have matching values in both parent and child namespaces.
 * `lazy (boolean, optional)` Controls whether the referenced entity should be loaded lazily. This defaults to `false`.
-* `fetch (boolean, optional)` Controls whether the referenced entity should be fetched if it is a nested relationship within the child-object of the top level entity. This defaults to `false`.
+* `fetch (boolean, optional)` Controls whether the referenced entity should be fetched if it is a nested relationship
+within the child-object of the top level entity. This defaults to `false`.  
+**Deprecated since the `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for
+nested joins. Self-joins are fetched lazily using proxies.**
+* `lookup (string, optional)` Defines a custom lookup query to fetch namespace reference. The query can contain a
+SpEL expression that refers to application or aggregate root's context:  
+`select * from joined_items where id in #{joinedItemIds} order by id desc`  
+Alternatively, you can use SpEL expression to fetch namespace reference by calling
+a spring-managed bean, for example, you can directly call repository method to
+retrieve necessary data:  
+`#{@joinedItemRepository.findAllById(joinedItemIds)}}`
+* `sort (string, optional)` Defines a specific sort orders to be applied to the target query.  
+Example: `id asc, name desc, value`, default direction is `asc`.  
+If the `lookup` query defines `ORDER BY` clause, the sort attribute can be accessed using `#sortString` variable.  
+You can use the sort object in the SpEL expression by using reference `#sort` to
+access it, the target type of sort object is `org.springframework.data.domain.Sort` this object can be passed to the
+method invocation within the expression:  
+`#{@joinedItemRepository.findAllById(joinedItemIds, #sort)}}`  
+More information can be read in Javadoc of `@NamespaceReference` annotation.
+
 ### Usage example
 ```java
 Long joinedItemId;
@@ -232,6 +321,8 @@ List<Long> joinedItemIds;
 @NamespaceReference(indexName = "joinedItemId", joinType = JoinType.INNER)
 JoinedItem joinedItem;
 
+// Since the 1.7 release, the fetch attribute is no longer required to fetch nested joins
+// if the Reindexer server version is >= 5.16.0
 @Transient
 @NamespaceReference(indexName = "nestedJoinedItemId", fetch = true)
 JoinedItem nestedJoinedItem;
@@ -239,6 +330,19 @@ JoinedItem nestedJoinedItem;
 @Transient
 @NamespaceReference(indexName = "joinedItemIds", lazy = true)
 List<JoinedItem> joinedItems;
+
+// The sort attribute is applied to the lookup query
+@NamespaceReference(lookup = """
+            select *
+              from joined_items
+             where id in (#{joinedItemIds})
+             order by
+                   price desc,
+                   name asc,
+                   #{#sortString}
+             limit 10
+        """, sort = "value, id asc")
+List<JoinedItem> joinedItemsLookup;
 ```
 ### Implementation notes and limitations:
 * The `@Transient` annotation is required to use with `@NamespaceReference` to indicate that Reindexer
@@ -253,11 +357,17 @@ and for collection-like result type the query condition would be `Condition.SET`
 `indexName` specified in `@NamespaceReference` annotation.
 The proxy object is thread-safe meaning that it is safe to access proxy object from multiple threads,
 and the initialization of proxy object would be triggered only once.
-* In the current implementation there is no option to provide a custom query for
-lazy loading namespace reference, however it might be provided it future releases.
-* A `JoinType` is only applied to fetch non-lazy child-objects of the top level entity if you need to fetch deeply nested child-objects
-like `A - B - C` use `fetch = true` to fetch object `C`, it will be fetched lazily. Reindexer does not support
-joins for deeply nested child-objects therefore they can only be loaded using `fetch = true` attribute.
+* When using query format v1 (Reindexer server version < 5.16.0) `JoinType` is only applied to fetch non-lazy
+child-objects of the top level entity if you need to fetch deeply nested child-objects
+like `A - B - C` use `fetch = true` to fetch object `C`, it will be fetched lazily.  
+Since `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for nested joins,
+therefore, `fetch` attribute is no longer required to fetch deeply nested child-objects. The self-joins are fetched
+lazily using proxies.  
+Query format version is negotiated from the Reindexer server, and can be explicitly configurd using
+`ReindexerMappingContext#setQueryFormatVersion(Supplier<Integer>)`.  
+When using AOT (Ahead-of-Time) optimizations, the query format version must be explicitly configured using
+`spring.data.reindexer.query-format-version`, since the query format version cannot be negotiated during compilation
+phase, this defaults to `1`.
 
 ## Projections
 Projections allow creating dedicated return types based on certain attributes of domain types.
@@ -323,6 +433,18 @@ public class PriceReadingConverter implements Converter<Double, Price> {
     public Price convert(Double source) {
         return new Price(source);
     }
+
+}
+```
+and vice versa:
+```java
+@WritingConverter
+public class PriceWritingConverter implements Converter<Price, Double> {
+
+    public Double convert(Price source) {
+        return source.price();
+    }
+
 }
 ```
 If you write a `Converter` whose source and target types are native types, we cannot determine
@@ -331,9 +453,6 @@ instance as both might lead to unwanted results. For example, a `Converter<Strin
 although it probably does not make sense to try to convert all `String` instances into `Long` instances when writing.
 To let you force the infrastructure to register a converter for only one way, we provide `@ReadingConverter` and `@WritingConverter`
 annotations to be used in the converter implementation.
-
-Note:
-In the current version `@WritingConverter` annotation is not supported, it will be provided in future releases.
 
 Converters are subject to explicit registration as instances are not picked up from a
 classpath or container scan to avoid unwanted registration with a conversion service and
@@ -356,6 +475,3 @@ public class ReindexerConfig extends ReindexerConfigurationSupport {
 }
 ```
 More information can be read in [Spring Data reference guide.](https://docs.spring.io/spring-data/relational/reference/commons/custom-conversions.html)
-## Work in progress
-
-- Support more return types for `ReindexerRepository`.
