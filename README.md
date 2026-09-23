@@ -38,6 +38,27 @@ spring.data.reindexer.urls=cproto://localhost:6534/demo
 ```
 See the configuration example below for using Spring Data Reindexer without Spring Boot.
 
+# Table of contents:
+* [Usage](#usage)
+* * [Configuration](#configuration)
+* * [Entity](#entity)
+* * [Repository](#repository)
+* [Query annotation support](#query-annotation-support)
+* * [Basic usage](#basic-usage)
+* * [Advanced Query annotation support with extra type-safety using JSQLParser](#advanced-query-annotation-support-with-extra-type-safety-using-jsqlparser)
+* [Transactions](#query-annotation-support)
+* * [Supported propagation levels](#supported-propagation-levels)
+* * [Readonly transactions](#readonly-transactions)
+* [Query By Example](#query-by-example)
+* [Namespace References](#namespace-references)
+* * [Usage example](#usage-example)
+* * [Implementation notes and limitations](#implementation-notes-and-limitations)
+* [Projections](#projections)
+* [Custom conversions](#custom-conversions)
+* [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations)
+* * [AOT Spring Boot Maven Plugin configuration](#aot-spring-boot-maven-plugin-configuration)
+* * [AOT application.properties](#aot-applicationproperties)
+
 ## Usage
 
 Here is an example of basic `spring-data-reindexer` usage:
@@ -208,6 +229,8 @@ directly on repository methods.
 
 Parameter binding supports named parameters as well as parameter references using `?1` style placeholders.
 
+### Basic usage
+
 ```java
 @Query("SELECT * FROM items WHERE name = :name")
 Optional<Item> findOneByName(@Param("name") String name);
@@ -249,9 +272,9 @@ Additionally, JPQL-like query syntax is supported, for example:
 @Query("select it from Item it where it.name = :name")
 Optional<Item> findByName(String name);
 ```
-**Note that `JSQLParser` is not supported when using AOT (Ahead-of-Time) optimizations, so it will fall back to using
-the native Reindexer query.  
-To force a certain query to execute a native Reindexer query, use the `nativeQuery=true` attribute.**  
+To force a certain query to execute a native Reindexer query, use the `nativeQuery=true` attribute.  
+**See [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations) section for more information about
+`JSQLParser` support within the AOT scenario.**
 
 To execute a modifying query, use the `update=true` attribute:
 ```java
@@ -348,15 +371,15 @@ List<JoinedItem> joinedItemsLookup;
 * The `@Transient` annotation is required to use with `@NamespaceReference` to indicate that Reindexer
 should not store child objects in the parent-namespace and therefore those objects should be loaded through
 referred `indexName`.
-* When the `lazy` attribute is set to `true` the referenced entity is loaded through proxy object.
+* When the `lazy` attribute is set to `true` the referenced entity is loaded through the proxy object.
 Depending on a mapped type the framework would create either interface-based (JDK dynamic proxies) or class-based proxies (CGLIB),
 `final` classes cannot be proxied since CGLIB relies on creating a subclass for the type being proxied.
 When `lazy` attribute is set to `true` the `joinType` attribute is ignored since the object would
-be retrieved from Reindexer using `select` query, for single result the query condition would be `Condition.EQ`
-and for collection-like result type the query condition would be `Condition.SET` with the value stored in
+be retrieved from Reindexer using `select` query, for a single result the query condition would be `Condition.EQ`
+and for a collection-like result type the query condition would be `Condition.SET` with the value stored in
 `indexName` specified in `@NamespaceReference` annotation.
-The proxy object is thread-safe meaning that it is safe to access proxy object from multiple threads,
-and the initialization of proxy object would be triggered only once.
+The proxy object is a thread-safe meaning that it is safe to access a proxy object from multiple threads,
+and the initialization of a proxy object would be triggered only once.
 * When using query format v1 (Reindexer server version < 5.16.0) `JoinType` is only applied to fetch non-lazy
 child-objects of the top level entity if you need to fetch deeply nested child-objects
 like `A - B - C` use `fetch = true` to fetch object `C`, it will be fetched lazily.  
@@ -365,9 +388,8 @@ therefore, `fetch` attribute is no longer required to fetch deeply nested child-
 lazily using proxies.  
 Query format version is negotiated from the Reindexer server, and can be explicitly configurd using
 `ReindexerMappingContext#setQueryFormatVersion(Supplier<Integer>)`.  
-When using AOT (Ahead-of-Time) optimizations, the query format version must be explicitly configured using
-`spring.data.reindexer.query-format-version`, since the query format version cannot be negotiated during compilation
-phase, this defaults to `1`.
+**See [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations) section for more information about
+configuring a query format version within the AOT scenario.**
 
 ## Projections
 Projections allow creating dedicated return types based on certain attributes of domain types.
@@ -420,7 +442,7 @@ interface ItemNameValue {
 More information regarding Spring Data Projections and the difference between interface-based, class-based and dynamic projections
 can be read in [Spring Data reference guide.](https://docs.spring.io/spring-data/relational/reference/repositories/projections.html)
 
-## CustomConversions
+## Custom conversions
 The following example of a Double Converter implementation converts from a Double to a
 custom Price value object:
 ```java
@@ -475,3 +497,90 @@ public class ReindexerConfig extends ReindexerConfigurationSupport {
 }
 ```
 More information can be read in [Spring Data reference guide.](https://docs.spring.io/spring-data/relational/reference/commons/custom-conversions.html)
+
+## AOT (Ahead-of-Time) optimizations
+Spring Data Reindexer supports AOT (Ahead-of-Time) optimizations.  
+When using Spring Boot, add the following configuration for `spring-boot-maven-plugin`:
+
+### AOT Spring Boot Maven Plugin configuration
+```xml
+<plugin>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-maven-plugin</artifactId>
+	<executions>
+		<execution>
+			<id>process-aot</id>
+			<goals>
+				<goal>process-aot</goal>
+			</goals>
+		</execution>
+	</executions>
+	<configuration>
+		<compilerArguments>
+			-parameters
+		</compilerArguments>
+	</configuration>
+</plugin>
+```
+To enable AOT processing, add `spring.aot.enabled=true` to `application.properties`.
+
+### AOT application.properties
+```properties
+spring.aot.enabled=true
+
+# Optionally, enable the query format v2, when using Reindexer server version >= 5.16.0 for nested joins support.
+spring.data.reindexer.query-format-version=2
+```
+
+By default, derived queries are generated using query format v1, to override the default query format version, use
+`spring.data.reindexer.query-format-version` property. The query format version cannot be negotiated from the Reindexer
+server during the compilation phase, therefore, the query format version must be explicitly configured.  
+The generated AOT sources and repository metadata are created in `spring-aot` directory. 
+
+For example, consider the following:
+```java
+Optional<ItemProjection> findProjectionByName(String name);
+```
+will be compiled into:
+```java
+/**
+ * AOT generated implementation of {@link ItemReindexerRepository#findProjectionByName(java.lang.String)}.
+ */
+public Optional<ItemProjection> findProjectionByName(String name) {
+	Query<Item> root = query(Item.class)
+			.select("id", "name", "value", "lazyJoinedItemId")
+			.leftJoin(query(JoinedItem.class)
+						.innerJoin(query(NestedJoinedItem.class)
+							.on("nestedJoinedItemId", Query.Condition.EQ, "id"), "nestedJoinedItem")
+				.on("joinedItemId", Query.Condition.EQ, "id"), "joinedItem")
+			.where("name", Query.Condition.EQ, mapParameterValue("name", name));
+	ProjectingResultIterator<ItemProjection> it = new ProjectingResultIterator<>(root.execute(), ItemProjection.class,
+		Item.class, getReindexerConverter());
+	return Optional.ofNullable(ReindexerQueryExecutions.toEntity(it));
+}
+```
+and the metadata will be created in `spring-aot/resources/*`
+```json
+{
+	"name": "com.example.ItemRepository",
+	"module": "Reindexer",
+	"type": "IMPERATIVE",
+	"methods": [
+		{
+			"name": "findProjectionByName",
+			"signature": "public abstract java.util.Optional<com.example.ItemProjection> com.example.ItemRepository.findByName(java.lang.String)",
+			"query": {
+				"queryFormatVersion": 2,
+				"query": "SELECT id, name, value, lazyJoinedItemId FROM items LEFT JOIN (SELECT id, name, value, lazyNestedJoinedItemId FROM joined_items INNER JOIN nested_joined_items ON nested_joined_items.id = joined_items.nested_joined_item_id) ON items.joinedItemId = joined_items.id WHERE name = :name"
+			}
+		}
+	]
+}
+```
+See [the article how IntelliJ IDEA uses AOT metadata to display queries](https://blog.jetbrains.com/idea/2025/11/spring-data-aot)
+
+**Note: when `JSQLParser` is used in AOT mode, the query generation infrastructure will fall back to using a standard
+(reflection-based) flow for requests that require `JSQLParser` processing, therefore, only derived and native queries
+are processed in AOT mode.**
+
+More information about AOT processing can be read in [Spring reference guide](https://docs.spring.io/spring-framework/reference/core/aot.html)
