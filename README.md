@@ -60,6 +60,7 @@ See the configuration example below for using Spring Data Reindexer without Spri
 * [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations)
 * * [AOT Spring Boot Maven Plugin configuration](#aot-spring-boot-maven-plugin-configuration)
 * * [AOT application.properties](#aot-applicationproperties)
+* * [AOT usage example](#aot-usage-example)
 
 ## Usage
 
@@ -539,11 +540,12 @@ By default, derived queries are generated using query format v1, to override the
 server during the compilation phase, therefore, the query format version must be explicitly configured.  
 The generated AOT sources and repository metadata are created in `spring-aot` directory. 
 
-For example, consider the following:
+### AOT usage example
+Consider the following derived query method:
 ```java
 Optional<ItemProjection> findProjectionByName(String name);
 ```
-will be compiled into:
+it will be compiled by the AOT infrastructure into:
 ```java
 /**
  * AOT generated implementation of {@link ItemReindexerRepository#findProjectionByName(java.lang.String)}.
