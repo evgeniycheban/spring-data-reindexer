@@ -20,7 +20,7 @@ import ru.rt.restream.reindexer.AggregationResult;
 import ru.rt.restream.reindexer.ResultIterator;
 
 /**
- * Extends the {@link ResultIterator} to provide an additional methods to access the
+ * Extends the {@link ResultIterator} to provide additional methods to access the
  * Reindexer query result e.g., {@link #aggregationResult(String, String)}.
  *
  * @author Evgeniy Cheban
@@ -34,7 +34,7 @@ public interface ReindexerResultAccessor<E> extends ResultIterator<E> {
 	 * {@code AggregationResult} found or {@link AggregationResult#getValue()} is
 	 * {@literal null}.
 	 * @param type the aggregation type e.g., min, max, sum, avg
-	 * @param field the field an aggregation function being called for
+	 * @param field the field that an aggregation function being called for
 	 * @return the {@code AggregationResult}'s value to use
 	 */
 	default @Nullable Double aggregationValue(String type, String field) {

@@ -48,7 +48,7 @@ public final class ReindexerQueryMethod extends QueryMethod {
 
 	/**
 	 * Creates a new {@link QueryMethod} from the given parameters. Looks up the correct
-	 * query to use for following invocations of the method given.
+	 * query to use for the following invocations of the method given.
 	 * @param method must not be {@literal null}.
 	 * @param metadata must not be {@literal null}.
 	 * @param factory must not be {@literal null}.
@@ -87,8 +87,8 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	}
 
 	/**
-	 * Returns true, if the query is for UPDATE.
-	 * @return true, if the query is for UPDATE
+	 * Returns {@literal true}, if the query is for UPDATE.
+	 * @return {@literal true}, if the query is for UPDATE
 	 */
 	@Override
 	public boolean isModifyingQuery() {
@@ -119,7 +119,7 @@ public final class ReindexerQueryMethod extends QueryMethod {
 	/**
 	 * Get the collation value extracted from the {@link Collation} annotation.
 	 * @return the {@link Collation#value()} to use
-	 * @throws IllegalStateException if method not annotated with {@link Collation} or
+	 * @throws IllegalStateException if method is not annotated with {@link Collation} or
 	 * having an empty value. Make sure to check {@link #hasAnnotatedCollation()}} first.
 	 * @since 1.7
 	 */

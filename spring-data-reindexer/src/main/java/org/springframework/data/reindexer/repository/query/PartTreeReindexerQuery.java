@@ -97,7 +97,7 @@ public final class PartTreeReindexerQuery extends AbstractReindexerQuery {
 	}
 
 	/**
-	 * Returns a {@link PartTree} that represents a derived query method parts.
+	 * Returns a {@link PartTree} that represents derived query method parts.
 	 * @return the {@link PartTree} to use
 	 * @since 1.7
 	 */

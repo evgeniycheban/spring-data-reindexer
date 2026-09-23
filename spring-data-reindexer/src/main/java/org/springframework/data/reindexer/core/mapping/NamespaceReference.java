@@ -21,8 +21,8 @@ import java.lang.annotation.RetentionPolicy;
 import org.springframework.data.annotation.Reference;
 
 /**
- * Specifies a Namespace to join using index name and join type. Supports both One-to-many
- * and One-to-one relationships.
+ * Specifies a Namespace to join using an index name and join type. Supports both
+ * One-to-many and One-to-one relationships.
  *
  * @author Evgeniy Cheban
  * @since 1.4
@@ -55,13 +55,13 @@ public @interface NamespaceReference {
 	String referencedIndexName() default "";
 
 	/**
-	 * Defines a custom lookup query to fetch namespace reference. The query can contain
+	 * Defines a custom lookup query to fetch namespace reference. The query can contain a
 	 * SpEL expression that refers to application or aggregate root's context:
 	 * <p>
 	 * {@code select * from joined_items where id in #{joinedItemIds} order by id desc}.
 	 * </p>
-	 * Alternatively you can use SpEL expression to fetch namespace reference by calling a
-	 * spring-managed bean, for example you can directly call repository method to
+	 * Alternatively, you can use SpEL expression to fetch namespace reference by calling
+	 * a spring-managed bean, for example you can directly call repository method to
 	 * retrieve necessary data:
 	 * <p>
 	 * {@code #{@joinedItemRepository.findAllById(joinedItemIds)}}.

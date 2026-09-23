@@ -131,8 +131,8 @@ public @interface EnableReindexerRepositories {
 	boolean createIndexesForQueryMethods() default false;
 
 	/**
-	 * Configures whether nested repository-interfaces (e.g. defined as inner classes)
-	 * should be discovered by the repositories infrastructure.
+	 * Configures whether nested repository-interfaces (e.g., defined as inner classes)
+	 * should be discovered by the repositories' infrastructure.
 	 * @return {@literal false} by default.
 	 */
 	boolean considerNestedRepositories() default false;

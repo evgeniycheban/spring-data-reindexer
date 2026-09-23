@@ -41,16 +41,16 @@ public @interface Query {
 	String value();
 
 	/**
-	 * Indicates whether query is for UPDATE or not.
-	 * @return true, if query is for UPDATE. Default is false
+	 * Indicates whether a query is for UPDATE or not.
+	 * @return true, if a query is for UPDATE. Default is false
 	 */
 	boolean update() default false;
 
 	/**
-	 * Indicates whether query is a native Reindexer query, thus, a
+	 * Indicates whether a query is a native Reindexer query, thus, a
 	 * {@link org.springframework.data.reindexer.repository.query.SimpleStringBasedReindexerQuery}
-	 * will be used as an implementation to execute query. Defaults to {@literal false}.
-	 * @return true, if query is a native Reindexer query
+	 * will be used as an implementation to execute a query. Defaults to {@literal false}.
+	 * @return true, if a query is a native Reindexer query
 	 * @since 1.6
 	 */
 	boolean nativeQuery() default false;

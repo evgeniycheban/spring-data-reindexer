@@ -127,13 +127,13 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 			if (queryMethod.hasQueryAnnotation()) {
 				QueryMethodValueEvaluationContextAccessor accessor = new QueryMethodValueEvaluationContextAccessor(
 						ReindexerRepositoryFactory.this.ctx);
-				// Use lightweight implementation when nativeQuery = true.
+				// Use a lightweight implementation when nativeQuery = true.
 				if (queryMethod.isNativeQuery()) {
 					return new SimpleStringBasedReindexerQuery(queryMethod,
 							ReindexerRepositoryFactory.this.reindexerConverter,
 							ReindexerRepositoryFactory.this.namespaceFactory, accessor);
 				}
-				// Use visitor-based implementation when JSQLParser is on the classpath.
+				// Use a visitor-based implementation when JSQLParser is on the classpath.
 				if (USE_VISITOR_BASED_QUERY) {
 					return new StringBasedReindexerQuery(queryMethod,
 							ReindexerRepositoryFactory.this.reindexerConverter,

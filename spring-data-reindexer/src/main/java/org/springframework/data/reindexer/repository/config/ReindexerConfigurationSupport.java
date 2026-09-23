@@ -118,7 +118,7 @@ public abstract class ReindexerConfigurationSupport {
 	}
 
 	/**
-	 * Scans the given base package for entities, i.e. Reindexer specific types annotated
+	 * Scans the given base package for entities, i.e., Reindexer specific types annotated
 	 * with {@link Namespace}.
 	 * @param basePackage must not be {@literal null}
 	 * @return a set of entities

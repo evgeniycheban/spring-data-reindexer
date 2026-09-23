@@ -387,7 +387,7 @@ public final class StringBasedReindexerQuery extends AbstractReindexerQuery {
 							joinTable, Lazy.of(() -> createParameterMapper(joinEntity.getType())),
 							this.valueResolvingVisitor, this);
 					// Reindexer does not support joining namespaces whose parent is not a
-					// root namespace, therefore, the root namespace is always passed as a
+					// root namespace therefore, the root namespace is always passed as a
 					// parent table to the visitor's context.
 					JoinConditionContext ctx = JoinConditionContext.of(table, joinTable);
 					// Join must contain at least one ON expression.

@@ -24,12 +24,12 @@ package org.springframework.data.reindexer.core.mapping;
 public enum JoinType {
 
 	/**
-	 * Represents LEFT join type.
+	 * Represents {@code LEFT} join type.
 	 */
 	LEFT,
 
 	/**
-	 * Represents INNER join type.
+	 * Represents {@code INNER} join type.
 	 */
 	INNER
 

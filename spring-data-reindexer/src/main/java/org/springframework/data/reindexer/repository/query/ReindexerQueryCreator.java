@@ -240,7 +240,7 @@ final class ReindexerQueryCreator extends AbstractQueryCreator<Query<?>, Query<?
 			criteria.reqTotal();
 		}
 		if (this.method.isSearchQuery()) {
-			// Include ranks to the query output.
+			// Include ranks in the query output.
 			criteria.withRank();
 		}
 		// For delete, exists, and count operations, only inner joins are considered.
