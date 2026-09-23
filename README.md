@@ -6,30 +6,32 @@ Spring Data module for the Reindexer database. Provides repositories, object map
 type-safe string queries, projections, namespace references, transactions, custom conversions, and AOT support.
 
 # Table of contents:
-* [Usage](#usage)
-* * [Maven](#maven)
-* * [application.properties](#applicationproperties) 
-* * [Configuration](#configuration)
-* * [Entity](#entity)
-* * [Repository](#repository)
-* [Query annotation support](#query-annotation-support)
-* * [Basic usage](#basic-usage)
-* * [Advanced Query annotation support with extra type-safety using JSQLParser](#advanced-query-annotation-support-with-extra-type-safety-using-jsqlparser)
-* [Transactions](#transactions)
-* * [Supported propagation levels](#supported-propagation-levels)
-* * [Readonly transactions](#readonly-transactions)
-* * [Transactional configuration](#transactional-configuration)
-* * [Transactional Service](#transactional-service)
-* [Query By Example](#query-by-example)
-* [Namespace References](#namespace-references)
-* * [Usage example](#namespace-reference-usage-example)
-* * [Implementation notes and limitations](#namespace-reference-implementation-notes-and-limitations)
-* [Projections](#projections)
-* [Custom conversions](#custom-conversions)
-* [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations)
-* * [AOT Spring Boot Maven Plugin configuration](#aot-spring-boot-maven-plugin-configuration)
-* * [AOT application.properties](#aot-applicationproperties)
-* * [AOT usage example](#aot-usage-example)
+
+- [Usage](#usage)
+  - [Maven](#maven)
+  - [application.properties](#applicationproperties)
+  - [Configuration](#configuration)
+  - [Entity](#entity)
+  - [Repository](#repository)
+- [Query annotation support](#query-annotation-support)
+  - [Basic usage](#basic-query-annotation-usage)
+  - [Advanced Query annotation support with extra type-safety using JSQLParser](#advanced-query-annotation-support-with-extra-type-safety-using-jsqlparser)
+- [Transactions](#transactions)
+  - [Supported propagation levels](#supported-propagation-levels)
+  - [Readonly transactions](#readonly-transactions)
+  - [Transactional configuration](#transactional-configuration)
+  - [Transactional Service](#transactional-service)
+- [Query By Example](#query-by-example)
+- [Namespace References](#namespace-references)
+  - [Usage example](#namespace-reference-usage-example)
+  - [Implementation notes and limitations](#namespace-reference-implementation-notes-and-limitations)
+- [Projections](#projections)
+- [Custom conversions](#custom-conversions)
+- [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations)
+  - [AOT Spring Boot Maven Plugin configuration](#aot-spring-boot-maven-plugin-configuration)
+  - [AOT application.properties](#aot-applicationproperties)
+  - [AOT usage example](#aot-usage-example)
+- [License](#license)
 
 ## Usage
 
@@ -235,7 +237,7 @@ directly on repository methods.
 
 Parameter binding supports named parameters as well as parameter references using `?1` style placeholders.
 
-### Basic usage
+### Basic @Query annotation usage
 
 ```java
 @Query("SELECT * FROM items WHERE name = :name")
@@ -380,17 +382,17 @@ parent namespace. Instead, the object is resolved through a namespace reference.
 
 ### Namespace reference implementation notes and limitations
 * When the `lazy` attribute is set to `true`, the referenced entity is loaded through the proxy object.
-Depending on the mapped type the framework creates either interface-based (JDK dynamic proxies) or class-based proxies (CGLIB),
+Depending on the mapped type, the framework creates either interface-based (JDK dynamic proxies) or class-based proxies (CGLIB),
 `final` classes cannot be proxied since CGLIB relies on creating a subclass for the type being proxied.
-When `lazy` attribute is set to `true` the `joinType` attribute is ignored since the object is retrieved from Reindexer
-using `select` query, for a single result the query condition is `Condition.EQ` and for a collection-like result type
+When the `lazy` attribute is set to `true` the `joinType` attribute is ignored since the object is retrieved from Reindexer
+using a `select` query, for a single result the query condition is `Condition.EQ` and for a collection-like result type
 the query condition is `Condition.SET` with the value stored in `indexName` specified in `@NamespaceReference` annotation.
 The proxy object is thread-safe, meaning that it is safe to access a proxy object from multiple threads,
 and the initialization of a proxy object is triggered only once.
 * When using query format v1 (Reindexer server version < 5.16.0), `JoinType` is only applied to fetch non-lazy
 child objects of the top-level entity if you need to fetch deeply nested child objects
 like `A - B - C` use `fetch = true` to fetch object `C`, it will be fetched lazily.  
-Since `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for nested joins,
+Since the `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for nested joins,
 therefore, `fetch` attribute is no longer required to fetch deeply nested child objects. The self-joins are fetched
 lazily using proxies.  
 Query format version is negotiated from the Reindexer server, and can be explicitly configured using
@@ -592,3 +594,7 @@ See [the article how IntelliJ IDEA uses AOT metadata to display queries](https:/
 are processed in AOT mode.**
 
 More information about AOT processing can be read in [Spring reference guide](https://docs.spring.io/spring-framework/reference/core/aot.html)
+
+## License
+Spring Data Reindexer is Open Source software released under the
+[Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0.html).
