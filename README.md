@@ -310,28 +310,28 @@ List<Item> items = this.repository.findAll(Example.of(item, ExampleMatcher.match
 More information can be read in [Spring Data reference guide.](https://docs.spring.io/spring-data/relational/reference/query-by-example.html)
 
 ## Namespace References
-The child-objects can be stored not only within the namespace,
-they can also be stored separately using `@NamespaceReference` annotation to refer a child-namespace.
-The `@NamespaceReference` annotation has the following attributes to specify how child-namespace is mapped and loaded from Reindexer:
-* `namespace (String, optional)` Represents a namespace name to refer, defaults to `@Namespace` entity definition.
-* `indexName (String, required)` The index name to be used from parent-namespace to refer to the child-namespace,
-typically this index stores a child-namespace `id` value.
-* `joinType (JoinType, optional)` The join type to be used to match values in parent and child namespaces, possible values:
-  * `JoinType.LEFT (default)` Returns all records from the left (parent) namespace, and the matched records from the right (child) namespace.
-  * `JoinType.INNER` Returns records that have matching values in both parent and child namespaces.
-* `lazy (boolean, optional)` Controls whether the referenced entity should be loaded lazily. This defaults to `false`.
-* `fetch (boolean, optional)` Controls whether the referenced entity should be fetched if it is a nested relationship
-within the child-object of the top level entity. This defaults to `false`.  
+The child objects can be stored not only within the namespace,
+they can also be stored separately using `@NamespaceReference` annotation to refer a child namespace.
+The `@NamespaceReference` annotation has the following attributes to specify how child namespace is mapped and loaded from Reindexer:
+- `namespace (String, optional)` Represents a namespace name to refer, defaults to `@Namespace` entity definition.
+- `indexName (String, required)` The index name to be used from the parent namespace to refer to the child namespace,
+typically this index stores a child namespace `id` value.
+- `joinType (JoinType, optional)` The join type to be used to match values in parent and child namespaces, possible values:
+  - `JoinType.LEFT (default)` Returns all records from the left (parent) namespace, and the matched records from the right (child) namespace.
+  - `JoinType.INNER` Returns records that have matching values in both parent and child namespaces.
+- `lazy (boolean, optional)` Controls whether the referenced entity should be loaded lazily. This defaults to `false`.
+- `fetch (boolean, optional)` Controls whether the referenced entity should be fetched if it is a nested relationship
+within the child object of the top level entity. This defaults to `false`.  
 **Deprecated since the `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for
 nested joins. Self-joins are fetched lazily using proxies.**
-* `lookup (string, optional)` Defines a custom lookup query to fetch namespace reference. The query can contain a
+- `lookup (string, optional)` Defines a custom lookup query to fetch namespace reference. The query can contain a
 SpEL expression that refers to application or aggregate root's context:  
 `select * from joined_items where id in #{joinedItemIds} order by id desc`  
 Alternatively, you can use SpEL expression to fetch namespace reference by calling
 a spring-managed bean, for example, you can directly call repository method to
 retrieve necessary data:  
 `#{@joinedItemRepository.findAllById(joinedItemIds)}}`
-* `sort (string, optional)` Defines a specific sort orders to be applied to the target query.  
+- `sort (string, optional)` Defines a specific sort orders to be applied to the target query.  
 Example: `id asc, name desc, value`, default direction is `asc`.  
 If the `lookup` query defines `ORDER BY` clause, the sort attribute can be accessed using `#sortString` variable.  
 You can use the sort object in the SpEL expression by using reference `#sort` to
@@ -381,7 +381,7 @@ List<JoinedItem> joinedItemsLookup;
 parent namespace. Instead, the object is resolved through a namespace reference.
 
 ### Namespace reference implementation notes and limitations
-* When the `lazy` attribute is set to `true`, the referenced entity is loaded through the proxy object.
+- When the `lazy` attribute is set to `true`, the referenced entity is loaded through the proxy object.
 Depending on the mapped type, the framework creates either interface-based (JDK dynamic proxies) or class-based proxies (CGLIB),
 `final` classes cannot be proxied since CGLIB relies on creating a subclass for the type being proxied.
 When the `lazy` attribute is set to `true` the `joinType` attribute is ignored since the object is retrieved from Reindexer
@@ -389,14 +389,13 @@ using a `select` query, for a single result the query condition is `Condition.EQ
 the query condition is `Condition.SET` with the value stored in `indexName` specified in `@NamespaceReference` annotation.
 The proxy object is thread-safe, meaning that it is safe to access a proxy object from multiple threads,
 and the initialization of a proxy object is triggered only once.
-* When using query format v1 (Reindexer server version < 5.16.0), `JoinType` is only applied to fetch non-lazy
+- When using query format v1 (Reindexer server version < 5.16.0), `JoinType` is only applied to fetch non-lazy
 child objects of the top-level entity if you need to fetch deeply nested child objects
 like `A - B - C` use `fetch = true` to fetch object `C`, it will be fetched lazily.  
 Since the `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for nested joins,
 therefore, `fetch` attribute is no longer required to fetch deeply nested child objects. The self-joins are fetched
-lazily using proxies.  
-Query format version is negotiated from the Reindexer server, and can be explicitly configured using
-`ReindexerMappingContext#setQueryFormatVersion(Supplier<Integer>)`.  
+lazily using proxies. Query format version is negotiated from the Reindexer server, and can be explicitly configured
+using `ReindexerMappingContext#setQueryFormatVersion(Supplier<Integer>)`.  
 **See [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations) section for more information about
 configuring a query format version in the AOT scenario.**
 
