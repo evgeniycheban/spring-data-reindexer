@@ -46,13 +46,15 @@ See the configuration example below for using Spring Data Reindexer without Spri
 * [Query annotation support](#query-annotation-support)
 * * [Basic usage](#basic-usage)
 * * [Advanced Query annotation support with extra type-safety using JSQLParser](#advanced-query-annotation-support-with-extra-type-safety-using-jsqlparser)
-* [Transactions](#query-annotation-support)
+* [Transactions](#transactions)
 * * [Supported propagation levels](#supported-propagation-levels)
 * * [Readonly transactions](#readonly-transactions)
+* * [Transactional configuration](#transactional-configuration)
+* * [Transactional Service](#transactional-service)
 * [Query By Example](#query-by-example)
 * [Namespace References](#namespace-references)
-* * [Usage example](#usage-example)
-* * [Implementation notes and limitations](#implementation-notes-and-limitations)
+* * [Usage example](#namespace-reference-usage-example)
+* * [Implementation notes and limitations](#namespace-reference-implementation-notes-and-limitations)
 * [Projections](#projections)
 * [Custom conversions](#custom-conversions)
 * [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations)
@@ -167,7 +169,7 @@ a write operation will result in an exception.
 
 Here is an example of basic transaction management usage:
 
-### Configuration
+### Transactional configuration
 
 ```java
 import ru.rt.restream.reindexer.Reindexer;
@@ -332,7 +334,7 @@ method invocation within the expression:
 `#{@joinedItemRepository.findAllById(joinedItemIds, #sort)}}`  
 More information can be read in Javadoc of `@NamespaceReference` annotation.
 
-### Usage example
+### Namespace reference usage example
 ```java
 Long joinedItemId;
 
@@ -367,7 +369,7 @@ List<JoinedItem> joinedItems;
         """, sort = "value, id asc")
 List<JoinedItem> joinedItemsLookup;
 ```
-### Implementation notes and limitations:
+### Namespace reference implementation notes and limitations:
 * The `@Transient` annotation is required to use with `@NamespaceReference` to indicate that Reindexer
 should not store child objects in the parent-namespace and therefore those objects should be loaded through
 referred `indexName`.
