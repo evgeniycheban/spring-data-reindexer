@@ -2,44 +2,13 @@ Spring Data Reindexer
 ====================
 [![Sonatype Central](https://maven-badges.sml.io/sonatype-central/io.github.evgeniycheban/spring-data-reindexer/badge.svg)](https://maven-badges.sml.io/sonatype-central/io.github.evgeniycheban/spring-data-reindexer/)
 
-Provides the Spring Data approach to work with the Reindexer database.
-
-## Maven
-
-```xml
-
-<dependency>
-	<groupId>io.github.evgeniycheban</groupId>
-	<artifactId>spring-data-reindexer</artifactId>
-	<version>${spring-data-reindexer.version}</version>
-</dependency>
-```
-
-To use with Spring Boot, consider Spring Boot Starter Data Reindexer:
-
-```xml
-
-<dependency>
-	<groupId>io.github.evgeniycheban</groupId>
-	<artifactId>spring-boot-starter-data-reindexer</artifactId>
-	<version>${spring-boot-starter-data-reindexer.version}</version>
-</dependency>
-```
-
-## application.properties
-
-A minimal configuration example using Spring Boot:
-```properties
-spring.application.name=demo
-# Reindexer url(s) to connect, defaults to cproto://localhost:6534/test
-spring.data.reindexer.urls=cproto://localhost:6534/demo
-# Other properties can be found in org.springframework.boot.autoconfigure.data.reindexer.ReindexerProperties class
-# with the description that is also available from your favorite IDE.
-```
-See the configuration example below for using Spring Data Reindexer without Spring Boot.
+Spring Data module for the Reindexer database. Provides repositories, object mapping, query derivation,
+type-safe string queries, projections, namespace references, transactions, custom conversions, and AOT support.
 
 # Table of contents:
 * [Usage](#usage)
+* * [Maven](#maven)
+* * [application.properties](#applicationproperties) 
 * * [Configuration](#configuration)
 * * [Entity](#entity)
 * * [Repository](#repository)
@@ -63,6 +32,40 @@ See the configuration example below for using Spring Data Reindexer without Spri
 * * [AOT usage example](#aot-usage-example)
 
 ## Usage
+
+### Maven
+
+```xml
+
+<dependency>
+	<groupId>io.github.evgeniycheban</groupId>
+	<artifactId>spring-data-reindexer</artifactId>
+	<version>${spring-data-reindexer.version}</version>
+</dependency>
+```
+
+To use with Spring Boot, consider Spring Boot Starter Data Reindexer:
+
+```xml
+
+<dependency>
+	<groupId>io.github.evgeniycheban</groupId>
+	<artifactId>spring-boot-starter-data-reindexer</artifactId>
+	<version>${spring-boot-starter-data-reindexer.version}</version>
+</dependency>
+```
+
+### application.properties
+
+A minimal configuration example using Spring Boot:
+```properties
+spring.application.name=demo
+# Reindexer url(s) to connect, defaults to cproto://localhost:6534/test
+spring.data.reindexer.urls=cproto://localhost:6534/demo
+# Other properties can be found in org.springframework.boot.autoconfigure.data.reindexer.ReindexerProperties class
+# with the description that is also available from your favorite IDE.
+```
+See the configuration example below for using Spring Data Reindexer without Spring Boot.
 
 Here is an example of basic `spring-data-reindexer` usage:
 
@@ -313,7 +316,7 @@ The `@NamespaceReference` annotation has the following attributes to specify how
 typically this index stores a child-namespace `id` value.
 * `joinType (JoinType, optional)` The join type to be used to match values in parent and child namespaces, possible values:
   * `JoinType.LEFT (default)` Returns all records from the left (parent) namespace, and the matched records from the right (child) namespace.
-  * `JoinType.RIGHT` Returns records that have matching values in both parent and child namespaces.
+  * `JoinType.INNER` Returns records that have matching values in both parent and child namespaces.
 * `lazy (boolean, optional)` Controls whether the referenced entity should be loaded lazily. This defaults to `false`.
 * `fetch (boolean, optional)` Controls whether the referenced entity should be fetched if it is a nested relationship
 within the child-object of the top level entity. This defaults to `false`.  
@@ -358,6 +361,7 @@ JoinedItem nestedJoinedItem;
 List<JoinedItem> joinedItems;
 
 // The sort attribute is applied to the lookup query
+@Transient
 @NamespaceReference(lookup = """
             select *
               from joined_items
@@ -370,29 +374,29 @@ List<JoinedItem> joinedItems;
         """, sort = "value, id asc")
 List<JoinedItem> joinedItemsLookup;
 ```
-### Namespace reference implementation notes and limitations:
-* The `@Transient` annotation is required to use with `@NamespaceReference` to indicate that Reindexer
-should not store child objects in the parent-namespace and therefore those objects should be loaded through
-referred `indexName`.
-* When the `lazy` attribute is set to `true` the referenced entity is loaded through the proxy object.
-Depending on a mapped type the framework would create either interface-based (JDK dynamic proxies) or class-based proxies (CGLIB),
+**Important:** Fields annotated with `@NamespaceReference` must also be annotated with
+`@ru.rt.restream.reindexer.annotations.Transient`. This tells Reindexer not to persist the referenced object in the
+parent namespace. Instead, the object is resolved through a namespace reference.
+
+### Namespace reference implementation notes and limitations
+* When the `lazy` attribute is set to `true`, the referenced entity is loaded through the proxy object.
+Depending on the mapped type the framework creates either interface-based (JDK dynamic proxies) or class-based proxies (CGLIB),
 `final` classes cannot be proxied since CGLIB relies on creating a subclass for the type being proxied.
-When `lazy` attribute is set to `true` the `joinType` attribute is ignored since the object would
-be retrieved from Reindexer using `select` query, for a single result the query condition would be `Condition.EQ`
-and for a collection-like result type the query condition would be `Condition.SET` with the value stored in
-`indexName` specified in `@NamespaceReference` annotation.
-The proxy object is a thread-safe meaning that it is safe to access a proxy object from multiple threads,
-and the initialization of a proxy object would be triggered only once.
-* When using query format v1 (Reindexer server version < 5.16.0) `JoinType` is only applied to fetch non-lazy
-child-objects of the top level entity if you need to fetch deeply nested child-objects
+When `lazy` attribute is set to `true` the `joinType` attribute is ignored since the object is retrieved from Reindexer
+using `select` query, for a single result the query condition is `Condition.EQ` and for a collection-like result type
+the query condition is `Condition.SET` with the value stored in `indexName` specified in `@NamespaceReference` annotation.
+The proxy object is thread-safe, meaning that it is safe to access a proxy object from multiple threads,
+and the initialization of a proxy object is triggered only once.
+* When using query format v1 (Reindexer server version < 5.16.0), `JoinType` is only applied to fetch non-lazy
+child objects of the top-level entity if you need to fetch deeply nested child objects
 like `A - B - C` use `fetch = true` to fetch object `C`, it will be fetched lazily.  
 Since `1.7` release, and Reindexer server version >= `5.16.0`, Reindexer provides native support for nested joins,
-therefore, `fetch` attribute is no longer required to fetch deeply nested child-objects. The self-joins are fetched
+therefore, `fetch` attribute is no longer required to fetch deeply nested child objects. The self-joins are fetched
 lazily using proxies.  
-Query format version is negotiated from the Reindexer server, and can be explicitly configurd using
+Query format version is negotiated from the Reindexer server, and can be explicitly configured using
 `ReindexerMappingContext#setQueryFormatVersion(Supplier<Integer>)`.  
 **See [AOT (Ahead of Time) optimizations](#aot-ahead-of-time-optimizations) section for more information about
-configuring a query format version within the AOT scenario.**
+configuring a query format version in the AOT scenario.**
 
 ## Projections
 Projections allow creating dedicated return types based on certain attributes of domain types.
@@ -442,7 +446,7 @@ interface ItemNameValue {
     }
 }
 ```
-More information regarding Spring Data Projections and the difference between interface-based, class-based and dynamic projections
+More information regarding Spring Data Projections and the difference between interface-based, class-based, and dynamic projections
 can be read in [Spring Data reference guide.](https://docs.spring.io/spring-data/relational/reference/repositories/projections.html)
 
 ## Custom conversions
