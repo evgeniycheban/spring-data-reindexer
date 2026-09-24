@@ -1,9 +1,19 @@
 version: 2
 updates:
-  - package-ecosystem: "maven"
-    target-branch: "main"
-    directory: "/"
+  # 1.7.x
+  - package-ecosystem: maven
+    target-branch: 1.7.x
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
     labels:
-      - "dependency-upgrade"
+      - dependency-upgrade
+
+  # main
+  - package-ecosystem: maven
+    target-branch: main
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependency-upgrade
