@@ -1,6 +1,19 @@
 name: Release Build
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'minor-dev'
+        type: choice
+        options:
+          - major-dev
+          - minor-dev
+          - patch-dev
+          - major-rel
+          - minor-rel
 
 jobs:
   build:
@@ -19,11 +32,17 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Prepare release
         run: |
+          case "${{ inputs.release_type }}" in
+             major-dev) RELEASE_POLICY=SemVerMajorDevelopment ;;
+             minor-dev) RELEASE_POLICY=SemVerMinorDevelopment ;;
+             patch-dev) RELEASE_POLICY=SemVerPatchDevelopment ;;
+             major-rel) RELEASE_POLICY=SemVerMajorRelease ;;
+             minor-rel) RELEASE_POLICY=SemVerMinorRelease ;;
+             *) echo "Invalid release_type: ${{ inputs.release_type }}" >&2; exit 1 ;;
+          esac
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          ./mvnw --batch-mode release:prepare -Pci,pre-release \
-                  -DreleaseVersion=1.7.1 \
-                  -DdevelopmentVersion=1.8.0-SNAPSHOT
+          ./mvnw --batch-mode release:prepare -Pci,pre-release -DprojectVersionPolicyId=$RELEASE_POLICY
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Apache Maven Central
