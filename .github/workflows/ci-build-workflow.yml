@@ -1,8 +1,11 @@
-name: Main Build
+name: CI Build
 
 on:
+  pull_request:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - '*.x'
 
 jobs:
   build:
