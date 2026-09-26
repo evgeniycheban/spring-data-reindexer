@@ -31,7 +31,6 @@ import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ResultIterator;
 import ru.rt.restream.reindexer.binding.Consts;
-import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
@@ -482,7 +481,7 @@ public class MappingReindexerConverter
 
 	}
 
-	private static final class BeanPropertyAccessor implements PropertyAccessor {
+	private final class BeanPropertyAccessor implements PropertyAccessor {
 
 		@Override
 		public boolean canRead(EvaluationContext context, @Nullable Object target, String name) {
@@ -494,8 +493,16 @@ public class MappingReindexerConverter
 			if (target == null) {
 				return TypedValue.NULL;
 			}
-			Object value = target instanceof Map<?, ?> map ? map.get(name)
-					: BeanPropertyUtils.getProperty(target, name);
+			Object value;
+			if (target instanceof Map<?, ?> map) {
+				value = map.get(name);
+			}
+			else {
+				ReindexerPersistentEntity<?> entity = MappingReindexerConverter.this.mappingContext
+					.getRequiredPersistentEntity(target.getClass());
+				PersistentPropertyAccessor<?> accessor = entity.getPropertyAccessor(target);
+				value = accessor.getProperty(entity.getRequiredPersistentProperty(name));
+			}
 			return value != null ? new TypedValue(value) : TypedValue.NULL;
 		}
 
