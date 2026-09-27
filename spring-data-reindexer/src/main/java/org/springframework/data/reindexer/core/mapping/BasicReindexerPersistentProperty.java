@@ -17,11 +17,7 @@ package org.springframework.data.reindexer.core.mapping;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Supplier;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.annotations.Reindex;
 import ru.rt.restream.reindexer.annotations.Transient;
 
@@ -65,7 +61,7 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	private final Lazy<Boolean> isTransient = Lazy.of(() -> !isNamespaceReference() && !isAnnotationPresent(Value.class)
 			&& (super.isTransient() || isAnnotationPresent(Transient.class)));
 
-	private final Supplier<Set<String>> lookupVariables;
+	private final Lazy<Set<String>> lookupVariables;
 
 	/**
 	 * Creates a new {@link BasicReindexerPersistentProperty}.
@@ -76,14 +72,19 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 	public BasicReindexerPersistentProperty(Property property, PersistentEntity<?, ReindexerPersistentProperty> owner,
 			SimpleTypeHolder simpleTypeHolder) {
 		super(property, owner, simpleTypeHolder);
-		if (isNamespaceReference()) {
-			NamespaceReference namespaceReference = getNamespaceReference();
-			this.lookupVariables = StringUtils.hasText(namespaceReference.lookup())
-					? new ExpressionVariablesExtractor(namespaceReference.lookup()) : Set::of;
-		}
-		else {
-			this.lookupVariables = Set::of;
-		}
+		this.lookupVariables = Lazy.of(() -> {
+			if (isNamespaceReference()) {
+				NamespaceReference namespaceReference = getNamespaceReference();
+				if (StringUtils.hasText(namespaceReference.lookup())) {
+					Set<String> variables = new HashSet<>();
+					Expression expression = PARSER.parseExpression(namespaceReference.lookup(),
+							ParserContext.TEMPLATE_EXPRESSION);
+					traverseAndPopulateVariables(expression, variables);
+					return Set.copyOf(variables);
+				}
+			}
+			return Set.of();
+		});
 	}
 
 	@Override
@@ -126,69 +127,29 @@ public class BasicReindexerPersistentProperty extends AnnotationBasedPersistentP
 		return this.lookupVariables.get();
 	}
 
-	private static final class ExpressionVariablesExtractor implements Supplier<Set<String>> {
-
-		private static final Log logger = LogFactory.getLog(ExpressionVariablesExtractor.class);
-
-		private final String expression;
-
-		private volatile @Nullable Set<String> resolvedVariables;
-
-		private ExpressionVariablesExtractor(String expression) {
-			this.expression = expression;
-		}
-
-		@Override
-		public Set<String> get() {
-			Set<String> resolvedVariables = this.resolvedVariables;
-			if (resolvedVariables != null) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Accessing already resolved variables: %s from expression: %s"
-						.formatted(resolvedVariables, this.expression));
-				}
-				return resolvedVariables;
-			}
-			if (logger.isTraceEnabled()) {
-				logger.trace("Resolving variables from expression: %s".formatted(this.expression));
-			}
-			synchronized (this) {
-				resolvedVariables = this.resolvedVariables;
-				if (resolvedVariables == null) {
-					Set<String> variables = new HashSet<>();
-					Expression expression = PARSER.parseExpression(this.expression, ParserContext.TEMPLATE_EXPRESSION);
-					traverseAndPopulateVariables(expression, variables);
-					resolvedVariables = Set.copyOf(variables);
-					this.resolvedVariables = resolvedVariables;
-				}
-				return resolvedVariables;
+	private void traverseAndPopulateVariables(Expression expression, Set<String> variables) {
+		if (expression instanceof CompositeStringExpression compositeStringExpression) {
+			for (Expression expr : compositeStringExpression.getExpressions()) {
+				traverseAndPopulateVariables(expr, variables);
 			}
 		}
+		else if (expression instanceof SpelExpression spelExpression) {
+			traverseAndPopulateVariables(spelExpression.getAST(), variables);
+		}
+	}
 
-		private void traverseAndPopulateVariables(Expression expression, Set<String> variables) {
-			if (expression instanceof CompositeStringExpression compositeStringExpression) {
-				for (Expression expr : compositeStringExpression.getExpressions()) {
-					traverseAndPopulateVariables(expr, variables);
-				}
-			}
-			else if (expression instanceof SpelExpression spelExpression) {
-				traverseAndPopulateVariables(spelExpression.getAST(), variables);
+	private void traverseAndPopulateVariables(SpelNode node, Set<String> variables) {
+		if (node instanceof PropertyOrFieldReference reference) {
+			variables.add(reference.toStringAST());
+		}
+		else if (node instanceof VariableReference reference) {
+			variables.add(reference.toStringAST());
+		}
+		else {
+			for (int i = 0; i < node.getChildCount(); i++) {
+				traverseAndPopulateVariables(node.getChild(i), variables);
 			}
 		}
-
-		private void traverseAndPopulateVariables(SpelNode node, Set<String> variables) {
-			if (node instanceof PropertyOrFieldReference reference) {
-				variables.add(reference.toStringAST());
-			}
-			else if (node instanceof VariableReference reference) {
-				variables.add(reference.toStringAST());
-			}
-			else {
-				for (int i = 0; i < node.getChildCount(); i++) {
-					traverseAndPopulateVariables(node.getChild(i), variables);
-				}
-			}
-		}
-
 	}
 
 }
