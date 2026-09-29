@@ -18,8 +18,10 @@ package org.springframework.data.reindexer.core.mapping;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.springframework.data.mapping.PersistentPropertyPaths;
 import ru.rt.restream.reindexer.binding.Consts;
 
 import org.springframework.data.core.TypeInformation;
@@ -136,6 +138,12 @@ public class ReindexerMappingContext
 	protected ReindexerPersistentProperty createPersistentProperty(Property property,
 			ReindexerPersistentEntity<?> owner, SimpleTypeHolder simpleTypeHolder) {
 		return new BasicReindexerPersistentProperty(property, owner, simpleTypeHolder);
+	}
+
+	@Override
+	public <T> PersistentPropertyPaths<T, ReindexerPersistentProperty> findPersistentPropertyPaths(Class<T> type,
+			Predicate<? super ReindexerPersistentProperty> predicate) {
+		return doFindPersistentPropertyPaths(type, predicate, it -> !it.isAssociation() && !it.isCollectionLike());
 	}
 
 }

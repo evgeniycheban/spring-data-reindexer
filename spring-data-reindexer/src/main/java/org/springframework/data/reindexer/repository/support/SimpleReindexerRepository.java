@@ -15,24 +15,19 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.mapping.*;
+import org.springframework.data.util.Lazy;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
 import ru.rt.restream.reindexer.ResultIterator;
-import ru.rt.restream.reindexer.util.BeanPropertyUtils;
 
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Example;
@@ -83,6 +78,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	private final QueryParameterMapper queryParameterMapper;
 
+	private final Lazy<PersistentPropertyPaths<?, ReindexerPersistentProperty>> propertyPaths;
+
 	/**
 	 * Creates an instance.
 	 * @param entityInformation the {@link ReindexerEntityInformation} to use
@@ -100,6 +97,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		this.namespace = namespaceFactory.openNamespace(entityInformation.getJavaType());
 		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), mappingContext,
 				reindexerConverter);
+		this.propertyPaths = Lazy.of(() -> mappingContext.findPersistentPropertyPaths(entityInformation.getJavaType(),
+				property -> !property.isEntity() && !property.isCollectionLike()));
 	}
 
 	@Override
@@ -301,11 +300,17 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		Object probe = example.getProbe();
 		ExampleMatcher matcher = example.getMatcher();
 		PropertySpecifiers propertySpecifiers = matcher.getPropertySpecifiers();
-		for (String propertyPath : getPropertyPaths(probe, example.getProbeType(), "")) {
+		ReindexerPersistentEntity<?> entity = this.mappingContext
+			.getRequiredPersistentEntity(this.entityInformation.getJavaType());
+		PersistentPropertyPathAccessor<?> accessor = entity.getPropertyPathAccessor(probe);
+		AccessOptions.GetOptions options = AccessOptions.defaultGetOptions()
+			.withNullValues(AccessOptions.GetOptions.GetNulls.EARLY_RETURN);
+		for (PersistentPropertyPath<ReindexerPersistentProperty> path : this.propertyPaths.get()) {
+			String propertyPath = path.toDotPath();
 			if (matcher.isIgnoredPath(propertyPath)) {
 				continue;
 			}
-			Object propertyValue = BeanPropertyUtils.getProperty(probe, propertyPath);
+			Object propertyValue = accessor.getProperty(path, options);
 			if (propertyValue == null && matcher.getNullHandler() == NullHandler.IGNORE) {
 				continue;
 			}
@@ -352,26 +357,6 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 			}
 		}
 		return criteria;
-	}
-
-	private List<String> getPropertyPaths(Object probe, Class<?> domainClass, String path) {
-		List<String> result = new ArrayList<>();
-		ReindexerPersistentEntity<?> persistentEntity = this.mappingContext.getRequiredPersistentEntity(domainClass);
-		for (ReindexerPersistentProperty property : persistentEntity) {
-			if (property.isNamespaceReference() || property.isCollectionLike()) {
-				continue;
-			}
-			if (property.isEntity()) {
-				Object value = BeanPropertyUtils.getProperty(probe, property.getName());
-				if (value != null) {
-					result.addAll(getPropertyPaths(value, property.getType(), path + property.getName() + "."));
-				}
-			}
-			else {
-				result.add(path + property.getName());
-			}
-		}
-		return result;
 	}
 
 	private final class FluentQueryByExample<E extends T, R> implements FluentQuery.FetchableFluentQuery<R> {
