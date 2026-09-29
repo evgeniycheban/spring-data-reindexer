@@ -15,15 +15,19 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
-import org.springframework.data.mapping.*;
-import org.springframework.data.util.Lazy;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
 import ru.rt.restream.reindexer.Query.Condition;
@@ -41,6 +45,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.mapping.AccessOptions;
+import org.springframework.data.mapping.PersistentPropertyPath;
+import org.springframework.data.mapping.PersistentPropertyPathAccessor;
+import org.springframework.data.mapping.PersistentPropertyPaths;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
@@ -54,6 +62,7 @@ import org.springframework.data.reindexer.repository.util.QueryUtils;
 import org.springframework.data.repository.query.FluentQuery;
 import org.springframework.data.repository.query.FluentQuery.FetchableFluentQuery;
 import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.data.util.Lazy;
 import org.springframework.util.Assert;
 
 /**
@@ -78,7 +87,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	private final QueryParameterMapper queryParameterMapper;
 
-	private final Lazy<PersistentPropertyPaths<?, ReindexerPersistentProperty>> propertyPaths;
+	private final Lazy<PersistentPropertyPaths<T, ReindexerPersistentProperty>> propertyPaths;
 
 	/**
 	 * Creates an instance.
@@ -98,7 +107,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), mappingContext,
 				reindexerConverter);
 		this.propertyPaths = Lazy.of(() -> mappingContext.findPersistentPropertyPaths(entityInformation.getJavaType(),
-				property -> !property.isEntity() && !property.isCollectionLike()));
+				it -> !it.isEntity() && !it.isCollectionLike()));
 	}
 
 	@Override
