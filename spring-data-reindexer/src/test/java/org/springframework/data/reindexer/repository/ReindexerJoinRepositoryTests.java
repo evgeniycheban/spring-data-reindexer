@@ -217,10 +217,9 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 	}
 
 	@Test
-	void findByIdWhenMandatoryItemIdNullThenDataIntegrityViolationException() {
-		this.itemContainerRepository.save(TestItemContainer.builder().id(1L).build());
+	void saveWhenMandatoryItemIdNullThenDataIntegrityViolationException() {
 		assertThatExceptionOfType(DataIntegrityViolationException.class)
-			.isThrownBy(() -> this.itemContainerRepository.findById(1L));
+			.isThrownBy(() -> this.itemContainerRepository.save(TestItemContainer.builder().id(1L).build()));
 	}
 
 	@Test

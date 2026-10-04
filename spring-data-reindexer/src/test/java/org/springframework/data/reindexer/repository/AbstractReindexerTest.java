@@ -36,12 +36,14 @@ import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.container.ReindexerTestContainer;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
 import org.springframework.data.reindexer.repository.item.converter.PriceReadingConverter;
 import org.springframework.data.reindexer.repository.item.converter.PriceWritingConverter;
 import org.springframework.data.reindexer.repository.item.converter.PlaceReadingConverter;
 import org.springframework.data.reindexer.repository.item.entity.TestItem;
+import org.springframework.data.reindexer.repository.item.entity.TestItemEntityCallbacks;
 import org.springframework.data.reindexer.util.RepositoryAotMetadataUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -89,6 +91,14 @@ public abstract class AbstractReindexerTest {
 		@Bean
 		ReindexerTransactionManager<TestItem> txManager(Reindexer reindexer, ReindexerMappingContext mappingContext) {
 			return new ReindexerTransactionManager<>(reindexer, mappingContext, TestItem.class);
+		}
+
+		@Bean
+		BeforeConvertCallback<TestItemEntityCallbacks> customBeforeConvertCallback() {
+			return (entity, namespace) -> {
+				entity.setBeforeConvert("onBeforeConvert_" + namespace + "_" + entity.getId());
+				return entity;
+			};
 		}
 
 		@Override
