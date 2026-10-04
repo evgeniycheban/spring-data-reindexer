@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.mapping.callback.EntityCallbacks;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
@@ -103,7 +104,7 @@ public class ReindexerRepositoryFactory extends RepositoryFactorySupport {
 	protected Object getTargetRepository(RepositoryInformation metadata) {
 		EntityInformation<?, Serializable> entityInformation = getEntityInformation(metadata.getDomainType());
 		return getTargetRepositoryViaReflection(metadata, entityInformation, this.mappingContext, this.namespaceFactory,
-				this.reindexerConverter);
+				this.reindexerConverter, EntityCallbacks.create(this.ctx));
 	}
 
 	@Override

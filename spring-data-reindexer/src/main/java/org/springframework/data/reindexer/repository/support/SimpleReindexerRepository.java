@@ -49,11 +49,13 @@ import org.springframework.data.mapping.AccessOptions;
 import org.springframework.data.mapping.PersistentPropertyPath;
 import org.springframework.data.mapping.PersistentPropertyPathAccessor;
 import org.springframework.data.mapping.PersistentPropertyPaths;
+import org.springframework.data.mapping.callback.EntityCallbacks;
 import org.springframework.data.projection.EntityProjection;
 import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
@@ -87,6 +89,8 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 
 	private final QueryParameterMapper queryParameterMapper;
 
+	private final EntityCallbacks entityCallbacks;
+
 	private final Lazy<PersistentPropertyPaths<T, ReindexerPersistentProperty>> propertyPaths;
 
 	/**
@@ -98,7 +102,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	 */
 	public SimpleReindexerRepository(ReindexerEntityInformation<T, ID> entityInformation,
 			ReindexerMappingContext mappingContext, ReindexerNamespaceFactory namespaceFactory,
-			ReindexerConverter reindexerConverter) {
+			ReindexerConverter reindexerConverter, EntityCallbacks entityCallbacks) {
 		this.entityInformation = entityInformation;
 		this.mappingContext = mappingContext;
 		this.namespaceFactory = namespaceFactory;
@@ -106,6 +110,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		this.namespace = namespaceFactory.openNamespace(entityInformation.getJavaType());
 		this.queryParameterMapper = new QueryParameterMapper(entityInformation.getJavaType(), mappingContext,
 				reindexerConverter);
+		this.entityCallbacks = entityCallbacks;
 		this.propertyPaths = Lazy.of(() -> mappingContext.findPersistentPropertyPaths(entityInformation.getJavaType(),
 				it -> !it.isEntity() && !it.isCollectionLike()));
 	}
@@ -113,13 +118,14 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public <S extends T> S save(S entity) {
 		Assert.notNull(entity, "Entity must not be null!");
-		if (this.entityInformation.isNew(entity)) {
-			this.namespace.insert(entity);
+		S converted = convertEntity(entity);
+		if (this.entityInformation.isNew(converted)) {
+			this.namespace.insert(converted);
 		}
 		else {
-			this.namespace.upsert(entity);
+			this.namespace.upsert(converted);
 		}
-		return entity;
+		return converted;
 	}
 
 	@Override
@@ -202,6 +208,13 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public <S extends T> Page<S> findAll(Example<S> example, Pageable pageable) {
 		return (Page<S>) findAll(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), pageable);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <S extends T> S convertEntity(S entity) {
+		S beforeConvert = this.entityCallbacks.callback(BeforeConvertCallback.class, entity,
+				this.entityInformation.getNamespaceName());
+		return (S) this.reindexerConverter.read(this.entityInformation.getJavaType(), beforeConvert);
 	}
 
 	private <R> Page<R> findAll(Query<T> query, Class<R> resultType, Pageable pageable) {
