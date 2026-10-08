@@ -23,10 +23,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import ru.rt.restream.reindexer.annotations.Reindex;
-import ru.rt.restream.reindexer.annotations.Transient;
 
 import org.springframework.data.reindexer.core.mapping.Namespace;
-import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 
 /**
  * @author Evgeniy Cheban
@@ -43,14 +41,10 @@ public class TestItemEntityCallbacks {
 	@Builder.Default
 	private UUID id = UUID.randomUUID();
 
-	@Reindex(name = "parent_id")
-	private UUID parentId;
-
 	@Reindex(name = "before_convert")
 	private String beforeConvert;
 
-	@Transient
-	@NamespaceReference(indexName = "parent_id", lazy = true)
-	private TestItemEntityCallbacks parent;
+	@Reindex(name = "before_save")
+	private String beforeSave;
 
 }

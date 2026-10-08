@@ -18,7 +18,6 @@ package org.springframework.data.reindexer.repository;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.reindexer.core.convert.LazyLoadingProxy;
 import org.springframework.data.reindexer.repository.item.TestItemEntityCallbacksRepository;
 import org.springframework.data.reindexer.repository.item.entity.TestItemEntityCallbacks;
 
@@ -36,27 +35,12 @@ class ReindexerEntityCallbacksRepositoryTests extends AbstractReindexerTest {
 	TestItemEntityCallbacksRepository repository;
 
 	@Test
-	void saveInitializesLazyPropertiesWithProxies() {
-		TestItemEntityCallbacks parent = this.repository.save(TestItemEntityCallbacks.builder().build());
-		assertThat(parent).isNotNull();
-		assertThat(parent.getId()).isNotNull();
-		assertThat(parent.getParent()).isNull();
-		TestItemEntityCallbacks child = this.repository
-			.save(TestItemEntityCallbacks.builder().parentId(parent.getId()).build());
-		assertThat(child).isNotNull();
-		assertThat(child.getId()).isNotNull();
-		assertThat(child.getParent()).isInstanceOf(LazyLoadingProxy.class);
-		assertThat(child.getParent().getId()).isEqualTo(parent.getId());
-		assertThat(child.getParent().getParent()).isNull();
-	}
-
-	@Test
-	void saveTriggersBeforeConvertCallback() {
+	void saveTriggersEntityCallbacks() {
 		TestItemEntityCallbacks entity = this.repository.save(TestItemEntityCallbacks.builder().build());
 		assertThat(entity).isNotNull();
 		assertThat(entity.getId()).isNotNull();
 		assertThat(entity.getBeforeConvert()).isEqualTo("onBeforeConvert_test_item_entity_callbacks_" + entity.getId());
-		assertThat(entity.getParent()).isNull();
+		assertThat(entity.getBeforeSave()).isEqualTo("onBeforeSave_test_item_entity_callbacks_" + entity.getId());
 	}
 
 }

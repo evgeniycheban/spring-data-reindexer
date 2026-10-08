@@ -372,4 +372,19 @@ class ReindexerJoinRepositoryTests extends AbstractReindexerTest {
 		assertThat(actual.getJoinedItemsArray()).isEmpty();
 	}
 
+	@Test
+	void saveInitializesLazyPropertiesWithProxies() {
+		TestJoinedItem parent = this.joinedItemRepository.save(TestJoinedItem.builder().id(1L).build());
+		assertThat(parent).isNotNull();
+		assertThat(parent.getId()).isEqualTo(1L);
+		assertThat(parent.getNestedJoinedItemLazy()).isNull();
+		TestJoinedItem child = this.joinedItemRepository
+			.save(TestJoinedItem.builder().id(2L).nestedJoinedItemId(1L).build());
+		assertThat(child).isNotNull();
+		assertThat(child.getId()).isEqualTo(2L);
+		assertThat(child.getNestedJoinedItemLazy()).isInstanceOf(LazyLoadingProxy.class);
+		assertThat(child.getNestedJoinedItemLazy().getId()).isEqualTo(1L);
+		assertThat(child.getNestedJoinedItemLazy().getNestedJoinedItemLazy()).isNull();
+	}
+
 }

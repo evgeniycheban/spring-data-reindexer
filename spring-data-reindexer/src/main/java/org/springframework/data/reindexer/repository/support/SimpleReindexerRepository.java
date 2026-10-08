@@ -56,6 +56,7 @@ import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
 import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
+import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
 import org.springframework.data.reindexer.repository.query.QueryParameterMapper;
 import org.springframework.data.reindexer.repository.query.ReindexerEntityInformation;
@@ -119,13 +120,7 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	public <S extends T> S save(S entity) {
 		Assert.notNull(entity, "Entity must not be null!");
 		S converted = convertEntity(entity);
-		if (this.entityInformation.isNew(converted)) {
-			this.namespace.insert(converted);
-		}
-		else {
-			this.namespace.upsert(converted);
-		}
-		return converted;
+		return persistEntity(converted);
 	}
 
 	@Override
@@ -215,6 +210,18 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 		S beforeConvert = this.entityCallbacks.callback(BeforeConvertCallback.class, entity,
 				this.entityInformation.getNamespaceName());
 		return (S) this.reindexerConverter.read(this.entityInformation.getJavaType(), beforeConvert);
+	}
+
+	private <S extends T> S persistEntity(S converted) {
+		S entity = this.entityCallbacks.callback(BeforeSaveCallback.class, converted,
+				this.entityInformation.getNamespaceName());
+		if (this.entityInformation.isNew(entity)) {
+			this.namespace.insert(entity);
+		}
+		else {
+			this.namespace.upsert(entity);
+		}
+		return entity;
 	}
 
 	private <R> Page<R> findAll(Query<T> query, Class<R> resultType, Pageable pageable) {
