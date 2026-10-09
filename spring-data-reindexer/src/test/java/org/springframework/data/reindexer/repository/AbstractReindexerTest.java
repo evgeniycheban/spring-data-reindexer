@@ -22,6 +22,7 @@ import java.util.List;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerConfiguration;
 import ru.rt.restream.reindexer.ReindexerNamespace;
@@ -32,12 +33,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.auditing.CurrentDateTimeProvider;
+import org.springframework.data.auditing.DateTimeProvider;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.container.ReindexerTestContainer;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
+import org.springframework.data.reindexer.repository.config.EnableReindexerAuditing;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
 import org.springframework.data.reindexer.repository.item.converter.PriceReadingConverter;
@@ -62,9 +67,16 @@ public abstract class AbstractReindexerTest {
 	@Autowired
 	ClearDbReindexer reindexer;
 
+	@Autowired
+	DateTimeProvider dateTimeProvider;
+
+	@Autowired
+	AuditorAware<?> auditorAware;
+
 	@AfterEach
 	void tearDown() {
-		reindexer.clear();
+		this.reindexer.clear();
+		Mockito.reset(this.dateTimeProvider, this.auditorAware);
 	}
 
 	int getQueryFormatVersion(Class<?> repositoryClass, String methodName) {
@@ -75,6 +87,7 @@ public abstract class AbstractReindexerTest {
 	@Configuration(proxyBeanMethods = false)
 	@EnableReindexerRepositories(basePackageClasses = AbstractReindexerTest.class, considerNestedRepositories = true,
 			createIndexesForQueryMethods = true)
+	@EnableReindexerAuditing(auditorAwareRef = "auditorAware", dateTimeProviderRef = "dateTimeProvider")
 	@EnableTransactionManagement
 	@ComponentScan(basePackageClasses = AbstractReindexerTest.class)
 	static class ReindexerTestConfig extends ReindexerConfigurationSupport {
@@ -108,6 +121,16 @@ public abstract class AbstractReindexerTest {
 				entity.setBeforeSave("onBeforeSave_" + namespace + "_" + entity.getId());
 				return entity;
 			};
+		}
+
+		@Bean
+		DateTimeProvider dateTimeProvider() {
+			return Mockito.spy(CurrentDateTimeProvider.INSTANCE);
+		}
+
+		@Bean
+		AuditorAware<?> auditorAware() {
+			return Mockito.mock(AuditorAware.class);
 		}
 
 		@Override

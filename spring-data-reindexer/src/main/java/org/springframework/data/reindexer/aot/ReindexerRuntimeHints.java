@@ -23,6 +23,8 @@ import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.aot.hint.TypeReference;
+import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
+import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
 import org.springframework.data.reindexer.repository.support.SimpleReindexerRepository;
 
 /**
@@ -35,8 +37,11 @@ public class ReindexerRuntimeHints implements RuntimeHintsRegistrar {
 	@Override
 	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 		hints.reflection()
-			.registerTypes(Arrays.asList(TypeReference.of(SimpleReindexerRepository.class)), builder -> builder
-				.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS, MemberCategory.INVOKE_PUBLIC_METHODS));
+			.registerTypes(
+					Arrays.asList(TypeReference.of(SimpleReindexerRepository.class),
+							TypeReference.of(BeforeConvertCallback.class), TypeReference.of(BeforeSaveCallback.class)),
+					builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+							MemberCategory.INVOKE_PUBLIC_METHODS));
 		hints.proxies()
 			.registerJdkProxy(TypeReference.of("org.springframework.aop.SpringProxy"),
 					TypeReference.of("org.springframework.aop.framework.Advised"),
