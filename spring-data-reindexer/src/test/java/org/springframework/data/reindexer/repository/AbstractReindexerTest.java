@@ -19,6 +19,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +44,7 @@ import org.springframework.data.reindexer.core.convert.ReindexerCustomConversion
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
+import org.springframework.data.reindexer.core.mapping.event.ValidatingEntityCallback;
 import org.springframework.data.reindexer.repository.config.EnableReindexerAuditing;
 import org.springframework.data.reindexer.repository.config.EnableReindexerRepositories;
 import org.springframework.data.reindexer.repository.config.ReindexerConfigurationSupport;
@@ -50,6 +53,7 @@ import org.springframework.data.reindexer.repository.item.converter.PriceWriting
 import org.springframework.data.reindexer.repository.item.converter.PlaceReadingConverter;
 import org.springframework.data.reindexer.repository.item.entity.TestItem;
 import org.springframework.data.reindexer.repository.item.entity.TestItemEntityCallbacks;
+import org.springframework.data.reindexer.repository.item.entity.TestValidatingItem;
 import org.springframework.data.reindexer.util.RepositoryAotMetadataUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -124,6 +128,16 @@ public abstract class AbstractReindexerTest {
 		}
 
 		@Bean
+		BeforeConvertCallback<TestValidatingItem> beforeValidityCallback() {
+			return (entity, namespace) -> {
+				if (entity.getValue() == null) {
+					entity.setValue(0);
+				}
+				return entity;
+			};
+		}
+
+		@Bean
 		DateTimeProvider dateTimeProvider() {
 			return Mockito.spy(CurrentDateTimeProvider.INSTANCE);
 		}
@@ -131,6 +145,13 @@ public abstract class AbstractReindexerTest {
 		@Bean
 		AuditorAware<?> auditorAware() {
 			return Mockito.mock(AuditorAware.class);
+		}
+
+		@Bean
+		ValidatingEntityCallback validatingEntityCallback() {
+			try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+				return new ValidatingEntityCallback(factory.getValidator());
+			}
 		}
 
 		@Override

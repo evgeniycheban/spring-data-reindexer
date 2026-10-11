@@ -62,6 +62,9 @@
 		<httpclient.version>5.6.4</httpclient.version>
 		<lombok.version>1.18.48</lombok.version>
 		<jsqlparser.version>5.4</jsqlparser.version>
+		<hibernate-validator.version>8.0.5.Final</hibernate-validator.version>
+		<jakarta-el-api.version>6.0.1</jakarta-el-api.version>
+		<glassfish-jakarta-el.version>4.0.2</glassfish-jakarta-el.version>
 
 		<!-- Enabled in aot profile -->
 		<spring.aot.enabled>false</spring.aot.enabled>
@@ -355,6 +358,22 @@
 				<groupId>org.apache.httpcomponents.client5</groupId>
 				<artifactId>httpclient5</artifactId>
 				<version>${httpclient.version}</version>
+			</dependency>
+			<!-- Hibernate JSR-303 validation provider -->
+			<dependency>
+				<groupId>org.hibernate.validator</groupId>
+				<artifactId>hibernate-validator</artifactId>
+				<version>${hibernate-validator.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>jakarta.el</groupId>
+				<artifactId>jakarta.el-api</artifactId>
+				<version>${jakarta-el-api.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.glassfish</groupId>
+				<artifactId>jakarta.el</artifactId>
+				<version>${glassfish-jakarta-el.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
