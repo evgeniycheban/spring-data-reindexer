@@ -62,7 +62,7 @@
 		<httpclient.version>5.6.5</httpclient.version>
 		<lombok.version>1.18.48</lombok.version>
 		<jsqlparser.version>5.4</jsqlparser.version>
-		<hibernate-validator.version>9.1.4.Final</hibernate-validator.version>
+		<hibernate-validator.version>9.1.5.Final</hibernate-validator.version>
 		<jakarta-el-api.version>6.0.1</jakarta-el-api.version>
 		<glassfish-jakarta-el.version>4.0.2</glassfish-jakarta-el.version>
 
