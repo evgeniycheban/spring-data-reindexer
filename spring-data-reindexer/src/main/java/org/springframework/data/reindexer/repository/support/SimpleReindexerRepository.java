@@ -116,11 +116,17 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 				it -> !it.isEntity() && !it.isCollectionLike()));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <S extends T> S save(S entity) {
 		Assert.notNull(entity, "Entity must not be null!");
-		S converted = convertEntity(entity);
-		return persistEntity(converted);
+		S beforeConvert = this.entityCallbacks.callback(BeforeConvertCallback.class, entity,
+				this.entityInformation.getNamespaceName());
+		S beforeSave = this.entityCallbacks.callback(BeforeSaveCallback.class, beforeConvert,
+				this.entityInformation.getNamespaceName());
+		T result = this.entityInformation.isNew(beforeSave) ? this.namespace.insert(beforeSave)
+				: this.namespace.upsert(beforeSave);
+		return (S) this.reindexerConverter.read(this.entityInformation.getJavaType(), result);
 	}
 
 	@Override
@@ -203,25 +209,6 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 	@Override
 	public <S extends T> Page<S> findAll(Example<S> example, Pageable pageable) {
 		return (Page<S>) findAll(withExample(joinedQuery(), example), this.entityInformation.getJavaType(), pageable);
-	}
-
-	@SuppressWarnings("unchecked")
-	private <S extends T> S convertEntity(S entity) {
-		S beforeConvert = this.entityCallbacks.callback(BeforeConvertCallback.class, entity,
-				this.entityInformation.getNamespaceName());
-		return (S) this.reindexerConverter.read(this.entityInformation.getJavaType(), beforeConvert);
-	}
-
-	private <S extends T> S persistEntity(S converted) {
-		S entity = this.entityCallbacks.callback(BeforeSaveCallback.class, converted,
-				this.entityInformation.getNamespaceName());
-		if (this.entityInformation.isNew(entity)) {
-			this.namespace.insert(entity);
-		}
-		else {
-			this.namespace.upsert(entity);
-		}
-		return entity;
 	}
 
 	private <R> Page<R> findAll(Query<T> query, Class<R> resultType, Pageable pageable) {
