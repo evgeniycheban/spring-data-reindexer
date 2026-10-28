@@ -24,10 +24,15 @@ import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
+import ru.rt.restream.reindexer.ReindexerPrecept;
+import ru.rt.restream.reindexer.annotations.Json;
+import ru.rt.restream.reindexer.annotations.Serial;
+import ru.rt.restream.reindexer.expression.Expression;
 import ru.rt.restream.reindexer.exceptions.IndexConflictException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.reindexer.core.convert.ReindexerSimpleTypes;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
@@ -112,10 +117,27 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 		};
 		Assert.isTrue(validPkFieldType, () -> "Unsupported primary key fieldType: %s for property: %s.%s"
 			.formatted(fieldType, property.getOwner().getName(), property.getName()));
+		Json json = property.findAnnotation(Json.class);
+		String jsonPath = json != null ? json.value() : property.getName();
+		Serial serial = property.findAnnotation(Serial.class);
+		if (serial != null) {
+			if (!(fieldType == FieldType.INT || fieldType == FieldType.INT64)) {
+				throw new InvalidDataAccessApiUsageException(
+						"@Serial annotation is supported only for numeric fields; Offending property: %s.%s"
+							.formatted(property.getOwner().getName(), property.getName()));
+			}
+			ReindexerPrecept precept = ReindexerPrecept.builder()
+				.fieldPath(property.getName())
+				.jsonPath(jsonPath)
+				.expression(Expression.serial())
+				.strategy(serial.strategy())
+				.build();
+			this.reindexer.registerPrecept(namespace.getName(), precept);
+		}
 		ReindexerIndex index = ReindexerIndex.builder()
 			.fieldType(fieldType)
 			.name(property.getName())
-			.jsonPaths(List.of(property.getName()))
+			.jsonPaths(List.of(jsonPath))
 			.isPk(true)
 			.collateMode(CollateMode.NONE)
 			.indexType(IndexType.DEFAULT)

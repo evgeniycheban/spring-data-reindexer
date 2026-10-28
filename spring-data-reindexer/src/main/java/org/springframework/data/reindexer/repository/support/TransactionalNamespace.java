@@ -15,6 +15,8 @@
  */
 package org.springframework.data.reindexer.repository.support;
 
+import java.util.Optional;
+
 import org.jspecify.annotations.Nullable;
 import ru.rt.restream.reindexer.Namespace;
 import ru.rt.restream.reindexer.Query;
@@ -53,75 +55,69 @@ public class TransactionalNamespace<T> implements Namespace<T> {
 	}
 
 	@Override
-	public void insert(T item) {
+	public T insert(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
 			checkReadOnly();
 			tx.insert(item);
+			return item;
 		}
-		else {
-			this.fallback.insert(item);
-		}
+		return this.fallback.insert(item);
 	}
 
 	@Override
-	public void insert(String item) {
+	public Optional<T> insert(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
 			checkReadOnly();
 			tx.insert(item);
+			return Optional.empty();
 		}
-		else {
-			this.fallback.insert(item);
-		}
+		return this.fallback.insert(item);
 	}
 
 	@Override
-	public void upsert(T item) {
+	public T upsert(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
 			checkReadOnly();
 			tx.upsert(item);
+			return item;
 		}
-		else {
-			this.fallback.upsert(item);
-		}
+		return this.fallback.upsert(item);
 	}
 
 	@Override
-	public void upsert(String item) {
+	public Optional<T> upsert(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
 			checkReadOnly();
 			tx.upsert(item);
+			return Optional.empty();
 		}
-		else {
-			this.fallback.upsert(item);
-		}
+		return this.fallback.upsert(item);
 	}
 
 	@Override
-	public void update(T item) {
+	public T update(T item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
 			checkReadOnly();
 			tx.update(item);
+			return item;
 		}
-		else {
-			this.fallback.update(item);
-		}
+		return this.fallback.update(item);
 	}
 
 	@Override
-	public void update(String item) {
+	public Optional<T> update(String item) {
 		Transaction<T> tx = getTransaction();
 		if (tx != null) {
 			checkReadOnly();
 			tx.update(item);
+			return Optional.empty();
 		}
-		else {
-			this.fallback.update(item);
-		}
+		return this.fallback.update(item);
 	}
 
 	@Override
