@@ -123,4 +123,15 @@ class ReindexerSimpleTypesRepositoryTests extends AbstractReindexerTest {
 		});
 	}
 
+	@Test
+	void findItemByGeneratedId() {
+		UUID uuid = UUID.randomUUID();
+		TestItemSimpleTypes item = TestItemSimpleTypes.builder().uuid(uuid).build();
+		this.repository.save(item);
+		TestItemSimpleTypes found = this.repository.findById(item.getId()).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isEqualTo(item.getId());
+		assertThat(found.getUuid()).isEqualTo(uuid);
+	}
+
 }

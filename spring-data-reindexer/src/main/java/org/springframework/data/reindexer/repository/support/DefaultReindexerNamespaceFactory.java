@@ -121,10 +121,10 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 		String jsonPath = json != null ? json.value() : property.getName();
 		Serial serial = property.findAnnotation(Serial.class);
 		if (serial != null) {
-			if (!(fieldType == FieldType.INT || fieldType == FieldType.INT64)) {
-				throw new InvalidDataAccessApiUsageException(
-						"@Serial annotation is supported only for numeric fields; Offending property: %s.%s"
-							.formatted(property.getOwner().getName(), property.getName()));
+			if (fieldType == FieldType.UUID) {
+				throw new InvalidDataAccessApiUsageException("""
+						@Serial annotation is supported only for numeric or string properties;
+						Offending property: %s.%s""".formatted(property.getOwner().getName(), property.getName()));
 			}
 			ReindexerPrecept precept = ReindexerPrecept.builder()
 				.fieldPath(property.getName())

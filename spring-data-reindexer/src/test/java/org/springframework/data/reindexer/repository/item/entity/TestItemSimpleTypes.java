@@ -26,7 +26,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import ru.rt.restream.reindexer.PreceptApplyStrategy;
 import ru.rt.restream.reindexer.annotations.Reindex;
+import ru.rt.restream.reindexer.annotations.Serial;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.reindexer.core.mapping.Namespace;
@@ -45,6 +47,7 @@ import org.springframework.data.reindexer.core.mapping.Namespace;
 public class TestItemSimpleTypes {
 
 	@Id
+	@Serial(strategy = PreceptApplyStrategy.WHEN_NULL)
 	private BigInteger id;
 
 	@Reindex(name = "uuid")
