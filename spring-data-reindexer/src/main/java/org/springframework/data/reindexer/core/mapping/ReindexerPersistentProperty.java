@@ -17,6 +17,7 @@ package org.springframework.data.reindexer.core.mapping;
 
 import java.util.Set;
 
+import ru.rt.restream.reindexer.annotations.Json;
 import ru.rt.restream.reindexer.annotations.Reindex;
 
 import org.springframework.data.mapping.PersistentProperty;
@@ -38,6 +39,17 @@ public interface ReindexerPersistentProperty extends PersistentProperty<Reindexe
 	 */
 	default String getIndexName() {
 		return isIndexedProperty() ? getReindex().name() : getName();
+	}
+
+	/**
+	 * Returns a JSON path to use for this property, fallbacks to
+	 * {@link PersistentProperty#getName()}. Cannot be {@literal null}.
+	 * @return the JSON path to use for this property
+	 * @since 1.8
+	 */
+	default String getJsonPath() {
+		Json json = findAnnotation(Json.class);
+		return json != null ? json.value() : getName();
 	}
 
 	/**
