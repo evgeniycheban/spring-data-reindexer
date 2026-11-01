@@ -21,11 +21,11 @@ import ru.rt.restream.reindexer.CollateMode;
 import ru.rt.restream.reindexer.FieldType;
 import ru.rt.restream.reindexer.IndexType;
 import ru.rt.restream.reindexer.Namespace;
+import ru.rt.restream.reindexer.PreceptApplyStrategy;
 import ru.rt.restream.reindexer.Reindexer;
 import ru.rt.restream.reindexer.ReindexerIndex;
 import ru.rt.restream.reindexer.ReindexerNamespace;
 import ru.rt.restream.reindexer.ReindexerPrecept;
-import ru.rt.restream.reindexer.annotations.Json;
 import ru.rt.restream.reindexer.annotations.Serial;
 import ru.rt.restream.reindexer.expression.Expression;
 import ru.rt.restream.reindexer.exceptions.IndexConflictException;
@@ -104,6 +104,17 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 			if (property.isIdProperty() && !property.isIndexedProperty()) {
 				createDefaultPkIndex(namespace, property);
 			}
+			else if (property.isVersionProperty()) {
+				// Register serial() precept with ALWAYS apply strategy for @Version
+				// annotated property.
+				ReindexerPrecept precept = ReindexerPrecept.builder()
+					.fieldPath(property.getName())
+					.jsonPath(property.getJsonPath())
+					.expression(Expression.serial())
+					.strategy(PreceptApplyStrategy.ALWAYS)
+					.build();
+				this.reindexer.registerPrecept(namespace.getName(), precept);
+			}
 		}
 	}
 
@@ -117,8 +128,7 @@ public final class DefaultReindexerNamespaceFactory implements ReindexerNamespac
 		};
 		Assert.isTrue(validPkFieldType, () -> "Unsupported primary key fieldType: %s for property: %s.%s"
 			.formatted(fieldType, property.getOwner().getName(), property.getName()));
-		Json json = property.findAnnotation(Json.class);
-		String jsonPath = json != null ? json.value() : property.getName();
+		String jsonPath = property.getJsonPath();
 		Serial serial = property.findAnnotation(Serial.class);
 		if (serial != null) {
 			if (fieldType == FieldType.UUID) {

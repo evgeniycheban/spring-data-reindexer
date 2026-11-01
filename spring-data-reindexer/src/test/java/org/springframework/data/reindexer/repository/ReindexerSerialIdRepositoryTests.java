@@ -33,27 +33,31 @@ class ReindexerSerialIdRepositoryTests extends AbstractReindexerTest {
 
 	@Test
 	void saveWhenIdIsNullThenGeneratesIdUsingSerialIdGenerator() {
-		TestItemWithSerialId item = new TestItemWithSerialId(null, "TestName");
+		TestItemWithSerialId item = new TestItemWithSerialId(null, null, "TestName");
 		TestItemWithSerialId saved = this.repository.save(item);
 		assertThat(saved).isNotNull();
 		assertThat(saved).isSameAs(item);
 		assertThat(saved.getId()).isNotNull();
+		assertThat(saved.getVersion()).isNotNull();
 		assertThat(saved.getName()).isEqualTo("TestName");
 	}
 
 	@Test
 	void saveWhenIdIsNotNullThenUpsertsItemUsingId() {
-		TestItemWithSerialId item = new TestItemWithSerialId(null, "TestName");
+		TestItemWithSerialId item = new TestItemWithSerialId(null, null, "TestName");
 		TestItemWithSerialId saved = this.repository.save(item);
 		assertThat(saved).isNotNull();
 		Long id = saved.getId();
+		Integer version = saved.getVersion();
 		assertThat(id).isNotNull();
+		assertThat(version).isNotNull();
 		assertThat(saved.getName()).isEqualTo("TestName");
 		saved.setName("TestNameUpdated");
 		TestItemWithSerialId updated = this.repository.save(saved);
 		assertThat(updated).isNotNull();
 		assertThat(updated).isSameAs(saved);
 		assertThat(updated.getId()).isEqualTo(id);
+		assertThat(updated.getVersion()).isEqualTo(version + 1);
 		assertThat(updated.getName()).isEqualTo("TestNameUpdated");
 	}
 
