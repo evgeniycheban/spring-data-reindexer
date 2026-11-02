@@ -42,9 +42,9 @@ public interface ReindexerPersistentProperty extends PersistentProperty<Reindexe
 	}
 
 	/**
-	 * Returns a JSON path to use for this property, fallbacks to
+	 * Returns a JSON path if {@link Json} annotation is present, fallbacks to
 	 * {@link PersistentProperty#getName()}. Cannot be {@literal null}.
-	 * @return the JSON path to use for this property
+	 * @return the JSON path to use
 	 * @since 1.8
 	 */
 	default String getJsonPath() {
