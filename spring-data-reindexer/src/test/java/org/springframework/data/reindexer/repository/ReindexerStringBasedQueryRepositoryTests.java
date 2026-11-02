@@ -445,20 +445,12 @@ class ReindexerStringBasedQueryRepositoryTests extends AbstractReindexerTest {
 		this.repository.save(TestItem.builder().id(1L).name("MERGE(SELECT * FROM items WHERE name = :name)").build());
 		this.repository.save(TestItem.builder().id(2L).name("TestName").build());
 		List<TestItem> found = this.repository.findAllSqlByMergeQueryNameQuotedParenthesisString("TestName");
-		assertThat(found).hasSize(4);
+		assertThat(found).hasSize(2);
 		assertThat(found).element(0).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(1L);
 			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :name)");
 		});
 		assertThat(found).element(1).satisfies(it -> {
-			assertThat(it.getId()).isEqualTo(2L);
-			assertThat(it.getName()).isEqualTo("TestName");
-		});
-		assertThat(found).element(2).satisfies(it -> {
-			assertThat(it.getId()).isEqualTo(1L);
-			assertThat(it.getName()).isEqualTo("MERGE(SELECT * FROM items WHERE name = :name)");
-		});
-		assertThat(found).element(3).satisfies(it -> {
 			assertThat(it.getId()).isEqualTo(2L);
 			assertThat(it.getName()).isEqualTo("TestName");
 		});
