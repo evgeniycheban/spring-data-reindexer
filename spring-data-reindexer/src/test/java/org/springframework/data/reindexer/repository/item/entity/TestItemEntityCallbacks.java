@@ -44,6 +44,9 @@ public class TestItemEntityCallbacks {
 	@Reindex(name = "before_convert")
 	private String beforeConvert;
 
+	@Reindex(name = "after_convert")
+	private String afterConvert;
+
 	@Reindex(name = "before_save")
 	private String beforeSave;
 

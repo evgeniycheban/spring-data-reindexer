@@ -42,6 +42,7 @@ import org.springframework.data.reindexer.ReindexerTransactionManager;
 import org.springframework.data.reindexer.container.ReindexerTestContainer;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
+import org.springframework.data.reindexer.core.mapping.event.AfterConvertCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
 import org.springframework.data.reindexer.core.mapping.event.ValidatingEntityCallback;
@@ -115,6 +116,14 @@ public abstract class AbstractReindexerTest {
 		BeforeConvertCallback<TestItemEntityCallbacks> customBeforeConvertCallback() {
 			return (entity, namespace) -> {
 				entity.setBeforeConvert("onBeforeConvert_" + namespace + "_" + entity.getId());
+				return entity;
+			};
+		}
+
+		@Bean
+		AfterConvertCallback<TestItemEntityCallbacks> customAfterConvertCallback() {
+			return (entity, namespace) -> {
+				entity.setAfterConvert("onAfterConvert_" + namespace + "_" + entity.getId());
 				return entity;
 			};
 		}
