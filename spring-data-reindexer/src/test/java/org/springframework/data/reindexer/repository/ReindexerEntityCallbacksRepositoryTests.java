@@ -41,6 +41,16 @@ class ReindexerEntityCallbacksRepositoryTests extends AbstractReindexerTest {
 		assertThat(entity.getId()).isNotNull();
 		assertThat(entity.getBeforeConvert()).isEqualTo("onBeforeConvert_test_item_entity_callbacks_" + entity.getId());
 		assertThat(entity.getBeforeSave()).isEqualTo("onBeforeSave_test_item_entity_callbacks_" + entity.getId());
+		assertThat(entity.getAfterConvert()).isEqualTo("onAfterConvert_test_item_entity_callbacks_" + entity.getId());
+	}
+
+	@Test
+	void findByIdTriggersAfterConvertCallback() {
+		TestItemEntityCallbacks entity = this.repository.save(TestItemEntityCallbacks.builder().build());
+		TestItemEntityCallbacks found = this.repository.findById(entity.getId()).orElse(null);
+		assertThat(found).isNotNull();
+		assertThat(found.getId()).isNotNull();
+		assertThat(found.getAfterConvert()).isEqualTo("onAfterConvert_test_item_entity_callbacks_" + found.getId());
 	}
 
 }

@@ -53,6 +53,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.mapping.PersistentProperty;
 import org.springframework.data.mapping.PersistentPropertyAccessor;
+import org.springframework.data.mapping.callback.EntityCallbacks;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.EntityInstantiator;
 import org.springframework.data.mapping.model.EntityInstantiators;
@@ -70,6 +71,7 @@ import org.springframework.data.reindexer.core.mapping.NamespaceReference;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.core.mapping.event.AfterConvertCallback;
 import org.springframework.data.reindexer.repository.query.ReindexerQueryExecutions;
 import org.springframework.data.reindexer.repository.support.ReindexerNamespaceFactory;
 import org.springframework.data.reindexer.repository.util.QueryUtils;
@@ -116,6 +118,8 @@ public class MappingReindexerConverter
 	private ReindexerCustomConversions conversions = new ReindexerCustomConversions();
 
 	private EntityInstantiators instantiators = new EntityInstantiators();
+
+	private @Nullable EntityCallbacks entityCallbacks;
 
 	private @Nullable Environment environment;
 
@@ -173,9 +177,14 @@ public class MappingReindexerConverter
 		this.instantiators = instantiators == null ? new EntityInstantiators() : instantiators;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public <R> R project(EntityProjection<R, ?> entityProjection, Object entity) {
+		R result = doProject(entityProjection, entity);
+		return maybeCallAfterConvert(result, entityProjection.getDomainType().getType());
+	}
+
+	@SuppressWarnings("unchecked")
+	private <R> R doProject(EntityProjection<R, ?> entityProjection, Object entity) {
 		if (!entityProjection.isProjection()) {
 			return (R) read(entityProjection.getDomainType().getType(), entity);
 		}
@@ -199,8 +208,13 @@ public class MappingReindexerConverter
 		return read(type, type, source);
 	}
 
-	@SuppressWarnings("unchecked")
 	private <R> R read(Class<R> mappedType, Class<?> domainType, Object source) {
+		R entity = doRead(mappedType, domainType, source);
+		return maybeCallAfterConvert(entity, domainType);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <R> R doRead(Class<R> mappedType, Class<?> domainType, Object source) {
 		ReindexerPersistentEntity<?> mappedEntity = this.mappingContext.getRequiredPersistentEntity(mappedType);
 		ReindexerPersistentEntity<?> domainEntity = this.mappingContext.getRequiredPersistentEntity(domainType);
 		PersistentPropertyAccessor<?> accessor = source instanceof Map<?, ?> map
@@ -215,6 +229,14 @@ public class MappingReindexerConverter
 			populateProperties(mappedEntity, mappedEntity.getPropertyAccessor(instance), valueProvider);
 		}
 		return (R) instance;
+	}
+
+	private <R> R maybeCallAfterConvert(R entity, Class<?> domainType) {
+		if (this.entityCallbacks != null) {
+			ReindexerPersistentEntity<?> domainEntity = this.mappingContext.getRequiredPersistentEntity(domainType);
+			return this.entityCallbacks.callback(AfterConvertCallback.class, entity, domainEntity.getNamespace());
+		}
+		return entity;
 	}
 
 	private void populateProperties(ReindexerPersistentEntity<?> entity, PersistentPropertyAccessor<?> accessor,
@@ -243,6 +265,9 @@ public class MappingReindexerConverter
 		if (classLoader != null) {
 			this.projectionFactory.setBeanClassLoader(classLoader);
 		}
+		if (this.entityCallbacks == null) {
+			this.entityCallbacks = EntityCallbacks.create(applicationContext);
+		}
 		this.environment = applicationContext.getEnvironment();
 		this.spELContext = new SpELContext(this.spELContext, applicationContext);
 	}
@@ -250,6 +275,21 @@ public class MappingReindexerConverter
 	@Override
 	public void afterPropertiesSet() {
 		this.conversions.registerConvertersIn(this.conversionService);
+	}
+
+	/**
+	 * Sets the {@link EntityCallbacks} instance to use when invoking
+	 * {@link org.springframework.data.mapping.callback.EntityCallback callbacks} like the
+	 * {@link AfterConvertCallback}.
+	 * <p>
+	 * Overrides potentially existing {@link EntityCallbacks}.
+	 * @param entityCallbacks must not be {@literal null}
+	 * @throws IllegalArgumentException if the given instance is {@literal null}
+	 * @since 1.8
+	 */
+	public void setEntityCallbacks(EntityCallbacks entityCallbacks) {
+		Assert.notNull(entityCallbacks, "EntityCallbacks must not be null");
+		this.entityCallbacks = entityCallbacks;
 	}
 
 	@Override
