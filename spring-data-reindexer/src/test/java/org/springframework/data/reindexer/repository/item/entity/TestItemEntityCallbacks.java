@@ -50,4 +50,7 @@ public class TestItemEntityCallbacks {
 	@Reindex(name = "before_save")
 	private String beforeSave;
 
+	@Reindex(name = "after_save")
+	private String afterSave;
+
 }
