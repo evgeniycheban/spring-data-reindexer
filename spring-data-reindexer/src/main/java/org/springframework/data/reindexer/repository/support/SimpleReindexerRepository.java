@@ -55,6 +55,7 @@ import org.springframework.data.reindexer.core.convert.ReindexerConverter;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentEntity;
 import org.springframework.data.reindexer.core.mapping.ReindexerPersistentProperty;
+import org.springframework.data.reindexer.core.mapping.event.AfterSaveCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
 import org.springframework.data.reindexer.repository.ReindexerRepository;
@@ -124,9 +125,11 @@ public class SimpleReindexerRepository<T, ID> implements ReindexerRepository<T, 
 				this.entityInformation.getNamespaceName());
 		S beforeSave = this.entityCallbacks.callback(BeforeSaveCallback.class, beforeConvert,
 				this.entityInformation.getNamespaceName());
-		T result = this.entityInformation.isNew(beforeSave) ? this.namespace.insert(beforeSave)
+		T saved = this.entityInformation.isNew(beforeSave) ? this.namespace.insert(beforeSave)
 				: this.namespace.upsert(beforeSave);
-		return (S) this.reindexerConverter.read(this.entityInformation.getJavaType(), result);
+		S result = (S) this.reindexerConverter.read(this.entityInformation.getJavaType(), saved);
+		return this.entityCallbacks.callback(AfterSaveCallback.class, result,
+				this.entityInformation.getNamespaceName());
 	}
 
 	@Override

@@ -43,6 +43,7 @@ import org.springframework.data.reindexer.container.ReindexerTestContainer;
 import org.springframework.data.reindexer.core.convert.ReindexerCustomConversions;
 import org.springframework.data.reindexer.core.mapping.ReindexerMappingContext;
 import org.springframework.data.reindexer.core.mapping.event.AfterConvertCallback;
+import org.springframework.data.reindexer.core.mapping.event.AfterSaveCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeConvertCallback;
 import org.springframework.data.reindexer.core.mapping.event.BeforeSaveCallback;
 import org.springframework.data.reindexer.core.mapping.event.ValidatingEntityCallback;
@@ -114,26 +115,22 @@ public abstract class AbstractReindexerTest {
 
 		@Bean
 		BeforeConvertCallback<TestItemEntityCallbacks> customBeforeConvertCallback() {
-			return (entity, namespace) -> {
-				entity.setBeforeConvert("onBeforeConvert_" + namespace + "_" + entity.getId());
-				return entity;
-			};
+			return Mockito.mock(BeforeConvertCallback.class);
 		}
 
 		@Bean
 		AfterConvertCallback<TestItemEntityCallbacks> customAfterConvertCallback() {
-			return (entity, namespace) -> {
-				entity.setAfterConvert("onAfterConvert_" + namespace + "_" + entity.getId());
-				return entity;
-			};
+			return Mockito.mock(AfterConvertCallback.class);
 		}
 
 		@Bean
 		BeforeSaveCallback<TestItemEntityCallbacks> customBeforeSaveCallback() {
-			return (entity, namespace) -> {
-				entity.setBeforeSave("onBeforeSave_" + namespace + "_" + entity.getId());
-				return entity;
-			};
+			return Mockito.mock(BeforeSaveCallback.class);
+		}
+
+		@Bean
+		AfterSaveCallback<TestItemEntityCallbacks> customAfterSaveCallback() {
+			return Mockito.mock(AfterSaveCallback.class);
 		}
 
 		@Bean
